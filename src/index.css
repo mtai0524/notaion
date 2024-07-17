@@ -1,0 +1,18 @@
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+  margin: 0;
+  padding: 0;
+  font-family: "Mali", cursive;
+}
+
+:root {
+  --color-background: #dbdbdb; /* Màu nền */
+  --color-background-button: #fff1c9; /* Màu nền */
+  --color-background-button2: #4a3d2d; /* Màu nền */
+  --color-text: #050200; /* Màu chữ */
+  --color-text2: #f4e7d7; /* Màu chữ */
+  --color-shadow: #21242b; /* Màu shadow */
+  --box-shadow-container: -4px 4px 0px 0px #111827; /* Màu shadow */
+}

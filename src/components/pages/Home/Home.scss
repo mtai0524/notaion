@@ -1,0 +1,37 @@
+.home-container {
+  margin: 15px;
+  background-color: lightblue;
+  padding: 20px;
+  box-shadow: var(--box-shadow-container);
+  border: 2px #111827 solid;
+}
+
+.home-title {
+  font-size: 0.9em;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.home-message {
+  font-size: 1.5rem;
+  line-height: 1.5;
+  color: #666;
+}
+
+.main-button {
+  border: 2px solid var(--color-text);
+  box-shadow: -3px 3px 0px 0px #21242b;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, outline 0.1s ease-out;
+  background-color: var(--color-background-button);
+  color: var(--color-text);
+  padding: 10px 20px;
+  margin: 7px;
+  cursor: pointer;
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.main-button:hover {
+  box-shadow: none;
+  transform: translate(-3px, 3px);
+}
