@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
 import "./Signal.scss";
-import { notification } from "antd";
-
+import { showNotification } from "../../../utils/Notification";
 const App = () => {
   const [connection, setConnection] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -23,23 +22,22 @@ const App = () => {
       .start()
       .then(() => {
         console.log("Connected!");
-        notification.success({
-          message: "SignalR Connected",
-          description: "Successfully connected to SignalR Hub.",
-          showProgress: true,
-        });
+        showNotification(
+          "success",
+          "SignalR Connected",
+          "Successfully connected to SignalR Hub."
+        );
         connect.on("ReceiveMessage", (user, message) => {
           setMessages((prevMessages) => [...prevMessages, { user, message }]);
         });
       })
       .catch((err) => {
         console.error("Connection failed: ", err);
-        notification.error({
-          message: "Connection Error",
-          description: "Failed to connect to SignalR Hub.",
-          showProgress: true,
-          duration: 2,
-        });
+        showNotification(
+          "error",
+          "SignalR Error Connected",
+          "Error connected to SignalR Hub."
+        );
       });
   }, []);
 
