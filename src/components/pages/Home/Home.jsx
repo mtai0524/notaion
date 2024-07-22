@@ -4,20 +4,18 @@ import "./Home.scss";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { Button } from "react-bootstrap";
 dayjs.extend(customParseFormat);
 const Home = ({ backgroundColor, title, message }) => {
   const dateFormat = "YYYY-MM-DD";
   return (
     <>
-      <div
-        className="home-container"
-        style={{ backgroundColor: backgroundColor }}
-      >
+      <div className={`home-container ${backgroundColor}`}>
         <h1 className="home-title">{title}</h1>
         <p className="home-message">{message}</p>
         <NavLink to="/home2">
-          <Button className="btn btn-primary">Home 2</Button>
+          <button className="bg-gray-600 text-white rounded-sm px-8 py-8 border-amber-500 border-2">
+            Home 2
+          </button>
         </NavLink>
         <NavLink to="/">
           <button className="main-button">Home 1</button>

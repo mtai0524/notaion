@@ -1,0 +1,67 @@
+.droppable-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.draggable-item {
+  margin: 0 0 8px 0;
+  padding: 16px;
+  border-radius: 4px;
+  position: relative;
+  width: 50%;
+}
+
+.edit-textarea {
+  position: relative;
+  width: 96%;
+  min-height: 50px;
+  padding: 4px;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  line-height: 1.5;
+  border: 1px solid black;
+  border-radius: 4px;
+  font-size: 14px;
+  box-shadow: none;
+}
+
+.drag-handle {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: grab;
+  font-size: 16px;
+  user-select: none;
+}
+.dd-item-pages {
+  position: absolute;
+  bottom: 15px;
+  right: 60px;
+  font-size: 4px;
+}
+
+.formatted-content {
+  margin: 8px 0;
+}
+
+.heading-h1 {
+  font-size: 2em;
+  font-weight: bold;
+}
+
+.heading-h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+.heading-h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+}

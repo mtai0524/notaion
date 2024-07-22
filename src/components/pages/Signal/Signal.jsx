@@ -45,7 +45,7 @@ const App = () => {
     if (connection) {
       try {
         await connection.invoke("SendMessage", user, message);
-        setMessage(""); // Clear message input after sending
+        setMessage("");
       } catch (err) {
         console.error("Send message failed: ", err);
       }
@@ -68,7 +68,12 @@ const App = () => {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
-        <button onClick={sendMessage}>Send</button>
+        <button
+          className="bg-slate-500 rounded-sm text-white"
+          onClick={sendMessage}
+        >
+          Send
+        </button>
       </div>
       <div>
         {messages.map((msg, index) => (
