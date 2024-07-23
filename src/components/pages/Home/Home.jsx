@@ -22,6 +22,9 @@ const Home = ({ backgroundColor, title, message }) => {
         </NavLink>
         <NavLink to="/signal">
           <button className="main-button">signal</button>
+        </NavLink>{" "}
+        <NavLink to="/notion">
+          <button className="main-button">notion</button>
         </NavLink>
         <DatePicker
           defaultValue={dayjs("2019-09-03", dateFormat)}

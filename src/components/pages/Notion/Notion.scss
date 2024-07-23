@@ -7,18 +7,36 @@
   justify-content: center;
   align-items: center;
 }
+.container-nav {
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+}
+.navbar {
+  width: 60vw;
+  height: 60px;
+  margin: 20px;
+  border-radius: 6px;
+}
+@media screen and (max-width: 700px) {
+  .draggable-item {
+    padding-right: 10px;
+    padding-left: 10px;
+    width: 100vw !important;
+  }
+  .navbar {
+    width: 100vw;
+    margin: 20px;
+  }
+}
 
 .draggable-item {
-  margin: 0 0 8px 0;
-  padding: 16px;
-  border-radius: 4px;
-  position: relative;
-  width: 50%;
+  width: 60vw;
+  margin: 0 0 20px 0;
 }
 
 .edit-textarea {
-  position: relative;
-  width: 96%;
+  width: 100%;
   min-height: 50px;
   padding: 4px;
   box-sizing: border-box;
@@ -26,42 +44,61 @@
   overflow: hidden;
   line-height: 1.5;
   border: 1px solid black;
-  border-radius: 4px;
   font-size: 14px;
   box-shadow: none;
 }
 
 .drag-handle {
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
   cursor: grab;
-  font-size: 16px;
+  font-size: 10px;
   user-select: none;
-}
-.dd-item-pages {
-  position: absolute;
-  bottom: 15px;
-  right: 60px;
-  font-size: 4px;
+  padding: 5px;
 }
 
-.formatted-content {
-  margin: 8px 0;
-}
-
-.heading-h1 {
-  font-size: 2em;
+.heading-heading-1 {
+  font-size: 1.2em;
   font-weight: bold;
 }
 
-.heading-h2 {
-  font-size: 1.5em;
+.heading-heading-2 {
+  font-size: 1em;
   font-weight: bold;
 }
 
-.heading-h3 {
-  font-size: 1.17em;
+.heading-heading-3 {
+  font-size: 0.5em;
   font-weight: bold;
+}
+
+.dd-item-pages .ant-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.dd-item-pages .ant-btn:hover,
+.dd-item-pages .ant-btn:focus {
+  background: transparent;
+}
+
+.custom-dropdown-menu {
+  .ant-dropdown-menu-item {
+    width: 100%;
+    font-weight: 800 !important;
+    display: flex;
+    align-items: center;
+    color: #000;
+    font-size: 0.6rem !important;
+  }
+
+  .ant-dropdown-menu-item-danger {
+    color: #ff4d4f;
+    &:hover {
+      background-color: #fff1f0;
+    }
+  }
+}
+.ant-dropdown-menu {
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
 }
