@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { Dropdown, Menu, message, Space } from "antd";
+import { Dropdown, Menu, message, Space, Tooltip } from "antd";
 import "./Notion.scss";
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
@@ -9,20 +9,20 @@ const reorder = (list, startIndex, endIndex) => {
   return result;
 };
 
-const Notion = () => {
-  const [items, setItems] = useState([
-    { id: "1", content: "Item 1", heading: "" },
-    { id: "2", content: "Item 2", heading: "" },
-    { id: "3", content: "Item 3", heading: "" },
-    { id: "4", content: "Item 4", heading: "" },
-  ]);
+const generateRandomId = () => {
+  return Array.from({ length: 24 }, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  ).join("");
+};
 
+const Notion = () => {
+  const [blockId, setBlockId] = useState();
+  const [items, setItems] = useState([]);
   const [newContent, setNewContent] = useState({});
   const [dropdownVisible, setDropdownVisible] = useState({});
   const [boxShadow, setBoxShadow] = useState("none");
   const [rounded, setRounded] = useState("0px");
   const [activeDropdown, setActiveDropdown] = useState(null); // State để quản lý dropdown hiện tại
-
   const editTextareaRefs = useRef({});
 
   const handleBoxShadowChange = (newBoxShadow, newRounded) => {
@@ -31,10 +31,32 @@ const Notion = () => {
   };
 
   useEffect(() => {
+    setItems([
+      {
+        id: generateRandomId(),
+        placeholder: "Type your content here...",
+        heading: "",
+      },
+    ]);
+    setBlockId(generateRandomId());
+  }, []);
+
+  const addItem = () => {
+    setBlockId(generateRandomId());
+    const newItem = {
+      id: blockId,
+      // content: blockId,
+      heading: "",
+    };
+    setItems([...items, newItem]);
+    message.info("New item added");
+  };
+
+  useEffect(() => {
     Object.keys(editTextareaRefs.current).forEach((id) => {
       const textarea = editTextareaRefs.current[id];
       if (textarea) {
-        textarea.style.height = "auto";
+        textarea.style.height = "15px";
         textarea.style.height = `${textarea.scrollHeight}px`;
       }
     });
@@ -58,32 +80,6 @@ const Notion = () => {
       )
     );
   };
-
-  const handleMenuClick = (e, id) => {
-    const heading = e.key;
-    setItems((prevItems) =>
-      prevItems.map((item) => (item.id === id ? { ...item, heading } : item))
-    );
-    message.info(`Applied ${heading.replace("heading-", "Heading ")} format`);
-    setDropdownVisible((prev) => ({ ...prev, [id]: false }));
-    setActiveDropdown(null);
-  };
-
-  const menu = (id) => (
-    <Menu
-      onClick={(e) => handleMenuClick(e, id)}
-      className="custom-dropdown-menu"
-    >
-      <Menu.Item key="heading-1">Heading 1</Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="heading-2">Heading 2</Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="heading-3" danger>
-        Heading 3
-      </Menu.Item>
-    </Menu>
-  );
-
   const handleClickOutside = (event) => {
     const isClickInsideMenu = event.target.closest(".ant-dropdown");
     if (!isClickInsideMenu) {
@@ -93,17 +89,58 @@ const Notion = () => {
       setActiveDropdown(null);
     }
   };
-
   useEffect(() => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+  const handleMenuClick = (e, id) => {
+    if (e.key === "delete") {
+      setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
+      message.info("Item deleted");
+    } else {
+      const heading = e.key;
+      setItems((prevItems) =>
+        prevItems.map((item) => (item.id === id ? { ...item, heading } : item))
+      );
+      message.info(`Applied ${heading.replace("heading-", "Heading ")} format`);
+    }
+    setDropdownVisible((prev) => ({ ...prev, [id]: false }));
+    setActiveDropdown(null);
+  };
+
+  const menu = (id) => (
+    <Menu
+      onClick={(e) => handleMenuClick(e, id)}
+      className="custom-dropdown-menu"
+    >
+      <Menu.Item key="heading-1">
+        <Tooltip placement="left" title="Apply Heading 1 style">
+          <span>Heading 1</span>
+        </Tooltip>
+      </Menu.Item>
+      <Menu.Item key="heading-2">
+        <Tooltip placement="left" title="Apply Heading 2 style">
+          <span>Heading 2</span>
+        </Tooltip>
+      </Menu.Item>
+      <Menu.Item key="heading-3">
+        <Tooltip placement="left" title="Apply Heading 3 style">
+          <span>Heading 3</span>
+        </Tooltip>
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item key="delete" danger>
+        <Tooltip placement="left" title="Delete this item">
+          <span>Delete</span>
+        </Tooltip>
+      </Menu.Item>
+    </Menu>
+  );
 
   const applyHeadingFormat = (id, heading) => {
     setItems((prevItems) =>
       prevItems.map((item) => (item.id === id ? { ...item, heading } : item))
     );
-    message.info(`Applied ${heading.replace("heading-", "Heading ")} format`);
   };
 
   const handleKeyDown = (e, id) => {
@@ -127,6 +164,9 @@ const Notion = () => {
       } else if (e.key === "3" && id) {
         e.preventDefault();
         applyHeadingFormat(id, "heading-3");
+      } else if (e.key === "4" && id) {
+        e.preventDefault();
+        setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
       }
     }
   };
@@ -138,6 +178,9 @@ const Notion = () => {
 
   return (
     <>
+      <button onClick={addItem} type="primary">
+        Add Item
+      </button>
       <button
         onClick={() => handleBoxShadowChange("-2px 2px 0 0 #111827", "0px")}
       >
@@ -165,17 +208,17 @@ const Notion = () => {
                       className="draggable-item flex"
                     >
                       <textarea
+                        placeholder={item.placeholder}
                         value={newContent[item.id] || item.content}
                         onChange={(e) =>
                           handleChangeContent(item.id, e.target.value)
                         }
-                        onKeyDown={(e) => handleKeyDown(e, item.id)} // Thêm sự kiện onKeyDown
+                        onKeyDown={(e) => handleKeyDown(e, item.id)}
                         ref={(el) => (editTextareaRefs.current[item.id] = el)}
                         className={`edit-textarea ${
                           item.heading ? `heading-${item.heading}` : ""
                         }`}
                         style={{ boxShadow: boxShadow, borderRadius: rounded }}
-                        placeholder="Enter your content here..."
                       />
                       <Space>
                         <Dropdown
@@ -183,10 +226,16 @@ const Notion = () => {
                           placement="topRight"
                           overlay={menu(item.id)}
                           trigger={["click"]}
-                          onOpenChange={(visible) =>
-                            setDropdownVisible(visible)
+                          visible={
+                            dropdownVisible[item.id] ||
+                            activeDropdown === item.id
                           }
-                          onClick={() => setDropdownVisible(!dropdownVisible)}
+                          onClick={() =>
+                            setDropdownVisible((prev) => ({
+                              ...prev,
+                              [item.id]: !prev[item.id],
+                            }))
+                          }
                         >
                           <span
                             {...provided.dragHandleProps}

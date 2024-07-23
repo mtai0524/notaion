@@ -38,7 +38,6 @@ const Header = () => {
           </Dropdown>
         </nav>
       </div>
-      ;
     </>
   );
 };

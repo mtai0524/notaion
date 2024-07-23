@@ -37,7 +37,6 @@
 
 .edit-textarea {
   width: 100%;
-  min-height: 50px;
   padding: 4px;
   box-sizing: border-box;
   resize: none;
@@ -50,8 +49,8 @@
 
 .drag-handle {
   cursor: grab;
-  font-size: 10px;
   user-select: none;
+  opacity: 0.3;
   padding: 5px;
 }
 
@@ -101,4 +100,12 @@
 .ant-dropdown-menu {
   box-shadow: -2px 2px 0 0 #111827 !important;
   border: 2px solid #111827 !important;
+}
+
+.ant-tooltip-inner {
+  margin: 0 auto;
+  line-height: 0.5rem;
+  font-size: 0.5rem;
+  text-align: center;
+  padding: 0.5rem;
 }
