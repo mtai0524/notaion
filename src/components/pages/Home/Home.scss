@@ -34,6 +34,11 @@
   box-shadow: none;
   transform: translate(-3px, 3px);
 }
+
+.main-button:focus {
+  border: 2px solid var(--color-text);
+  outline: none;
+}
 .game-container {
   width: 100%;
   display: flex;

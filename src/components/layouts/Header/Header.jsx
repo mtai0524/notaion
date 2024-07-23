@@ -10,7 +10,9 @@ const Header = () => {
     <Menu className="custom-dropdown-menu">
       <Menu.Item key="1">Profile</Menu.Item>
       <Menu.Item key="2">Settings</Menu.Item>
-      <Menu.Item key="3">Logout</Menu.Item>
+      <Menu.Item key="3" danger>
+        Logout
+      </Menu.Item>
     </Menu>
   );
   return (

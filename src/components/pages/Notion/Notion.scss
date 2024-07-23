@@ -7,28 +7,6 @@
   justify-content: center;
   align-items: center;
 }
-.container-nav {
-  width: 100vw;
-  display: flex;
-  justify-content: center;
-}
-.navbar {
-  width: 60vw;
-  height: 60px;
-  margin: 20px;
-  border-radius: 6px;
-}
-@media screen and (max-width: 700px) {
-  .draggable-item {
-    padding-right: 10px;
-    padding-left: 10px;
-    width: 100vw !important;
-  }
-  .navbar {
-    width: 100vw;
-    margin: 20px;
-  }
-}
 
 .draggable-item {
   width: 60vw;
@@ -39,12 +17,19 @@
   width: 100%;
   padding: 4px;
   box-sizing: border-box;
+  border-radius: 6px;
   resize: none;
   overflow: hidden;
-  line-height: 1.5;
-  border: 1px solid black;
   font-size: 14px;
   box-shadow: none;
+}
+.edit-textarea:focus {
+  border: none !important;
+  outline: none !important;
+  background-color: #ededed;
+}
+.edit-textarea:hover {
+  background-color: #ededed;
 }
 
 .drag-handle {
@@ -52,6 +37,12 @@
   user-select: none;
   opacity: 0.3;
   padding: 5px;
+}
+.heading-heading-4 {
+  color: #ff4d4f;
+  font-size: 0.7em;
+  font-weight: 900;
+  font-family: "Courier New", monospace;
 }
 
 .heading-heading-1 {
@@ -97,15 +88,14 @@
     }
   }
 }
-.ant-dropdown-menu {
+.ant-dropdown-menu,
+.ant-popover-inner {
   box-shadow: -2px 2px 0 0 #111827 !important;
   border: 2px solid #111827 !important;
 }
 
-.ant-tooltip-inner {
-  margin: 0 auto;
-  line-height: 0.5rem;
+.ant-tooltip .ant-tooltip-inner {
+  text-align: center !important;
   font-size: 0.5rem;
-  text-align: center;
-  padding: 0.5rem;
+  min-height: 0 !important;
 }
