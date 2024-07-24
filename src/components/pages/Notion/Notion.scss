@@ -1,7 +1,7 @@
 .droppable-list {
   list-style-type: none;
-  padding: 0;
-  margin: 0;
+  padding-top: 50px;
+  padding-bottom: 50px;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -10,14 +10,16 @@
 
 .draggable-item {
   width: 60vw;
-  margin: 0 0 20px 0;
+  margin: 0 0 5px 0;
 }
 
 .edit-textarea {
   width: 100%;
   padding: 4px;
+  padding-left: 10px;
+  padding-right: 10px;
   box-sizing: border-box;
-  border-radius: 6px;
+  border-radius: 4px;
   resize: none;
   overflow: hidden;
   font-size: 14px;
@@ -39,12 +41,20 @@
   padding: 5px;
 }
 .heading-heading-4 {
-  color: #ff4d4f;
+  color: #fdf57d;
   font-size: 0.7em;
   font-weight: 900;
   font-family: "Courier New", monospace;
+  background-color: rgb(66, 66, 66);
 }
-
+.heading-heading-4:hover {
+  background-color: rgb(66, 66, 66);
+  color: #fdf57d;
+}
+.heading-heading-4:focus {
+  background-color: rgb(66, 66, 66);
+  color: #fdf57d;
+}
 .heading-heading-1 {
   font-size: 1.2em;
   font-weight: bold;
@@ -98,4 +108,18 @@
   text-align: center !important;
   font-size: 0.5rem;
   min-height: 0 !important;
+}
+
+.ant-message {
+  position: fixed;
+  left: 70px !important;
+  top: 10px !important;
+  z-index: 9999;
+}
+
+.ant-message-notice-content {
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  padding: 5px !important;
+  border: 2px solid #111827 !important;
+  font-size: 0.6em;
 }

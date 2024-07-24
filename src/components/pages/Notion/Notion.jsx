@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { Dropdown, Menu, Space, Tooltip, Popconfirm } from "antd";
+import { Dropdown, Menu, Space, Tooltip, Popconfirm, message } from "antd";
 import "./Notion.scss";
-
+import axiosInstance from "../../../axiosConfig";
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
   result.splice(endIndex, 0, removed);
-  return result;
+
+  return result.map((item, index) => ({ ...item, order: index }));
 };
 
 const generateRandomId = () => {
@@ -21,105 +22,27 @@ const Notion = () => {
   const [items, setItems] = useState([]);
   const [newContent, setNewContent] = useState({});
   const [dropdownVisible, setDropdownVisible] = useState({});
-  // const [boxShadow, setBoxShadow] = useState("none");
-  // const [rounded, setRounded] = useState("0px");
-  const [activeDropdown, setActiveDropdown] = useState(null); // State để quản lý dropdown hiện tại
+  const [activeDropdown, setActiveDropdown] = useState(null);
   const editTextareaRefs = useRef({});
-
-  // const handleBoxShadowChange = (newBoxShadow, newRounded) => {
-  //   setBoxShadow(newBoxShadow);
-  //   setRounded(newRounded);
-  // };
-
+  const [apiAvailable, setApiAvailable] = useState(true);
+  const checkApiConnection = async () => {
+    try {
+      await axiosInstance.get("/api/HealthCheck/health-check"); // health check
+      message.success("Connected server");
+      return true;
+    } catch (error) {
+      message.error("Failed connect server");
+      return false;
+    }
+  };
   useEffect(() => {
-    const newBlockId = generateRandomId();
-    setItems([
-      {
-        id: newBlockId,
-        placeholder: "Type your content here...",
-        heading: `${blockId}`,
-        code: "",
-      },
-    ]);
-    setBlockId(newBlockId);
-  }, []);
-
-  const addItem = (id) => {
-    const newBlockId = generateRandomId();
-    const index = id
-      ? items.findIndex((item) => item.id === id) + 1
-      : items.length;
-    const newItem = {
-      id: newBlockId,
-      heading: "",
-      code: "",
+    const checkConnection = async () => {
+      const available = await checkApiConnection();
+      setApiAvailable(available);
     };
-    const newItems = [...items];
-    newItems.splice(index, 0, newItem);
-    setItems(newItems);
-    setBlockId(newBlockId);
-    setTimeout(() => {
-      editTextareaRefs.current[newBlockId]?.focus();
-    }, 0);
-  };
 
-  useEffect(() => {
-    Object.keys(editTextareaRefs.current).forEach((id) => {
-      const textarea = editTextareaRefs.current[id];
-      if (textarea) {
-        textarea.style.height = "15px";
-        textarea.style.height = `${textarea.scrollHeight}px`;
-      }
-    });
-  }, [items, newContent]);
-
-  const onDragEnd = (result) => {
-    if (!result.destination) return;
-    const reorderedItems = reorder(
-      items,
-      result.source.index,
-      result.destination.index
-    );
-    setItems(reorderedItems);
-  };
-
-  const handleChangeContent = (id, value) => {
-    setNewContent((prev) => ({ ...prev, [id]: value }));
-    setItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === id ? { ...item, content: value } : item
-      )
-    );
-  };
-
-  const handleClickOutside = (event) => {
-    const isClickInsideMenu = event.target.closest(".ant-dropdown");
-    if (!isClickInsideMenu) {
-      setDropdownVisible((prev) =>
-        Object.keys(prev).reduce((acc, id) => ({ ...acc, [id]: false }), {})
-      );
-      setActiveDropdown(null);
-    }
-  };
-
-  useEffect(() => {
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    checkConnection();
   }, []);
-
-  const handleMenuClick = (e, id) => {
-    if (e.key === "delete") {
-      setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
-    } else {
-      const heading = e.key;
-      setItems((prevItems) =>
-        prevItems.map((item) => (item.id === id ? { ...item, heading } : item))
-      );
-    }
-    setDropdownVisible((prev) => ({ ...prev, [id]: false }));
-    setActiveDropdown(null);
-  };
-
   const menu = (id) => (
     <Menu
       onClick={(e) => handleMenuClick(e, id)}
@@ -153,14 +76,161 @@ const Notion = () => {
       </Menu.Item>
     </Menu>
   );
-
-  const applyHeadingFormat = (id, heading) => {
-    setItems((prevItems) =>
-      prevItems.map((item) => (item.id === id ? { ...item, heading } : item))
-    );
+  const handleAction = (text) => {
+    return message.loading(`${text}...`, 0);
   };
 
-  const handleKeyDown = (e, id) => {
+  const fetchItems = async () => {
+    const hideLoading = handleAction("Loading");
+    try {
+      await axiosInstance.get("/api/Items").then((response) => {
+        setItems(response.data);
+        message.success("Loading finished", 1);
+      });
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      message.error("Error fetching items", 1);
+    } finally {
+      setTimeout(hideLoading, 0.5);
+    }
+  };
+
+  useEffect(() => {
+    // Kiểm tra và thêm item nếu danh sách item rỗng
+    if (items.length === 0) {
+      const newBlockId = generateRandomId();
+      setItems([
+        {
+          id: newBlockId,
+          placeholder: "Type your content here...",
+          heading: "",
+          order: 0,
+        },
+      ]);
+      setBlockId(newBlockId);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    // Focus vào textarea mới sau khi items được cập nhật
+    if (blockId) {
+      const newTextarea = editTextareaRefs.current[blockId];
+      if (newTextarea) {
+        newTextarea.focus();
+      }
+    }
+  }, [blockId]);
+
+  useEffect(() => {
+    fetchItems();
+  }, []);
+
+  const addItem = (id) => {
+    const newBlockId = generateRandomId();
+    const index = id
+      ? items.findIndex((item) => item.id === id) + 1
+      : items.length;
+    const newItem = {
+      id: newBlockId,
+      heading: "",
+      code: "",
+      order: index,
+    };
+    const newItems = [...items];
+    newItems.splice(index, 0, newItem);
+    setItems(newItems.map((item, idx) => ({ ...item, order: idx })));
+    setBlockId(newBlockId);
+    setTimeout(() => {
+      editTextareaRefs.current[newBlockId]?.focus();
+    }, 0);
+  };
+
+  useEffect(() => {
+    Object.keys(editTextareaRefs.current).forEach((id) => {
+      const textarea = editTextareaRefs.current[id];
+      if (textarea) {
+        textarea.style.height = "15px";
+        textarea.style.height = `${textarea.scrollHeight}px`;
+      }
+    });
+  }, [items, newContent]);
+
+  const onDragEnd = (result) => {
+    if (!result.destination) return;
+
+    const scrollY = window.scrollY;
+
+    const reorderedItems = reorder(
+      items,
+      result.source.index,
+      result.destination.index
+    );
+
+    setItems(() => {
+      const updatedItems = reorderedItems.map((item, index) => ({
+        ...item,
+        order: index,
+      }));
+      saveItems(updatedItems, true);
+      return updatedItems;
+    });
+
+    window.scrollTo(0, scrollY);
+  };
+
+  const handleChangeContent = async (id, value) => {
+    setNewContent((prev) => ({ ...prev, [id]: value }));
+    const updatedItems = items.map((item) =>
+      item.id === id ? { ...item, content: value } : item
+    );
+    setItems(updatedItems);
+    await saveItems(updatedItems, false);
+  };
+
+  const handleClickOutside = (event) => {
+    const isClickInsideMenu = event.target.closest(".ant-dropdown");
+    if (!isClickInsideMenu) {
+      setDropdownVisible((prev) =>
+        Object.keys(prev).reduce((acc, id) => ({ ...acc, [id]: false }), {})
+      );
+      setActiveDropdown(null);
+    }
+  };
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const saveNewItems = async (heading, id) => {
+    let updatedItems;
+    setItems((prevItems) => {
+      updatedItems = prevItems.map((item) =>
+        item.id === id ? { ...item, heading } : item
+      );
+    });
+    setItems(updatedItems);
+    await saveItems(updatedItems, false);
+  };
+
+  const handleMenuClick = async (e, id) => {
+    const scrollY = window.scrollY;
+
+    if (e.key === "delete") {
+      setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
+      await deleteItem(id);
+    } else {
+      saveNewItems(e.key, id);
+    }
+    setDropdownVisible((prev) => ({ ...prev, [id]: false }));
+    setActiveDropdown(null);
+    window.scrollTo(0, scrollY);
+  };
+  const applyHeadingFormat = async (id, heading) => {
+    saveNewItems(heading, id);
+  };
+
+  const handleKeyDown = async (e, id) => {
     if (e.key === "/") {
       e.preventDefault(); // Ngăn chặn việc gõ ký tự `/` vào textarea
       setDropdownVisible((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -168,44 +238,55 @@ const Notion = () => {
     } else if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       addItem(id);
+      if (apiAvailable) {
+        await saveItems(items, false);
+      }
     } else if (e.key === "Backspace") {
       const currentItemIndex = items.findIndex((item) => item.id === id);
       const currentItem = items[currentItemIndex];
 
-      if (currentItem && !newContent[id]?.trim()) {
+      if (
+        currentItem &&
+        (!newContent[id] || !newContent[id].trim()) &&
+        (!currentItem.content || !currentItem.content.trim())
+      ) {
         e.preventDefault();
 
         const updatedItems = items.filter((item) => item.id !== id);
         setItems(updatedItems);
-
-        // Đặt focus vào item gần nhất phía trên
-        if (currentItemIndex > 0) {
-          const previousItemId = updatedItems[currentItemIndex - 1].id;
-          setTimeout(() => {
-            const previousTextarea = editTextareaRefs.current[previousItemId];
-            if (previousTextarea) {
-              previousTextarea.focus();
-            }
-          }, 0);
+        if (apiAvailable) {
+          await deleteItem(id);
         }
-
-        // Nếu danh sách items trống, thêm một item mới
+        // Đặt focus vào item gần nhất phía trên hoặc tạo mới nếu không còn item nào
         if (updatedItems.length === 0) {
           const newBlockId = generateRandomId();
           setItems([
             {
               id: newBlockId,
               placeholder: "Type your content here...",
-              heading: `${blockId}`,
+              heading: "",
               code: "",
+              order: 0,
             },
           ]);
           setBlockId(newBlockId);
-          // Focus vào textarea của item mới
           setTimeout(() => {
             const newTextarea = editTextareaRefs.current[newBlockId];
             if (newTextarea) {
               newTextarea.focus();
+            }
+          }, 0);
+        } else if (currentItemIndex > 0) {
+          const previousItemId = updatedItems[currentItemIndex - 1].id;
+          setTimeout(() => {
+            const previousTextarea = editTextareaRefs.current[previousItemId];
+            if (previousTextarea) {
+              previousTextarea.focus();
+              // Đặt con trỏ vào cuối nội dung
+              previousTextarea.setSelectionRange(
+                previousTextarea.value.length,
+                previousTextarea.value.length
+              );
             }
           }, 0);
         }
@@ -214,21 +295,37 @@ const Notion = () => {
   };
 
   // sự kiện tổ hợp phím ctrl + để chọn menu
-  const handleKeyDownGlobal = (e) => {
+  const handleKeyDownGlobal = async (e) => {
     if (e.ctrlKey) {
       const id = activeDropdown;
       if (e.key === "1" && id) {
         e.preventDefault();
-        applyHeadingFormat(id, "heading-1");
+        await applyHeadingFormat(id, "heading-1");
       } else if (e.key === "2" && id) {
         e.preventDefault();
-        applyHeadingFormat(id, "heading-2");
+        await applyHeadingFormat(id, "heading-2");
       } else if (e.key === "3" && id) {
         e.preventDefault();
-        applyHeadingFormat(id, "heading-3");
-      } else if (e.key === "4" && id) {
+        await applyHeadingFormat(id, "heading-3");
+      } else if (e.key === "d" && id) {
         e.preventDefault();
         setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
+        if (items.length === 0) {
+          const newBlockId = generateRandomId();
+          setItems([
+            {
+              id: newBlockId,
+              placeholder: "Type your content here...",
+              heading: "",
+              code: "",
+              order: 0,
+            },
+          ]);
+          setBlockId(newBlockId);
+        }
+      } else if (e.key === "4" && id) {
+        e.preventDefault();
+        await applyHeadingFormat(id, "heading-4");
       }
     }
   };
@@ -237,50 +334,100 @@ const Notion = () => {
     document.addEventListener("keydown", handleKeyDownGlobal);
     return () => document.removeEventListener("keydown", handleKeyDownGlobal);
   }, [activeDropdown]);
+
+  const deleteItem = async (id) => {
+    try {
+      await axiosInstance.delete(`/api/Items/delete-item/${id}`);
+      message.success("Deleted", 0.5);
+      return true;
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      message.error("Error deleting item", 1);
+      return false;
+    }
+  };
+
+  const deleteAllItems = async () => {
+    try {
+      const response = await axiosInstance.delete("/api/Items");
+      message.destroy("Delete...", 1);
+      console.log(response.data.message);
+    } catch (error) {
+      console.error(
+        "Error deleting items:",
+        error.response ? error.response.data.message : error.message
+      );
+    }
+  };
+
   const handleDeleteAll = () => {
+    deleteAllItems();
     setItems([]);
     const newBlockId = generateRandomId();
     setItems([
       {
         id: newBlockId,
         placeholder: "Type your content here...",
-        heading: `${blockId}`,
+        heading: "",
         code: "",
+        order: 0,
       },
     ]);
     setBlockId(newBlockId);
     setTimeout(() => {
-      const newTextarea = editTextareaRefs.current[newBlockId];
-      if (newTextarea) {
-        newTextarea.focus();
-      }
+      editTextareaRefs.current[newBlockId]?.focus();
     }, 0);
   };
+
+  const saveItems = async (updatedItems, showNoti) => {
+    if (!apiAvailable) {
+      return;
+    }
+    let hideLoading;
+
+    if (showNoti) {
+      hideLoading = handleAction("Saving...");
+    }
+
+    try {
+      console.log("Saving items:", updatedItems);
+      await axiosInstance.post("/api/Items/bulk", updatedItems);
+      if (showNoti) {
+        message.success("Saved", 1);
+      }
+    } catch (error) {
+      console.error("Error saving items:", error);
+      if (showNoti) {
+        message.error("Error saving items", 1);
+      }
+    } finally {
+      if (hideLoading) {
+        setTimeout(hideLoading, 500);
+      }
+    }
+  };
+
   return (
     <>
-      {/* <button
-        onClick={() => handleBoxShadowChange("-2px 2px 0 0 #111827", "0px")}
-      >
-        Change Box Shadow to Subtle
-      </button>
-      <button
-        onClick={() => handleBoxShadowChange("-2px 2px 0 0 #111827", "4px")}
-      >
-        Change Box Shadow to Subtle and rounded
-      </button> */}
-      <div className="w-full  flex justify-end pr-10">
+      <div className="w-full flex justify-end pr-10">
         <Popconfirm
           placement="topRight"
-          title={"Delete all"}
-          description={"Delete all records"}
+          title="Delete all"
+          description="Delete all records"
           okText="Yes"
           cancelText="No"
           onConfirm={handleDeleteAll}
         >
-          <button className="main-button bg-rose-700 text-black font-medium p-3 mb-2 border-2 border-gray-900  ">
-            Delete all
+          <button
+            style={{ borderColor: "#21242b" }}
+            className="main-button !bg-rose-400 !text-gray-100 font-semibold mb-2 !border-[3px] !rounded-[14px] "
+          >
+            <span>Delete all</span>
           </button>
         </Popconfirm>
+        {/* <button onClick={saveItems} className="main-button">
+          Save All
+        </button> */}
       </div>
       <div style={{ overflow: "hidden" }}>
         <DragDropContext onDragEnd={onDragEnd}>
@@ -310,10 +457,6 @@ const Notion = () => {
                           className={`edit-textarea ${
                             item.heading ? `heading-${item.heading}` : ""
                           }`}
-                          // style={{
-                          //   boxShadow: boxShadow,
-                          //   borderRadius: rounded,
-                          // }}
                         />
                         <Space>
                           <Dropdown
