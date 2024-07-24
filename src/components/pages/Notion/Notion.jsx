@@ -218,7 +218,7 @@ const Notion = () => {
 
     if (e.key === "delete") {
       setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
-      await deleteItem(id);
+      await deleteItem(id, true);
     } else {
       saveNewItems(e.key, id);
     }
@@ -255,7 +255,7 @@ const Notion = () => {
         const updatedItems = items.filter((item) => item.id !== id);
         setItems(updatedItems);
         if (apiAvailable) {
-          await deleteItem(id);
+          await deleteItem(id, false);
         }
         // Đặt focus vào item gần nhất phía trên hoặc tạo mới nếu không còn item nào
         if (updatedItems.length === 0) {
@@ -310,6 +310,7 @@ const Notion = () => {
       } else if (e.key === "d" && id) {
         e.preventDefault();
         setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
+        await deleteItem(id, true);
         if (items.length === 0) {
           const newBlockId = generateRandomId();
           setItems([
@@ -335,14 +336,17 @@ const Notion = () => {
     return () => document.removeEventListener("keydown", handleKeyDownGlobal);
   }, [activeDropdown]);
 
-  const deleteItem = async (id) => {
+  const deleteItem = async (id, noti) => {
     try {
       await axiosInstance.delete(`/api/Items/delete-item/${id}`);
-      message.success("Deleted", 0.5);
+      if (noti) {
+        message.success("Deleted", 0.5);
+      }
       return true;
     } catch (error) {
-      console.error("Error deleting item:", error);
-      message.error("Error deleting item", 1);
+      if (noti) {
+        message.error("Error deleting item", 0.5);
+      }
       return false;
     }
   };
@@ -383,11 +387,7 @@ const Notion = () => {
     if (!apiAvailable) {
       return;
     }
-    let hideLoading;
-
-    if (showNoti) {
-      hideLoading = handleAction("Saving...");
-    }
+    const hideLoading = showNoti ? handleAction("Saving") : () => {};
 
     try {
       console.log("Saving items:", updatedItems);
@@ -407,6 +407,42 @@ const Notion = () => {
     }
   };
 
+  const handlePaste = async (e, id) => {
+    const clipboardItems = e.clipboardData.items;
+    for (let i = 0; i < clipboardItems.length; i++) {
+      if (clipboardItems[i].type.indexOf("image") !== -1) {
+        // Sử dụng URL hình ảnh có sẵn thay vì tải lên
+        const imageUrl =
+          "https://www.scusd.edu/sites/main/files/main-images/camera_lense_0.jpeg";
+
+        const currentContent =
+          newContent[id] || items.find((item) => item.id === id)?.content || "";
+        const cursorPosition = e.target.selectionStart;
+        const beforeCursor = currentContent.substring(0, cursorPosition);
+        const newContentWithImage = `${beforeCursor}${imageUrl}`;
+        handleChangeContent(id, newContentWithImage);
+        e.preventDefault();
+        break;
+      }
+    }
+  };
+
+  const renderItemContent = (item) => {
+    if (item.content && item.content.match(/\.(jpeg|jpg|gif|png)$/) != null) {
+      return (
+        <img
+          src={item.content}
+          alt="Image"
+          style={{
+            maxWidth: "100%",
+            maxHeight: "200px",
+            border: "2px solid black",
+          }}
+        />
+      );
+    }
+  };
+
   return (
     <>
       <div className="w-full flex justify-end pr-10">
@@ -420,14 +456,11 @@ const Notion = () => {
         >
           <button
             style={{ borderColor: "#21242b" }}
-            className="main-button !bg-rose-400 !text-gray-100 font-semibold mb-2 !border-[3px] !rounded-[14px] "
+            className="main-button !bg-rose-500 !text-white font-semibold mb-2 !border-[3px] !rounded-[8px] "
           >
             <span>Delete all</span>
           </button>
         </Popconfirm>
-        {/* <button onClick={saveItems} className="main-button">
-          Save All
-        </button> */}
       </div>
       <div style={{ overflow: "hidden" }}>
         <DragDropContext onDragEnd={onDragEnd}>
@@ -446,18 +479,26 @@ const Notion = () => {
                         {...provided.draggableProps}
                         className="draggable-item flex"
                       >
-                        <textarea
-                          placeholder={item.placeholder}
-                          value={newContent[item.id] || item.content}
-                          onChange={(e) =>
-                            handleChangeContent(item.id, e.target.value)
-                          }
-                          onKeyDown={(e) => handleKeyDown(e, item.id)}
-                          ref={(el) => (editTextareaRefs.current[item.id] = el)}
-                          className={`edit-textarea ${
-                            item.heading ? `heading-${item.heading}` : ""
-                          }`}
-                        />
+                        {renderItemContent(item) ? (
+                          renderItemContent(item)
+                        ) : (
+                          <textarea
+                            placeholder={item.placeholder}
+                            value={newContent[item.id] || item.content}
+                            onChange={(e) =>
+                              handleChangeContent(item.id, e.target.value)
+                            }
+                            onKeyDown={(e) => handleKeyDown(e, item.id)}
+                            onPaste={(e) => handlePaste(e, item.id)}
+                            ref={(el) =>
+                              (editTextareaRefs.current[item.id] = el)
+                            }
+                            className={`edit-textarea ${
+                              item.heading ? `heading-${item.heading}` : ""
+                            }`}
+                          />
+                        )}
+
                         <Space>
                           <Dropdown
                             className="dd-item-pages"
