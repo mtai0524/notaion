@@ -14,6 +14,8 @@
 }
 
 .edit-textarea {
+  font-size: 0.7em;
+  font-weight: bold;
   width: 100%;
   padding: 4px;
   padding-left: 10px;
@@ -22,7 +24,6 @@
   border-radius: 4px;
   resize: none;
   overflow: hidden;
-  font-size: 14px;
   box-shadow: none;
 }
 .edit-textarea:focus {
@@ -43,8 +44,8 @@
 .heading-heading-4 {
   color: #fdf57d;
   font-size: 0.7em;
-  font-weight: 900;
-  font-family: "Courier New", monospace;
+  font-weight: bold;
+  font-family: "Source Code Pro", monospace;
   background-color: rgb(66, 66, 66);
 }
 .heading-heading-4:hover {
@@ -66,7 +67,7 @@
 }
 
 .heading-heading-3 {
-  font-size: 0.5em;
+  font-size: 0.7em;
   font-weight: bold;
 }
 
@@ -122,4 +123,28 @@
   padding: 5px !important;
   border: 2px solid #111827 !important;
   font-size: 0.6em;
+}
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.container-block {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ant-spin-dot {
+  color: #4265ac !important;
 }

@@ -1,6 +1,24 @@
 import { useState, useRef, useEffect } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { Dropdown, Menu, Space, Tooltip, Popconfirm, message } from "antd";
+import {
+  Dropdown,
+  Menu,
+  Space,
+  Tooltip,
+  Popconfirm,
+  message,
+  Spin,
+  Image,
+} from "antd";
+import {
+  DownloadOutlined,
+  RotateLeftOutlined,
+  RotateRightOutlined,
+  SwapOutlined,
+  UndoOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
+} from "@ant-design/icons";
 import "./Notion.scss";
 import axiosInstance from "../../../axiosConfig";
 const reorder = (list, startIndex, endIndex) => {
@@ -25,6 +43,7 @@ const Notion = () => {
   const [activeDropdown, setActiveDropdown] = useState(null);
   const editTextareaRefs = useRef({});
   const [apiAvailable, setApiAvailable] = useState(true);
+  const [loadingImage, setLoadingImage] = useState(null);
   const checkApiConnection = async () => {
     try {
       await axiosInstance.get("/api/HealthCheck/health-check"); // health check
@@ -66,6 +85,11 @@ const Notion = () => {
       <Menu.Item key="heading-4">
         <Tooltip placement="left" title="Apply Code style">
           <span>Code</span>
+        </Tooltip>
+      </Menu.Item>
+      <Menu.Item key="choose-image">
+        <Tooltip placement="left" title="Choose image">
+          <span>Image</span>
         </Tooltip>
       </Menu.Item>
       <Menu.Divider />
@@ -212,10 +236,44 @@ const Notion = () => {
     setItems(updatedItems);
     await saveItems(updatedItems, false);
   };
+  const editingItemIdRef = useRef(null);
+  const handleFileChange = async (e) => {
+    const id = editingItemIdRef.current;
+    setLoadingImage(id);
 
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await axiosInstance.post("/api/Items/upload", formData);
+      responseDataImage(response, e, id);
+      setLoadingImage(null);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      setLoadingImage(null);
+    }
+  };
+
+  const responseDataImage = (response, e, id) => {
+    const data = response.data;
+    const currentContent =
+      newContent[id] || items.find((item) => item.id === id)?.content || "";
+    const cursorPosition = e.target.selectionStart;
+    const beforeCursor = currentContent.substring(0, cursorPosition);
+    const newContentWithImage = `${beforeCursor}${data.url}`;
+    handleChangeContent(id, newContentWithImage);
+  };
+
+  const fileInputRef = useRef(null);
   const handleMenuClick = async (e, id) => {
+    editingItemIdRef.current = id;
     const scrollY = window.scrollY;
-
+    if (e.key === "choose-image") {
+      fileInputRef.current.click(); // Kích hoạt dialog chọn file
+    }
     if (e.key === "delete") {
       setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
       await deleteItem(id, true);
@@ -409,34 +467,96 @@ const Notion = () => {
 
   const handlePaste = async (e, id) => {
     const clipboardItems = e.clipboardData.items;
+    let imageFound = false;
+
     for (let i = 0; i < clipboardItems.length; i++) {
       if (clipboardItems[i].type.indexOf("image") !== -1) {
-        // Sử dụng URL hình ảnh có sẵn thay vì tải lên
-        const imageUrl =
-          "https://www.scusd.edu/sites/main/files/main-images/camera_lense_0.jpeg";
+        imageFound = true; //  find image from clipboard
+        const blob = clipboardItems[i].getAsFile();
+        const formData = new FormData();
+        formData.append("file", blob);
+        setLoadingImage(id);
 
-        const currentContent =
-          newContent[id] || items.find((item) => item.id === id)?.content || "";
-        const cursorPosition = e.target.selectionStart;
-        const beforeCursor = currentContent.substring(0, cursorPosition);
-        const newContentWithImage = `${beforeCursor}${imageUrl}`;
-        handleChangeContent(id, newContentWithImage);
+        try {
+          const response = await axiosInstance.post(
+            "/api/Items/upload",
+            formData
+          );
+
+          if (response.status !== 200) {
+            throw new Error("Failed to upload image");
+          }
+          responseDataImage(response, e, id);
+        } catch (error) {
+          console.error("Error uploading image:", error);
+        } finally {
+          setLoadingImage(null);
+        }
+
         e.preventDefault();
         break;
       }
     }
+    if (!imageFound) {
+      setLoadingImage(null);
+    }
   };
-
+  const onDownload = (imgUrl) => {
+    fetch(imgUrl)
+      .then((response) => response.blob())
+      .then((blob) => {
+        const url = URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "image.png";
+        document.body.appendChild(link);
+        link.click();
+        URL.revokeObjectURL(url);
+        link.remove();
+      });
+  };
   const renderItemContent = (item) => {
-    if (item.content && item.content.match(/\.(jpeg|jpg|gif|png)$/) != null) {
+    if (
+      item.content &&
+      item.content.match(/\.(jpeg|jpg|gif|png|webp)$/) != null
+    ) {
       return (
-        <img
+        <Image
+          width={200}
           src={item.content}
-          alt="Image"
           style={{
             maxWidth: "100%",
             maxHeight: "200px",
             border: "2px solid black",
+          }}
+          preview={{
+            toolbarRender: (
+              _,
+              {
+                image: { url },
+                transform: { scale },
+                actions: {
+                  onFlipY,
+                  onFlipX,
+                  onRotateLeft,
+                  onRotateRight,
+                  onZoomOut,
+                  onZoomIn,
+                  onReset,
+                },
+              }
+            ) => (
+              <Space size={12} className="toolbar-wrapper">
+                <DownloadOutlined onClick={() => onDownload(url)} />
+                <SwapOutlined rotate={90} onClick={onFlipY} />
+                <SwapOutlined onClick={onFlipX} />
+                <RotateLeftOutlined onClick={onRotateLeft} />
+                <RotateRightOutlined onClick={onRotateRight} />
+                <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
+                <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
+                <UndoOutlined onClick={onReset} />
+              </Space>
+            ),
           }}
         />
       );
@@ -445,6 +565,13 @@ const Notion = () => {
 
   return (
     <>
+      <input
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        ref={fileInputRef}
+        onChange={handleFileChange}
+      />
       <div className="w-full flex justify-end pr-10">
         <Popconfirm
           placement="topRight"
@@ -479,51 +606,57 @@ const Notion = () => {
                         {...provided.draggableProps}
                         className="draggable-item flex"
                       >
-                        {renderItemContent(item) ? (
-                          renderItemContent(item)
-                        ) : (
-                          <textarea
-                            placeholder={item.placeholder}
-                            value={newContent[item.id] || item.content}
-                            onChange={(e) =>
-                              handleChangeContent(item.id, e.target.value)
-                            }
-                            onKeyDown={(e) => handleKeyDown(e, item.id)}
-                            onPaste={(e) => handlePaste(e, item.id)}
-                            ref={(el) =>
-                              (editTextareaRefs.current[item.id] = el)
-                            }
-                            className={`edit-textarea ${
-                              item.heading ? `heading-${item.heading}` : ""
-                            }`}
-                          />
-                        )}
-
-                        <Space>
-                          <Dropdown
-                            className="dd-item-pages"
-                            placement="topRight"
-                            overlay={menu(item.id)}
-                            trigger={["click"]}
-                            visible={
-                              dropdownVisible[item.id] ||
-                              activeDropdown === item.id
-                            }
-                            onClick={() =>
-                              setDropdownVisible((prev) => ({
-                                ...prev,
-                                [item.id]: !prev[item.id],
-                              }))
-                            }
-                          >
-                            <span
-                              {...provided.dragHandleProps}
-                              className="drag-handle"
+                        <div className="container-block">
+                          {renderItemContent(item) ? (
+                            renderItemContent(item)
+                          ) : (
+                            <textarea
+                              placeholder={item.placeholder}
+                              value={newContent[item.id] || item.content}
+                              onChange={(e) =>
+                                handleChangeContent(item.id, e.target.value)
+                              }
+                              onKeyDown={(e) => handleKeyDown(e, item.id)}
+                              onPaste={(e) => handlePaste(e, item.id)}
+                              ref={(el) =>
+                                (editTextareaRefs.current[item.id] = el)
+                              }
+                              className={`edit-textarea ${
+                                item.heading ? `heading-${item.heading}` : ""
+                              }`}
+                            />
+                          )}
+                          {loadingImage === item.id && (
+                            <div className="loading-overlay">
+                              <Spin />
+                            </div>
+                          )}
+                          <Space>
+                            <Dropdown
+                              className="dd-item-pages"
+                              placement="topRight"
+                              overlay={menu(item.id)}
+                              trigger={["click"]}
+                              visible={
+                                dropdownVisible[item.id] ||
+                                activeDropdown === item.id
+                              }
+                              onClick={() =>
+                                setDropdownVisible((prev) => ({
+                                  ...prev,
+                                  [item.id]: !prev[item.id],
+                                }))
+                              }
                             >
-                              &#9776;
-                            </span>
-                          </Dropdown>
-                        </Space>
+                              <span
+                                {...provided.dragHandleProps}
+                                className="drag-handle"
+                              >
+                                &#9776;
+                              </span>
+                            </Dropdown>
+                          </Space>
+                        </div>
                       </li>
                     )}
                   </Draggable>

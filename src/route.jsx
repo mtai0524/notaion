@@ -5,9 +5,9 @@ const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Navigate to="/notion" />} />
+        <Route path="/" element={<Navigate to="/home-page" />} />
         <Route path="/signal" element={<Realtime />} />
-        <Route path="/notion" element={<Notion />} />
+        <Route path="/home-page" element={<Notion />} />
       </Routes>
     </BrowserRouter>
   );
