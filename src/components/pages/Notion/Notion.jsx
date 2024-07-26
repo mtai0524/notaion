@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 import {
   Dropdown,
@@ -21,6 +21,7 @@ import {
 } from "@ant-design/icons";
 import "./Notion.scss";
 import axiosInstance from "../../../axiosConfig";
+import debounce from "lodash.debounce";
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
@@ -47,7 +48,7 @@ const Notion = () => {
   const checkApiConnection = async () => {
     try {
       await axiosInstance.get("/api/HealthCheck/health-check"); // health check
-      message.success("Connected server");
+      // message.success("Connected server");
       return true;
     } catch (error) {
       message.error("Failed connect server");
@@ -109,13 +110,13 @@ const Notion = () => {
     try {
       await axiosInstance.get("/api/Items").then((response) => {
         setItems(response.data);
-        message.success("Loading finished", 1);
+        // message.success("Loading finished", 1);
       });
     } catch (error) {
       console.error("Error fetching items:", error);
       message.error("Error fetching items", 1);
     } finally {
-      setTimeout(hideLoading, 0.5);
+      setTimeout(hideLoading, 1);
     }
   };
 
@@ -200,15 +201,6 @@ const Notion = () => {
     });
 
     window.scrollTo(0, scrollY);
-  };
-
-  const handleChangeContent = async (id, value) => {
-    setNewContent((prev) => ({ ...prev, [id]: value }));
-    const updatedItems = items.map((item) =>
-      item.id === id ? { ...item, content: value } : item
-    );
-    setItems(updatedItems);
-    await saveItems(updatedItems, false);
   };
 
   const handleClickOutside = (event) => {
@@ -313,7 +305,7 @@ const Notion = () => {
         const updatedItems = items.filter((item) => item.id !== id);
         setItems(updatedItems);
         if (apiAvailable) {
-          await deleteItem(id, false);
+          deleteItemDebounced(id);
         }
         // Đặt focus vào item gần nhất phía trên hoặc tạo mới nếu không còn item nào
         if (updatedItems.length === 0) {
@@ -408,7 +400,14 @@ const Notion = () => {
       return false;
     }
   };
-
+  const deleteItemDebounced = useCallback(
+    debounce(async (id) => {
+      if (apiAvailable) {
+        await deleteItem(id, false);
+      }
+    }, 500),
+    [apiAvailable]
+  );
   const deleteAllItems = async () => {
     try {
       const response = await axiosInstance.delete("/api/Items");
@@ -464,6 +463,25 @@ const Notion = () => {
       }
     }
   };
+
+  const saveItemsDebounced = useCallback(
+    debounce(async (updatedItems) => {
+      await saveItems(updatedItems, false);
+    }, 1000), // thời gian gọi cập nhật thay đổi khi người dùng không thay đổi nội dung trong textarea
+    []
+  );
+
+  const handleChangeContent = useCallback(
+    (id, value) => {
+      setNewContent((prev) => ({ ...prev, [id]: value }));
+      const updatedItems = items.map((item) =>
+        item.id === id ? { ...item, content: value } : item
+      );
+      setItems(updatedItems);
+      saveItemsDebounced(updatedItems);
+    },
+    [items, setNewContent, setItems, saveItemsDebounced]
+  );
 
   const handlePaste = async (e, id) => {
     const clipboardItems = e.clipboardData.items;

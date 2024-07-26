@@ -2,10 +2,15 @@ import ReactDOM from "react-dom/client";
 import "./index.css";
 import AppRoutes from "./route";
 import Header from "./components/layouts/Header/Header";
+import { BrowserRouter } from "react-router-dom";
 
-ReactDOM.createRoot(document.getElementById("root")).render(
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(
   <>
-    <Header />
-    <AppRoutes />
+    <BrowserRouter>
+      <Header />
+      <AppRoutes />
+    </BrowserRouter>
+    ,
   </>
 );

@@ -13,6 +13,7 @@
 body {
   overflow-x: hidden;
 }
+
 :root {
   --color-background: #dbdbdb;
   --color-background-button: #fff1c9;
