@@ -7,6 +7,8 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome, faSignInAlt, faUser } from "@fortawesome/free-solid-svg-icons";
 import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
+import { message } from "antd";
+
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ const Header = () => {
         break;
       case "logout":
         Cookies.remove("token");
+        message.warning("Logout");
+
         setToken(null);
         navigate("/home-page");
         break;

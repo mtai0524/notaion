@@ -35,7 +35,6 @@ export function AuthProvider({ children }) {
 
   const setToken = (newToken) => {
     setTokenCookie(newToken);
-    Cookies.set("token", newToken, { expires: 7 });
   };
 
   return (

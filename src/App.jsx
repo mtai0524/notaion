@@ -5,6 +5,7 @@ import { Route, Routes } from "react-router-dom";
 import Realtime from "./components/pages/Signal/Signal";
 import Notion from "./components/pages/Notion/Notion";
 import Login from "./components/pages/Login/Login";
+import Register from "./components/pages/Register/Register";
 const App = () => {
   return (
     <>
@@ -15,6 +16,7 @@ const App = () => {
             <Route path="/" element={<Navigate to="/home-page" />} />
             <Route path="/signal" element={<Realtime />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
             <Route path="/home-page" element={<Notion />} />
           </Routes>
         </BrowserRouter>

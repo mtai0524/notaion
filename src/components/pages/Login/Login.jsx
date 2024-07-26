@@ -1,14 +1,16 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { message } from "antd";
 import axiosInstance from "../../../axiosConfig";
 import { useAuth } from "../../../contexts/AuthContext";
 import "./Login.scss";
+import Cookies from "js-cookie";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
-  const { setToken } = useAuth(); // Access the setToken function from context
+  const { setToken } = useAuth();
 
   const handleLoginSuccess = () => {
     navigate("/home-page");
@@ -31,7 +33,9 @@ const Login = () => {
       if (response.status === 200) {
         const data = await response.data;
         setToken(data.token);
+        Cookies.set("token", data.token, { expires: 7 });
         handleLoginSuccess();
+        message.success("Login successful");
       } else {
         console.error("Failed to sign in:", response.statusText);
       }
@@ -69,6 +73,10 @@ const Login = () => {
           Login
         </button>
       </form>
+
+      <Link type="submit" to="/register" className="main-button">
+        Register
+      </Link>
     </div>
   );
 };
