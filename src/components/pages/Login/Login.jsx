@@ -1,41 +1,52 @@
-import "./Login.scss";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Cookies from "js-cookie";
 import axiosInstance from "../../../axiosConfig";
+import { useAuth } from "../../../contexts/AuthContext";
+import "./Login.scss";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [token, setToken] = useState("");
   const navigate = useNavigate();
+  const { setToken } = useAuth(); // Access the setToken function from context
+
+  const handleLoginSuccess = () => {
+    navigate("/home-page");
+  };
 
   const handleSignIn = async (event) => {
     event.preventDefault();
 
     try {
-      const response = await axiosInstance.post("/api/account/SignIn", {
+      const formData = {
         email: emailOrUsername,
         password: password,
-      });
+      };
+
+      const response = await axiosInstance.post(
+        "/api/account/SignIn",
+        formData
+      );
 
       if (response.status === 200) {
-        setToken(response.data.token);
-        Cookies.set("token", response.data.token, { expires: 1 });
-        console.log(token);
-        navigate("/home-page");
+        const data = await response.data;
+        setToken(data.token);
+        handleLoginSuccess();
+      } else {
+        console.error("Failed to sign in:", response.statusText);
       }
     } catch (err) {
       console.log(err);
     }
   };
+
   return (
     <div className="login-container">
       <h1 className="font-bold text-xl">Login</h1>
-      <br></br>
+      <br />
       <form onSubmit={handleSignIn} className="login-form">
         <div className="form-group">
-          <label htmlFor="username">Username</label>
+          <label htmlFor="username">username or email</label>
           <input
             type="text"
             id="username"
@@ -45,7 +56,7 @@ const Login = () => {
           />
         </div>
         <div className="form-group">
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">password</label>
           <input
             type="password"
             id="password"

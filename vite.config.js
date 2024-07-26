@@ -7,4 +7,20 @@ export default defineConfig({
   server: {
     port: 2411,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            return id
+              .toString()
+              .split("node_modules/")[1]
+              .split("/")[0]
+              .toString();
+          }
+        },
+      },
+    },
+    chunkSizeWarningLimit: 6000000, // Adjusted chunk size limit
+  },
 });
