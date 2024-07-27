@@ -8,7 +8,7 @@ import { faHome, faSignInAlt, faUser } from "@fortawesome/free-solid-svg-icons";
 import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
 import { message } from "antd";
-
+import jwt_decode from "jwt-decode";
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const navigate = useNavigate();
@@ -23,7 +23,17 @@ const Header = () => {
         navigate("/home-page");
         break;
       case "profile":
-        navigate("/profile");
+        try {
+          const tokenFromStorage = Cookies.get("token");
+          const decodedToken = jwt_decode(tokenFromStorage);
+          const userId =
+            decodedToken[
+              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+            ];
+          navigate(`/profile/${userId}`);
+        } catch {
+          console.log("Not found");
+        }
         break;
       case "logout":
         Cookies.remove("token");
@@ -77,13 +87,12 @@ const Header = () => {
   return (
     <>
       <div className="container-nav">
-        <nav className="navbar bg-gray-500 flex justify-between items-center ">
-          <Link to="/home-page" className="ml-5 text-white font-bold">
+        <nav className="navbar bg-slate-50 flex justify-between items-center ">
+          <Link to="/home-page" className="ml-5 text-black font-bold">
             Notaion
           </Link>
           <Dropdown
             placement="bottomRight"
-            arrow
             overlay={menuProfile}
             trigger={["click"]}
             onClick={() => setDropdownVisible(!dropdownVisible)}
@@ -97,7 +106,7 @@ const Header = () => {
               <Space>
                 <UserOutlined
                   style={{ cursor: "pointer" }}
-                  className="text-neutral-900 text-sm p-2 mr-1 rounded-full bg-white "
+                  className="text-black text-sm p-2 mr-1 rounded-full bg-white outline-1 outline-black !border-black border-2 "
                 />
               </Space>
             </a>

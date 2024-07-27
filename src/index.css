@@ -23,6 +23,7 @@ body {
   --color-text2: hsl(33, 57%, 90%);
   --color-shadow: #21242b;
   --box-shadow-container: -4px 4px 0px 0px #111827;
+  --border-color: #111827;
 }
 
 *::-webkit-scrollbar-track {

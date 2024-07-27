@@ -6,6 +6,7 @@ import Realtime from "./components/pages/Signal/Signal";
 import Notion from "./components/pages/Notion/Notion";
 import Login from "./components/pages/Login/Login";
 import Register from "./components/pages/Register/Register";
+import Profile from "./components/pages/Profile/Profile";
 const App = () => {
   return (
     <>
@@ -18,6 +19,8 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/home-page" element={<Notion />} />
+            <Route path="/profile/:identifier" element={<Profile />} />
+            <Route path="/profile/" element={<Profile />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
