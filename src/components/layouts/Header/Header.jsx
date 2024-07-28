@@ -98,7 +98,7 @@ const Header = () => {
   return (
     <>
       <div className="container-nav">
-        <nav className="navbar bg-slate-50 flex justify-between items-center ">
+        <nav className="navbar flex justify-between items-center ">
           <Link to="/home-page" className="ml-5 text-black font-bold">
             Notaion
           </Link>

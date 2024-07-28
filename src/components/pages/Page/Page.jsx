@@ -1,10 +1,12 @@
-import { AppMT } from "../../layouts/MenuBar/MenuBar";
+import { CustomEditorProvider } from "../../layouts/MenuBar/MenuBar";
 import "./Page.scss";
 
 const Page = () => {
   return (
-    <div className="m-3">
-      <AppMT></AppMT>
+    <div className="flex justify-center align-middle">
+      <div className="container-content-page m-3">
+        <CustomEditorProvider></CustomEditorProvider>
+      </div>
     </div>
   );
 };
