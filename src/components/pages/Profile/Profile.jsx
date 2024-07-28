@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin, Card, Image } from "antd";
+import { message, Spin, Card, Image, Space } from "antd";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import "./Profile.scss";
@@ -11,7 +11,15 @@ import {
   EllipsisOutlined,
   SettingOutlined,
 } from "@ant-design/icons";
-
+import {
+  DownloadOutlined,
+  RotateLeftOutlined,
+  RotateRightOutlined,
+  SwapOutlined,
+  UndoOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
+} from "@ant-design/icons";
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -67,7 +75,6 @@ const Profile = () => {
     return avatarUrl;
   };
 
-  // Handle edit button click
   const handleEditClick = async () => {
     if (showActions) {
       const newAvatar = setAvatarRandom();
@@ -93,7 +100,20 @@ const Profile = () => {
       </div>
     );
   }
-
+  const onDownload = (imgUrl) => {
+    fetch(imgUrl)
+      .then((response) => response.blob())
+      .then((blob) => {
+        const url = URL.createObjectURL(new Blob([blob]));
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "image.png";
+        document.body.appendChild(link);
+        link.click();
+        URL.revokeObjectURL(url);
+        link.remove();
+      });
+  };
   return (
     <div className="profile-container">
       <Card
@@ -115,6 +135,35 @@ const Profile = () => {
       >
         <div className="profile-header">
           <Image
+            preview={{
+              toolbarRender: (
+                _,
+                {
+                  image: { url },
+                  transform: { scale },
+                  actions: {
+                    onFlipY,
+                    onFlipX,
+                    onRotateLeft,
+                    onRotateRight,
+                    onZoomOut,
+                    onZoomIn,
+                    onReset,
+                  },
+                }
+              ) => (
+                <Space size={12} className="toolbar-wrapper">
+                  <DownloadOutlined onClick={() => onDownload(url)} />
+                  <SwapOutlined rotate={90} onClick={onFlipY} />
+                  <SwapOutlined onClick={onFlipX} />
+                  <RotateLeftOutlined onClick={onRotateLeft} />
+                  <RotateRightOutlined onClick={onRotateRight} />
+                  <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
+                  <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
+                  <UndoOutlined onClick={onReset} />
+                </Space>
+              ),
+            }}
             className="avatar-profile"
             src={avatar || userProfile.avatar}
             alt="User"

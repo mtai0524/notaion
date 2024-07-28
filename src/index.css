@@ -15,6 +15,12 @@ body {
 }
 
 :root {
+  --purple-light: #c8a2c8;
+  --black: #000000;
+  --white: #ffffff;
+  --gray-3: #b3b3b3;
+  --gray-2: #cccccc;
+
   --color-background: #dbdbdb;
   --color-background-button: #fff1c9;
   --color-background-button2: #4a3d2d;

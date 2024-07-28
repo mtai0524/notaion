@@ -7,6 +7,7 @@ import Notion from "./components/pages/Notion/Notion";
 import Login from "./components/pages/Login/Login";
 import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
+import Page from "./components/pages/Page/Page";
 const App = () => {
   return (
     <>
@@ -21,6 +22,7 @@ const App = () => {
             <Route path="/home-page" element={<Notion />} />
             <Route path="/profile/:identifier" element={<Profile />} />
             <Route path="/profile/" element={<Profile />} />
+            <Route path="/page/" element={<Page />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>

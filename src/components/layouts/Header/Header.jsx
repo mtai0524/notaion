@@ -4,7 +4,12 @@ import "./Header.scss";
 import { Link, useNavigate } from "react-router-dom";
 import { Dropdown, Menu, Space } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faSignInAlt, faUser } from "@fortawesome/free-solid-svg-icons";
+import {
+  faHome,
+  faNewspaper,
+  faSignInAlt,
+  faUser,
+} from "@fortawesome/free-solid-svg-icons";
 import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
 import { message } from "antd";
@@ -21,6 +26,9 @@ const Header = () => {
         break;
       case "home":
         navigate("/home-page");
+        break;
+      case "page":
+        navigate("/page");
         break;
       case "profile":
         try {
@@ -70,6 +78,9 @@ const Header = () => {
       )}
       {token && (
         <>
+          <Menu.Item key="page" icon={<FontAwesomeIcon icon={faNewspaper} />}>
+            Page
+          </Menu.Item>
           <Menu.Item key="profile" icon={<FontAwesomeIcon icon={faUser} />}>
             Profile
           </Menu.Item>
