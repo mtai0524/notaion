@@ -8,12 +8,14 @@ import StarterKit from "@tiptap/starter-kit";
 import { BubbleMenu, EditorContent } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import Dropcursor from "@tiptap/extension-dropcursor";
 import {
   faBold,
   faItalic,
   faStrikethrough,
   faCode,
 } from "@fortawesome/free-solid-svg-icons";
+import DraggableItem from "../../drag/DraggableItem";
 
 const MenuBar = () => {
   const { editor } = useCurrentEditor();
@@ -182,6 +184,8 @@ const MenuBar = () => {
 };
 
 const extensions = [
+  Dropcursor,
+  DraggableItem,
   Underline,
   Color.configure({ types: [TextStyle.name, ListItem.name] }),
   TextStyle.configure({ types: [ListItem.name] }),
@@ -199,8 +203,24 @@ const extensions = [
     placeholder: "Write something …",
   }),
 ];
+const wrapWithDraggableItem = (html) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, "text/html");
 
-const content = `
+  // Create a wrapper for each top-level block element
+  doc.body.childNodes.forEach((node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const wrapper = doc.createElement("div");
+      wrapper.setAttribute("data-type", "draggableItem");
+      wrapper.appendChild(node.cloneNode(true));
+      node.replaceWith(wrapper);
+    }
+  });
+
+  return doc.body.innerHTML;
+};
+const initialContent = `
+<div class="container-page" data-type="draggableItem">
 <h2>
   Hi there,
 </h2>
@@ -229,7 +249,12 @@ const content = `
   <br />
   — Mom
 </blockquote>
+</div>
+<div data-type="draggableItem">
+  <p>Draggable item content</p>
+</div>
 `;
+const content = wrapWithDraggableItem(initialContent);
 const CustomEditorProvider = () => {
   return (
     <EditorProvider
@@ -239,4 +264,5 @@ const CustomEditorProvider = () => {
     ></EditorProvider>
   );
 };
+
 export { CustomEditorProvider };

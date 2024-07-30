@@ -36,11 +36,12 @@
 }
 
 .drag-handle {
+  padding: 3px;
   cursor: grab;
   user-select: none;
   opacity: 0.3;
-  padding: 5px;
 }
+
 .heading-heading-4 {
   color: #fdf57d;
   font-size: 0.7em;
@@ -141,7 +142,9 @@
   justify-content: center;
   align-items: center;
 }
-
+.drag-handle {
+  height: 5px !important;
+}
 .ant-spin-dot {
   color: #4265ac !important;
 }
