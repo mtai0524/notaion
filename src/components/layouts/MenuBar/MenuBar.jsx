@@ -5,35 +5,54 @@ import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import { EditorProvider, useCurrentEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { BubbleMenu, EditorContent } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Dropcursor from "@tiptap/extension-dropcursor";
+import { Dropdown, Menu } from "antd";
 import {
-  faBold,
   faItalic,
   faStrikethrough,
   faCode,
 } from "@fortawesome/free-solid-svg-icons";
-import DraggableItem from "../../drag/DraggableItem";
-// import AddDraggebleItemPlugin from "../../../plugins/AddDraggableItemPlugin ";
-
 const MenuBar = () => {
   const { editor } = useCurrentEditor();
 
   if (!editor) {
     return null;
   }
-  const wrapInDraggableItem = () => {
-    const { commands } = editor;
-
-    if (editor.isActive("draggableItem")) {
-      commands.unwrapNode("draggableItem");
-    } else {
-      commands.wrapIn("draggableItem");
-    }
-  };
-
+  const headingMenu = (
+    <Menu>
+      <Menu.Item
+        key="h1"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+        className={editor.isActive("heading", { level: 1 }) ? "is-active" : ""}
+      >
+        Heading 1
+      </Menu.Item>
+      <Menu.Item
+        key="h2"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+        className={editor.isActive("heading", { level: 2 }) ? "is-active" : ""}
+      >
+        Heading 2
+      </Menu.Item>
+      <Menu.Item
+        key="h3"
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+        className={editor.isActive("heading", { level: 3 }) ? "is-active" : ""}
+      >
+        Heading 3
+      </Menu.Item>
+      <Menu.Item
+        key="paragraph"
+        onClick={() => editor.chain().focus().setParagraph().run()}
+        className={editor.isActive("paragraph") ? "is-active" : ""}
+      >
+        paragraph
+      </Menu.Item>
+    </Menu>
+  );
   return (
     <div className="control-group">
       {editor && (
@@ -47,7 +66,20 @@ const MenuBar = () => {
               onClick={() => editor.chain().focus().toggleBold().run()}
               className={editor.isActive("bold") ? "is-active" : ""}
             >
-              <FontAwesomeIcon icon={faBold} />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
+                <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
+              </svg>
             </button>
             <button
               onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -84,54 +116,34 @@ const MenuBar = () => {
             >
               <FontAwesomeIcon icon={faCode} />
             </button>
-            <button
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 1 }).run()
-              }
-              className={
-                editor.isActive("heading", { level: 1 }) ? "is-active" : ""
-              }
-            >
-              H1
-            </button>
-            <button
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 2 }).run()
-              }
-              className={
-                editor.isActive("heading", { level: 2 }) ? "is-active" : ""
-              }
-            >
-              H2
-            </button>
-            <button
-              onClick={() =>
-                editor.chain().focus().toggleHeading({ level: 3 }).run()
-              }
-              className={
-                editor.isActive("heading", { level: 3 }) ? "is-active" : ""
-              }
-            >
-              H3
-            </button>
-            <button
-              onClick={() => editor.chain().focus().setParagraph().run()}
-              className={editor.isActive("paragraph") ? "is-active" : ""}
-            >
-              faParagraph
-            </button>
+            <Dropdown overlay={headingMenu}>
+              <button className="dropbtn">Font</button>
+            </Dropdown>
+
             <button
               onClick={() => editor.chain().focus().toggleBulletList().run()}
               className={editor.isActive("bulletList") ? "is-active" : ""}
             >
-              Bullet
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="8" x2="21" y1="6" y2="6"></line>
+                <line x1="8" x2="21" y1="12" y2="12"></line>
+                <line x1="8" x2="21" y1="18" y2="18"></line>
+                <line x1="3" x2="3.01" y1="6" y2="6"></line>
+                <line x1="3" x2="3.01" y1="12" y2="12"></line>
+                <line x1="3" x2="3.01" y1="18" y2="18"></line>
+              </svg>
             </button>
-            <button
-              onClick={() => editor.chain().focus().toggleOrderedList().run()}
-              className={editor.isActive("orderedList") ? "is-active" : ""}
-            >
-              Ordered
-            </button>
+
             <button
               onClick={() => editor.chain().focus().toggleCodeBlock().run()}
               className={editor.isActive("codeBlock") ? "is-active" : ""}
@@ -152,17 +164,22 @@ const MenuBar = () => {
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
               className={editor.isActive("blockquote") ? "is-active" : ""}
             >
-              Blockquote
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
+              </svg>
             </button>
-            <button
-              onClick={() => {
-                editor.chain().focus().toggleHeading({ level: 3 }).run();
-                wrapInDraggableItem();
-              }}
-              className={editor.isActive("draggableItem") ? "is-active" : ""}
-            >
-              Wrap
-            </button>
+
             <div className="input-icon-wrapper">
               <div className="custom-color-picker">
                 <svg
@@ -197,15 +214,11 @@ const MenuBar = () => {
           </div>
         </BubbleMenu>
       )}
-      <EditorContent editor={editor} />
     </div>
   );
 };
 
 const extensions = [
-  // AddDraggebleItemPlugin,
-
-  DraggableItem,
   Dropcursor,
   Underline,
   Color.configure({ types: [TextStyle.name, ListItem.name] }),
@@ -225,23 +238,7 @@ const extensions = [
   }),
 ];
 
-const wrapWithDraggableItem = (html) => {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, "text/html");
-
-  // Create a wrapper for each top-level block element
-  doc.body.childNodes.forEach((node) => {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const wrapper = doc.createElement("div");
-      wrapper.setAttribute("data-type", "draggableItem");
-      wrapper.appendChild(node.cloneNode(true));
-      node.replaceWith(wrapper);
-    }
-  });
-
-  return doc.body.innerHTML;
-};
-const initialContent = `
+const content = `
 
 <h2>
   Hi there,
@@ -276,7 +273,6 @@ const initialContent = `
 </div>
 `;
 
-const content = wrapWithDraggableItem(initialContent);
 const CustomEditorProvider = () => {
   return (
     <EditorProvider

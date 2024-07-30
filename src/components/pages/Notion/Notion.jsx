@@ -649,37 +649,39 @@ const Notion = () => {
                               <Spin />
                             </div>
                           )}
-                          <Space>
-                            <Dropdown
-                              className="dd-item-pages"
-                              placement="topRight"
-                              overlay={menu(item.id)}
-                              trigger={["click"]}
-                              visible={
-                                dropdownVisible[item.id] ||
-                                activeDropdown === item.id
-                              }
-                              onClick={() =>
-                                setDropdownVisible((prev) => ({
-                                  ...prev,
-                                  [item.id]: !prev[item.id],
-                                }))
-                              }
+                          <Dropdown
+                            className="dd-item-pages"
+                            placement="topRight"
+                            overlay={menu(item.id)}
+                            trigger={["click"]}
+                            visible={
+                              dropdownVisible[item.id] ||
+                              activeDropdown === item.id
+                            }
+                            onClick={() =>
+                              setDropdownVisible((prev) => ({
+                                ...prev,
+                                [item.id]: !prev[item.id],
+                              }))
+                            }
+                          >
+                            <span
+                              {...provided.dragHandleProps}
+                              className="drag-handle"
                             >
-                              <span
-                                {...provided.dragHandleProps}
-                                className="drag-handle"
+                              <svg
+                                style={{
+                                  width: "10px",
+                                  marginLeft: "5px",
+                                  padding: "0px !important",
+                                }}
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 10 16"
                               >
-                                <svg
-                                  style={{ width: "10px", marginLeft: "5px" }}
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 10 16"
-                                >
-                                  <path d="M4 14c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zM2 6C.9 6 0 6.9 0 8s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6C.9 0 0 .9 0 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                                </svg>
-                              </span>
-                            </Dropdown>
-                          </Space>
+                                <path d="M4 14c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zM2 6C.9 6 0 6.9 0 8s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6C.9 0 0 .9 0 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+                              </svg>
+                            </span>
+                          </Dropdown>
                         </div>
                       </li>
                     )}

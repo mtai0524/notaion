@@ -106,7 +106,7 @@
   }
 }
 .container-content-page {
-  width: 70%;
+  width: 80%;
 }
 
 .container-content-page :focus {
@@ -163,22 +163,11 @@
 .custom-color-picker {
   width: 30px;
   height: 30px;
-  background-color: currentColor;
+  background-color: transparent !important;
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
-  &:hover {
-    background-color: #f2f2f2;
-  }
-
-  &.is-active {
-    background-color: #e5e5e5;
-
-    &:hover {
-      background-color: #f2f2f2;
-    }
-  }
 }
 p.is-editor-empty:first-child::before {
   color: #c4c1c1;
@@ -186,14 +175,4 @@ p.is-editor-empty:first-child::before {
   float: left;
   height: 0;
   pointer-events: none;
-}
-
-.draggable-item {
-  width: 100%;
-  display: flex;
-  padding: 0.5rem;
-  margin: 0.5rem 0;
-  border-radius: 0.5rem;
-  background: white;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0px 10px 20px rgba(0, 0, 0, 0.1);
 }
