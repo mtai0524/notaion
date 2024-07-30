@@ -15,7 +15,6 @@ const DraggableItem = Node.create({
       },
     ];
   },
-
   renderHTML({ HTMLAttributes }) {
     return ["div", { ...HTMLAttributes, "data-type": "draggableItem" }, 0];
   },
@@ -23,6 +22,8 @@ const DraggableItem = Node.create({
   addNodeView() {
     return ReactNodeViewRenderer(DraggableComponent);
   },
+
+  defining: true, // Ensure this node won't be nested inside another draggableItem
 });
 
 export default DraggableItem;

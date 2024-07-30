@@ -16,6 +16,7 @@ import {
   faCode,
 } from "@fortawesome/free-solid-svg-icons";
 import DraggableItem from "../../drag/DraggableItem";
+// import AddDraggebleItemPlugin from "../../../plugins/AddDraggableItemPlugin ";
 
 const MenuBar = () => {
   const { editor } = useCurrentEditor();
@@ -23,6 +24,15 @@ const MenuBar = () => {
   if (!editor) {
     return null;
   }
+  const wrapInDraggableItem = () => {
+    const { commands } = editor;
+
+    if (editor.isActive("draggableItem")) {
+      commands.unwrapNode("draggableItem");
+    } else {
+      commands.wrapIn("draggableItem");
+    }
+  };
 
   return (
     <div className="control-group">
@@ -144,6 +154,15 @@ const MenuBar = () => {
             >
               Blockquote
             </button>
+            <button
+              onClick={() => {
+                editor.chain().focus().toggleHeading({ level: 3 }).run();
+                wrapInDraggableItem();
+              }}
+              className={editor.isActive("draggableItem") ? "is-active" : ""}
+            >
+              Wrap
+            </button>
             <div className="input-icon-wrapper">
               <div className="custom-color-picker">
                 <svg
@@ -184,8 +203,10 @@ const MenuBar = () => {
 };
 
 const extensions = [
-  Dropcursor,
+  // AddDraggebleItemPlugin,
+
   DraggableItem,
+  Dropcursor,
   Underline,
   Color.configure({ types: [TextStyle.name, ListItem.name] }),
   TextStyle.configure({ types: [ListItem.name] }),
@@ -203,6 +224,7 @@ const extensions = [
     placeholder: "Write something …",
   }),
 ];
+
 const wrapWithDraggableItem = (html) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
@@ -220,7 +242,7 @@ const wrapWithDraggableItem = (html) => {
   return doc.body.innerHTML;
 };
 const initialContent = `
-<div class="container-page" data-type="draggableItem">
+
 <h2>
   Hi there,
 </h2>
@@ -249,11 +271,11 @@ const initialContent = `
   <br />
   — Mom
 </blockquote>
-</div>
 <div data-type="draggableItem">
   <p>Draggable item content</p>
 </div>
 `;
+
 const content = wrapWithDraggableItem(initialContent);
 const CustomEditorProvider = () => {
   return (
