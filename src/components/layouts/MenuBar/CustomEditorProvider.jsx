@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
+import Highlight from "@tiptap/extension-highlight";
 import ListItem from "@tiptap/extension-list-item";
 import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
@@ -22,6 +23,9 @@ const extensions = [
       return ReactNodeViewRenderer(CodeBlockComponent);
     },
   }).configure({ lowlight }),
+  Highlight.configure({
+    multicolor: true,
+  }),
   OrderedList,
   Image.configure({ allowBase64: true }),
   Dropcursor,

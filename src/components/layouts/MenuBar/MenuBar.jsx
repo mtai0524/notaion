@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { BubbleMenu } from "@tiptap/react";
 import { Dropdown, Menu } from "antd";
 import {
@@ -10,14 +10,12 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
 import "./MenuBar.scss";
-import FloatingMenu from "../../ui/menu/FloatingMenu";
+// import FloatingMenu from "../../ui/menu/FloatingMenu";
 
 const MenuBar = ({ editor }) => {
-  const [floatingMenu, setFloatingMenu] = useState({
-    top: 0,
-    left: 0,
-    visible: false,
-  });
+  const [highlightColor, setHighlightColor] = useState("#ffc078");
+
+  // const [floatingMenu, setFloatingMenu] = useState({});
 
   const addImage = useCallback(() => {
     const url = window.prompt("URL");
@@ -26,30 +24,37 @@ const MenuBar = ({ editor }) => {
     }
   }, [editor]);
 
-  useEffect(() => {
-    if (!editor) return;
+  // useEffect(() => {
+  //   if (!editor) return;
 
-    const handleUpdate = () => {
-      const { selection } = editor.state;
-      const { $from, $to } = selection;
-      if ($from.pos === $to.pos && $from.parent.content.size === 0) {
-        setFloatingMenu({
-          visible: true,
-        });
-      } else {
-        setFloatingMenu((prev) => ({ ...prev, visible: false }));
-      }
-    };
+  //   const handleKeyDown = (event) => {
+  //     const { state } = editor;
+  //     const { from } = state.selection;
 
-    editor.on("selectionUpdate", handleUpdate);
+  //     if (event.key === "/") {
+  //       setFloatingMenu({
+  //         top: editor.view.coordsAtPos(from).top,
+  //         left: editor.view.coordsAtPos(from).left,
+  //         visible: false,
+  //       });
 
-    return () => {
-      editor.off("selectionUpdate", handleUpdate);
-    };
-  }, [editor]);
+  //       event.preventDefault();
+
+  //       const transaction = editor.state.tr.delete(from - 1, from);
+  //       editor.view.dispatch(transaction);
+  //     } else {
+  //       setFloatingMenu((prev) => ({ ...prev, visible: false }));
+  //     }
+  //   };
+
+  //   editor.view.dom.addEventListener("keydown", handleKeyDown);
+
+  //   return () => {
+  //     editor.view.dom.removeEventListener("keydown", handleKeyDown);
+  //   };
+  // }, [editor]);
 
   if (!editor) return null;
-
   const headingMenu = (
     <Menu>
       <Menu.Item
@@ -236,9 +241,42 @@ const MenuBar = ({ editor }) => {
               }}
             />
           </div>
+          <div className="input-icon-wrapper" style={{ marginLeft: "10px" }}>
+            <div className="custom-color-picker">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+              >
+                <path d="M11.3536 9.31802L12.7678 7.90381C13.5488 7.12276 14.8151 7.12276 15.5962 7.90381C16.3772 8.68486 16.3772 9.95119 15.5962 10.7322L14.182 12.1464M11.3536 9.31802L7.96729 12.7043C7.40889 13.2627 7.02827 13.9739 6.8734 14.7482L6.69798 15.6253C6.55804 16.325 7.17496 16.942 7.87468 16.802L8.75176 16.6266C9.52612 16.4717 10.2373 16.0911 10.7957 15.5327L14.182 12.1464M11.3536 9.31802L14.182 12.1464"></path>
+                <line
+                  x1="15"
+                  x2="19"
+                  y1="17"
+                  y2="17"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                ></line>
+              </svg>
+            </div>
+            <input
+              className="custom-color-picker"
+              type="color"
+              value={highlightColor}
+              onChange={(e) => {
+                const color = e.target.value;
+                setHighlightColor(color);
+                editor.chain().focus().toggleHighlight({ color }).run();
+              }}
+            />
+          </div>
         </div>
       </BubbleMenu>
-      <FloatingMenu editor={editor} menu={{ ...floatingMenu, isActive }} />
+      {/* <FloatingMenu editor={editor} menu={{ ...floatingMenu, isActive }} /> */}
     </div>
   );
 };

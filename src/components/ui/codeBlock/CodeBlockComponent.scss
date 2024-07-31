@@ -77,10 +77,34 @@
     position: relative;
 
     select {
-      border-radius: 6px;
-      position: absolute;
-      right: 0.5rem;
-      top: 0.5rem;
+      outline: 1px solid rgb(224, 224, 224);
     }
   }
+}
+
+.code-block {
+  position: relative;
+  border: 1px solid #ccc;
+}
+
+.code-block-header {
+  padding-top: 5px;
+  margin: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 5px;
+}
+
+.copy-button {
+  outline: 1px solid gray;
+  color: #141414;
+  border: none;
+  padding: 5px 10px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.copy-button:hover {
+  background: #e9e8e8;
 }
