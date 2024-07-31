@@ -89,7 +89,7 @@
   }
 
   pre {
-    background: #404040 !important;
+    background: #1b1b1b !important;
     border-radius: 0.5rem;
     color: var(--white);
     font-family: "JetBrainsMono", monospace;
@@ -129,14 +129,16 @@
 }
 .tippy-box {
   background-color: white;
-  border: 1px solid black;
+  border-radius: 4px;
+  outline: 1px solid black;
+  width: 85%;
 }
 .bubble-menu {
   button {
     background-color: white;
     border-radius: 3px;
-    padding-top: 0px !important;
-    padding-bottom: 0px !important;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
     padding-left: 10px !important;
     padding-right: 10px !important;
     margin: 0 !important;
@@ -186,43 +188,33 @@ p.is-editor-empty:first-child::before {
   pointer-events: none;
 }
 
-.dropdown-menu {
-  background: var(--white);
-  border: 1px solid var(--gray-1);
-  border-radius: 0.7rem;
-  box-shadow: var(--shadow);
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  overflow: auto;
-  padding: 0.4rem;
-  position: relative;
-
-  button {
-    align-items: center;
-    background-color: transparent;
-    display: flex;
-    gap: 0.25rem;
-    text-align: left;
-    width: 100%;
-
-    &:hover,
-    &:hover.is-selected {
-      background-color: var(--gray-3);
-    }
-
-    &.is-selected {
-      background-color: var(--gray-2);
-    }
-  }
-}
-
 .floating-menu {
   position: absolute;
   background: #fff;
   border: 1px solid #ddd;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
   z-index: 1000;
+  button {
+    background-color: white;
+    border-radius: 3px;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    margin: 0 !important;
+    margin-right: 2px !important;
+    &:hover {
+      background-color: #f2f2f2;
+    }
+
+    &.is-active {
+      background-color: #e5e5e5;
+
+      &:hover {
+        background-color: #e5e5e5;
+      }
+    }
+  }
 }
 
 .floating-menu .ant-dropdown-menu {

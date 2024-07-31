@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
 import ListItem from "@tiptap/extension-list-item";
@@ -9,8 +9,20 @@ import MenuBar from "./MenuBar";
 import Dropcursor from "@tiptap/extension-dropcursor";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
+import OrderedList from "@tiptap/extension-ordered-list";
+import CodeBlockComponent from "../../ui/codeBlock/CodeBlockComponent";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import { common, createLowlight } from "lowlight";
+
+const lowlight = createLowlight(common);
 
 const extensions = [
+  CodeBlockLowlight.extend({
+    addNodeView() {
+      return ReactNodeViewRenderer(CodeBlockComponent);
+    },
+  }).configure({ lowlight }),
+  OrderedList,
   Image.configure({ allowBase64: true }),
   Dropcursor,
   Underline,
@@ -57,10 +69,12 @@ const CustomEditorProvider = () => {
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       const titleMatch = content.match(/<h1[^>]*>(.*?)<\/h1>/);
+      const paragraph = content.match(/<p[^>]*>(.*?)<\/p>/);
       const title = titleMatch ? titleMatch[1] : "";
+      const finalTitle = title || (paragraph ? paragraph[1] : "");
       try {
         localStorage.setItem("editorContent", content);
-        localStorage.setItem("title", title);
+        localStorage.setItem("title", finalTitle);
       } catch (error) {
         console.error("Failed to save content to localStorage", error);
       }

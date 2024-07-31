@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { BubbleMenu } from "@tiptap/react";
 import { Dropdown, Menu } from "antd";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faBold,
   faItalic,
   faStrikethrough,
   faCode,
 } from "@fortawesome/free-solid-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
 import "./MenuBar.scss";
 import FloatingMenu from "../../ui/menu/FloatingMenu";
@@ -32,10 +33,7 @@ const MenuBar = ({ editor }) => {
       const { selection } = editor.state;
       const { $from, $to } = selection;
       if ($from.pos === $to.pos && $from.parent.content.size === 0) {
-        const rect = editor.view.dom.getBoundingClientRect();
         setFloatingMenu({
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
           visible: true,
         });
       } else {
@@ -100,20 +98,7 @@ const MenuBar = ({ editor }) => {
             onClick={() => editor.chain().focus().toggleBold().run()}
             className={isActive("bold") ? "is-active" : ""}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 12a4 4 0 0 0 0-8H6v8"></path>
-              <path d="M15 20a4 4 0 0 0 0-8H6v8Z"></path>
-            </svg>
+            <FontAwesomeIcon icon={faBold} />
           </button>
           <button
             onClick={() => editor.chain().focus().toggleItalic().run()}
@@ -138,6 +123,9 @@ const MenuBar = ({ editor }) => {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <path d="M6 4v6a6 6 0 0 0 12 0V4"></path>
               <line x1="4" x2="20" y1="20" y2="20"></line>
@@ -187,6 +175,9 @@ const MenuBar = ({ editor }) => {
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
             >
               <polyline points="16 18 22 12 16 6"></polyline>
               <polyline points="8 6 2 12 8 18"></polyline>
@@ -220,6 +211,9 @@ const MenuBar = ({ editor }) => {
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
                 <circle cx="13.5" cy="6.5" r=".5"></circle>
                 <circle cx="17.5" cy="10.5" r=".5"></circle>
