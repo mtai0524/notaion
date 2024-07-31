@@ -3,7 +3,6 @@
     margin-top: 0;
   }
 
-  /* List styles */
   ul,
   ol {
     list-style-type: circle;
@@ -35,6 +34,7 @@
 
   h1 {
     font-size: 1.4rem;
+    font-weight: bolder;
   }
 
   h2 {
@@ -46,7 +46,9 @@
   }
 
   code {
-    background-color: var(--purple-light);
+    background: #404040 !important;
+    color: rgb(241, 220, 101) !important;
+
     border-radius: 0.4rem;
     color: var(--black);
     font-size: 0.85rem;
@@ -87,7 +89,7 @@
 
     code {
       background: none;
-      color: whitesmoke;
+      color: whitesmoke !important;
       font-size: 0.8rem;
       padding: 0;
     }
@@ -106,7 +108,7 @@
   }
 }
 .container-content-page {
-  width: 80%;
+  width: 60%;
 }
 
 .container-content-page :focus {
@@ -116,7 +118,13 @@
 .button-group button {
   outline: 1px solid black;
 }
-
+.tippy-box {
+  position: absolute;
+  top: 50px;
+  left: -70px;
+  display: flex;
+  flex-direction: column;
+}
 .bubble-menu {
   display: flex;
 

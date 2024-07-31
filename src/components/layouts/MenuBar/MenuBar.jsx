@@ -3,7 +3,7 @@ import { Color } from "@tiptap/extension-color";
 import ListItem from "@tiptap/extension-list-item";
 import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
-import { EditorProvider, useCurrentEditor } from "@tiptap/react";
+import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { BubbleMenu } from "@tiptap/react";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -15,9 +15,10 @@ import {
   faStrikethrough,
   faCode,
 } from "@fortawesome/free-solid-svg-icons";
-const MenuBar = () => {
-  const { editor } = useCurrentEditor();
+import PropTypes from "prop-types";
+import { useEffect } from "react";
 
+const MenuBar = ({ editor }) => {
   if (!editor) {
     return null;
   }
@@ -53,6 +54,7 @@ const MenuBar = () => {
       </Menu.Item>
     </Menu>
   );
+
   return (
     <div className="control-group">
       {editor && (
@@ -109,6 +111,7 @@ const MenuBar = () => {
                 <line x1="4" x2="20" y1="20" y2="20"></line>
               </svg>
             </button>
+
             <button
               onClick={() => editor.chain().focus().toggleCode().run()}
               disabled={!editor.can().chain().focus().toggleCode().run()}
@@ -218,6 +221,9 @@ const MenuBar = () => {
   );
 };
 
+MenuBar.propTypes = {
+  editor: PropTypes.object.isRequired,
+};
 const extensions = [
   Dropcursor,
   Underline,
@@ -238,21 +244,14 @@ const extensions = [
   }),
 ];
 
-const content = `
-
-<h2>
-  Hi there,
-</h2>
+const initialContent = `
+<h2>Hi there,</h2>
 <p>
-  this is a <em>basic</em> example of <strong>Tiptap</strong>. Sure, there are all kind of basic text styles you’d probably expect from a text editor. But wait until you see the lists:
+  this is a <em>basic</em> example of <strong>Tiptap</strong>. Sure, there are all kinds of basic text styles you’d probably expect from a text editor. But wait until you see the lists:
 </p>
 <ul>
-  <li>
-    That’s a bullet list with one …
-  </li>
-  <li>
-    … or two list items.
-  </li>
+  <li>That’s a bullet list with one …</li>
+  <li>… or two list items.</li>
 </ul>
 <p>
   Isn’t that great? And all of that is editable. But wait, there’s more. Let’s try a code block:
@@ -264,8 +263,7 @@ const content = `
   I know, I know, this is impressive. It’s only the tip of the iceberg though. Give it a try and click a little bit around. Don’t forget to check the other examples too.
 </p>
 <blockquote>
-  Wow, that’s amazing. Good work, boy! 👏
-  <br />
+  Wow, that’s amazing. Good work, boy! 👏<br />
   — Mom
 </blockquote>
 <div data-type="draggableItem">
@@ -274,13 +272,37 @@ const content = `
 `;
 
 const CustomEditorProvider = () => {
+  const editor = useEditor({
+    extensions,
+    content: localStorage.getItem("editorContent") || initialContent,
+    onUpdate: ({ editor }) => {
+      const content = editor.getHTML();
+      const titleMatch = content.match(/<h1[^>]*>(.*?)<\/h1>/);
+      const title = titleMatch ? titleMatch[1] : "";
+      try {
+        localStorage.setItem("editorContent", content);
+        localStorage.setItem("title", title);
+      } catch (error) {
+        console.error("Failed to save content to localStorage", error);
+      }
+    },
+  });
+
+  useEffect(() => {
+    if (editor) {
+      if (editor.isEmpty) {
+        editor.commands.focus();
+        editor.commands.setContent("<h1>Title here</h1>");
+      }
+    }
+  }, [editor]);
+
   return (
-    <EditorProvider
-      slotBefore={<MenuBar />}
-      extensions={extensions}
-      content={content}
-    ></EditorProvider>
+    <div>
+      <MenuBar editor={editor} />
+      <EditorContent editor={editor} />
+    </div>
   );
 };
 
-export { CustomEditorProvider };
+export default CustomEditorProvider;
