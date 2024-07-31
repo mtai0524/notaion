@@ -1,4 +1,4 @@
-import CustomEditorProvider from "../../layouts/MenuBar/MenuBar";
+import CustomEditorProvider from "../../layouts/MenuBar/CustomEditorProvider";
 import "./Page.scss";
 
 const Page = () => {
