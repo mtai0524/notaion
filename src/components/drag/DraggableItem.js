@@ -23,7 +23,7 @@ const DraggableItem = Node.create({
     return ReactNodeViewRenderer(DraggableComponent);
   },
 
-  defining: true, // Ensure this node won't be nested inside another draggableItem
+  defining: true,
 });
 
 export default DraggableItem;

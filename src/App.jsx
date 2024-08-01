@@ -8,6 +8,8 @@ import Login from "./components/pages/Login/Login";
 import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
 import Page from "./components/pages/Page/Page";
+import Content from "./components/pages/Content/Content";
+
 const App = () => {
   return (
     <>
@@ -23,10 +25,12 @@ const App = () => {
             <Route path="/profile/:identifier" element={<Profile />} />
             <Route path="/profile/" element={<Profile />} />
             <Route path="/page/" element={<Page />} />
+            <Route path="/page/content/:id" element={<Content />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
     </>
   );
 };
+
 export default App;

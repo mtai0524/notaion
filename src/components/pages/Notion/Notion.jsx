@@ -599,10 +599,7 @@ const Notion = () => {
           cancelText="No"
           onConfirm={handleDeleteAll}
         >
-          <button
-            style={{ borderColor: "#21242b" }}
-            className="main-button !bg-rose-500 !text-white font-semibold mb-2 !border-[3px] !rounded-[8px] "
-          >
+          <button style={{ borderColor: "#21242b" }} className="main-button ">
             <span>Delete all</span>
           </button>
         </Popconfirm>

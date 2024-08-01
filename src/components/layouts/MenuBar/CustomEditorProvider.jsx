@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Color } from "@tiptap/extension-color";
@@ -14,6 +14,8 @@ import OrderedList from "@tiptap/extension-ordered-list";
 import CodeBlockComponent from "../../ui/codeBlock/CodeBlockComponent";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import { common, createLowlight } from "lowlight";
+import axiosInstance from "../../../axiosConfig";
+import PropTypes from "prop-types";
 
 const lowlight = createLowlight(common);
 
@@ -39,67 +41,70 @@ const extensions = [
   Placeholder.configure({ placeholder: "Write something …" }),
 ];
 
-const initialContent = `
-<h2>Hi there,</h2>
-<p>
-  this is a <em>basic</em> example of <strong>Tiptap</strong>. Sure, there are all kinds of basic text styles you’d probably expect from a text editor. But wait until you see the lists:
-</p>
-<ul>
-  <li>That’s a bullet list with one …</li>
-  <li>… or two list items.</li>
-</ul>
-<p>
-  Isn’t that great? And all of that is editable. But wait, there’s more. Let’s try a code block:
-</p>
-<pre><code class="language-css">body {
-  display: none;
-}</code></pre>
-<p>
-  I know, I know, this is impressive. It’s only the tip of the iceberg though. Give it a try and click a little bit around. Don’t forget to check the other examples too.
-</p>
-<blockquote>
-  Wow, that’s amazing. Good work, boy! 👏<br />
-  — Mom
-</blockquote>
-<div data-type="draggableItem">
-  <p>Draggable item content</p>
-</div>
-`;
-
-const CustomEditorProvider = () => {
+const CustomEditorProvider = ({ pageId }) => {
+  const [content, setContent] = useState("");
+  console.log(content);
   const editor = useEditor({
     extensions,
-    content: localStorage.getItem("editorContent") || initialContent,
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       const titleMatch = content.match(/<h1[^>]*>(.*?)<\/h1>/);
       const paragraph = content.match(/<p[^>]*>(.*?)<\/p>/);
       const title = titleMatch ? titleMatch[1] : "";
       const finalTitle = title || (paragraph ? paragraph[1] : "");
-      try {
-        localStorage.setItem("editorContent", content);
-        localStorage.setItem("title", finalTitle);
-      } catch (error) {
-        console.error("Failed to save content to localStorage", error);
-      }
+
+      (async () => {
+        try {
+          await axiosInstance.put(`/api/Page/${pageId}`, {
+            content,
+            title: finalTitle,
+          });
+        } catch (error) {
+          console.error("Failed to save content to API", error);
+        }
+      })();
     },
   });
 
   useEffect(() => {
-    if (editor) {
-      if (editor.isEmpty) {
-        editor.commands.focus();
-        editor.commands.setContent("<h1>Title here</h1>");
-      }
+    if (editor && pageId) {
+      (async () => {
+        await fetchAndSetContent();
+      })();
     }
-  }, [editor]);
+  }, [editor, pageId]);
+
+  const fetchAndSetContent = async () => {
+    try {
+      const response = await axiosInstance.get(`/api/Page/${pageId}`);
+      const fetchedContent = response.data?.content || "<h1>Title here</h1>";
+      setContent(fetchedContent);
+      if (editor) {
+        editor.commands.setContent(fetchedContent);
+      }
+    } catch (error) {
+      console.error("Failed to fetch content from API", error);
+      setContent("<h1>Title here</h1>");
+    }
+  };
 
   return (
-    <div>
+    <div
+      style={{
+        display: "flex",
+        width: "80vw",
+        maxWidth: "800px",
+        marginBottom: "100px",
+      }}
+    >
       <MenuBar editor={editor} />
       <EditorContent editor={editor} />
     </div>
   );
+};
+
+CustomEditorProvider.propTypes = {
+  pageId: PropTypes.string.isRequired,
 };
 
 export default CustomEditorProvider;

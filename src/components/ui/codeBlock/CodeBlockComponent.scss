@@ -83,17 +83,17 @@
 }
 
 .code-block {
+  border-radius: 4px;
   position: relative;
   border: 1px solid #ccc;
+  margin-top: 10px !important;
 }
 
 .code-block-header {
-  padding-top: 5px;
-  margin: 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 5px;
+  margin: 0 10px 0 10px !important;
 }
 
 .copy-button {

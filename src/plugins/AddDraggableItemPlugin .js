@@ -6,10 +6,8 @@ const AddDraggableItemPlugin = new Plugin({
 
     transactions.forEach((transaction) => {
       if (transaction.docChanged) {
-        // Iterate through the document nodes
         newState.doc.descendants((node, pos) => {
           if (node.isBlock && node.type.name !== "draggableItem") {
-            // Add 'data-type' attribute to new block nodes
             tr.setNodeMarkup(pos, null, {
               ...node.attrs,
               "data-type": "draggableItem",
@@ -30,7 +28,6 @@ const AddDraggableItemPlugin = new Plugin({
       const { selection } = state;
       const { from, to } = selection;
 
-      // Handle Enter key to wrap block nodes in draggableItem
       if (event.key === "Enter") {
         if (
           selection instanceof TextSelection &&
@@ -48,12 +45,11 @@ const AddDraggableItemPlugin = new Plugin({
         }
       }
 
-      // Handle Ctrl+A key to select all content within a block node or entire document
       if (event.ctrlKey && event.key === "a") {
         const node = state.doc.nodeAt(from);
         if (node && node.isBlock) {
           const start = from;
-          const end = start + node.nodeSize - 2; // Subtract 2 to account for the start and end positions of the block node
+          const end = start + node.nodeSize - 2;
           const newSelection = TextSelection.create(state.doc, start, end);
           const tr = state.tr.setSelection(newSelection);
           dispatch(tr);

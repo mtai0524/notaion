@@ -80,28 +80,14 @@ hr {
   line-height: 1.5;
   color: #666;
 }
-
-.main-button {
-  border: 2px solid var(--color-text);
-  box-shadow: -3px 3px 0px 0px #21242b;
-  transition: box-shadow 0.3s ease, transform 0.3s ease, outline 0.1s ease-out;
-  background-color: var(--color-background-button);
-  padding: 10px 20px;
-  margin: 7px;
-  cursor: pointer;
-  text-decoration: none;
-  font-size: 16px;
+.ant-btn-primary,
+.ant-switch {
+  background-color: rgb(68, 68, 68) !important;
+}
+.ant-switch:not(.ant-switch-checked) {
+  background-color: rgb(230, 230, 230) !important;
 }
 
-.main-button:hover {
-  box-shadow: none;
-  transform: translate(-3px, 3px);
-}
-
-.main-button:focus {
-  border: 2px solid var(--color-text);
-  outline: none;
-}
 .game-container {
   width: 100%;
   display: flex;

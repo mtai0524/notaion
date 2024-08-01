@@ -91,10 +91,9 @@
   pre {
     max-height: 300px;
     overflow-y: auto;
-    background: #1b1b1b !important;
+    background: #313030 !important;
     border-radius: 0 !important;
     margin: 0 !important ;
-    padding: 20px !important;
     color: var(--white);
     font-family: "JetBrainsMono", monospace;
 
@@ -123,10 +122,10 @@
     margin: 2rem 0;
   }
 }
-.container-content-page {
-  width: 60%;
+.container-content :focus {
+  outline: none !important;
+  border: none !important;
 }
-
 .container-content-page :focus {
   outline: none !important;
   border: none !important;
