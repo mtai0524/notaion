@@ -30,6 +30,8 @@
     "@tiptap/extension-list-item": "^2.5.8",
     "@tiptap/extension-ordered-list": "^2.5.8",
     "@tiptap/extension-placeholder": "^2.5.7",
+    "@tiptap/extension-task-item": "^2.5.8",
+    "@tiptap/extension-task-list": "^2.5.8",
     "@tiptap/extension-text-style": "^2.5.7",
     "@tiptap/extension-underline": "^2.5.7",
     "@tiptap/pm": "^2.5.7",

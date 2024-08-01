@@ -13,6 +13,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import OrderedList from "@tiptap/extension-ordered-list";
 import CodeBlockComponent from "../../ui/codeBlock/CodeBlockComponent";
 import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
+import TaskList from "@tiptap/extension-task-list";
+import TaskItem from "@tiptap/extension-task-item";
 import { common, createLowlight } from "lowlight";
 import axiosInstance from "../../../axiosConfig";
 import PropTypes from "prop-types";
@@ -39,6 +41,12 @@ const extensions = [
     orderedList: { keepMarks: true, keepAttributes: false },
   }),
   Placeholder.configure({ placeholder: "Write something …" }),
+  TaskList.configure({
+    itemTypeName: "taskItem",
+  }),
+  TaskItem.configure({
+    nested: true,
+  }),
 ];
 
 const CustomEditorProvider = ({ pageId }) => {

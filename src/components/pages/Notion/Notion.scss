@@ -81,7 +81,9 @@
 .dd-item-pages .ant-btn:focus {
   background: transparent;
 }
-
+.ant-dropdown {
+  z-index: 10000000000000000000 !important;
+}
 .custom-dropdown-menu {
   .ant-dropdown-menu-item {
     width: 100%;
