@@ -16,8 +16,7 @@
   text-decoration: none;
   font-size: 16px;
   border-radius: 6px;
-  transition: box-shadow 0.3s ease, transform 0.3s ease, border 0.1s ease-out,
-    outline 0.1s ease-out;
+  transition: box-shadow 0.3s ease, transform 0.3s ease, border 0.1s ease-out;
 }
 
 .main-button:hover {
@@ -27,16 +26,17 @@
 
 .main-button:focus,
 .main-button:active {
-  border: 2px solid #21242b;
-  outline: 3px solid #21242b;
+  border: 2px solid #21242b !important;
+  outline: 3px solid #21242b !important;
+  background-color: rgb(238, 238, 237);
   box-shadow: none;
   transform: translate(-3px, 3px);
 }
 
-.main-button:focus {
-  outline: 3px solid #21242b;
+.filter-option {
+  transition: color 0.3s;
 }
 
-.main-button:active {
-  outline: 3px solid #21242b;
+.filter-option.selected {
+  background-color: rgb(219, 217, 217);
 }

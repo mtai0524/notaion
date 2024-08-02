@@ -1,10 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
 import Underline from "@tiptap/extension-underline";
 import Document from "@tiptap/extension-document";
+import CodeBlockComponent from "../../ui/codeBlock/CodeBlockComponent";
+import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
 import ListItem from "@tiptap/extension-list-item";
 import Paragraph from "@tiptap/extension-paragraph";
 import TaskList from "@tiptap/extension-task-list";
@@ -16,8 +18,11 @@ import Placeholder from "@tiptap/extension-placeholder";
 import Highlight from "@tiptap/extension-highlight";
 import TaskItem from "@tiptap/extension-task-item";
 import PropTypes from "prop-types";
+import OrderedList from "@tiptap/extension-ordered-list";
 import "antd/dist/reset.css";
 import "ldrs/bouncy";
+import { common, createLowlight } from "lowlight";
+const lowlight = createLowlight(common);
 const CustomEditorProvider = ({ pageId }) => {
   const [content, setContent] = useState("");
   console.log(content);
@@ -26,9 +31,15 @@ const CustomEditorProvider = ({ pageId }) => {
 
   const editor = useEditor({
     extensions: [
+      CodeBlockLowlight.extend({
+        addNodeView() {
+          return ReactNodeViewRenderer(CodeBlockComponent);
+        },
+      }).configure({ lowlight }),
       Document,
       Paragraph,
       Text,
+      OrderedList,
       TaskList,
       TaskItem.configure({
         nested: true,

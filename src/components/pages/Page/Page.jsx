@@ -1,4 +1,4 @@
-import { Modal, Card, message, Spin, Switch } from "antd";
+import { Modal, Card, message, Spin, Dropdown, Menu, Tooltip } from "antd";
 import axiosInstance from "../../../axiosConfig";
 import jwt_decode from "jwt-decode";
 import Cookies from "js-cookie";
@@ -7,8 +7,13 @@ import { useState, useEffect } from "react";
 import "./Page.scss";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCirclePlus,
+  faFilter,
+  faXmark,
+} from "@fortawesome/free-solid-svg-icons";
 import { format } from "date-fns";
+
 const { Meta } = Card;
 
 const Page = () => {
@@ -16,11 +21,12 @@ const Page = () => {
   const [loading, setLoading] = useState(true);
   const [deletingCardId, setDeletingCardId] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [forceDelete, setForceDelete] = useState(
-    JSON.parse(localStorage.getItem("forceDelete")) || false
-  );
   const [addLoading, setAddLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [filter, setFilter] = useState(
+    localStorage.getItem("filter") || "newest"
+  );
+
   const navigate = useNavigate();
 
   const formatDate = (date) => {
@@ -40,14 +46,18 @@ const Page = () => {
         const response = await axiosInstance.get(`/api/Page/user/${userId}`);
 
         if (response.status === 200) {
-          setCards(
-            response.data.map((page) => ({
-              id: page.id,
-              title: page.title,
-              description: page.content,
-              createDate: page.createdAt,
-            }))
-          );
+          const pages = response.data.map((page) => ({
+            id: page.id,
+            title: page.title,
+            description: page.content,
+            createDate: page.createdAt,
+            updateDate: page.updatedAt,
+          }));
+          setCards(pages);
+
+          const savedFilter = localStorage.getItem("filter") || "newest";
+          setFilter(savedFilter);
+          sortCards(pages, savedFilter);
         }
       } catch (error) {
         console.error("Error fetching pages:", error);
@@ -58,6 +68,29 @@ const Page = () => {
 
     fetchPages();
   }, []);
+
+  const sortCards = (cardsToSort, filter) => {
+    let sortedCards = [...cardsToSort];
+    if (filter === "newest") {
+      sortedCards.sort(
+        (a, b) => new Date(b.createDate) - new Date(a.createDate)
+      );
+    } else if (filter === "oldest") {
+      sortedCards.sort(
+        (a, b) => new Date(a.createDate) - new Date(b.createDate)
+      );
+    } else if (filter === "modified_newest") {
+      sortedCards.sort(
+        (a, b) => new Date(b.updateDate) - new Date(a.updateDate)
+      );
+    } else if (filter === "modified_oldest") {
+      sortedCards.sort(
+        (a, b) => new Date(a.updateDate) - new Date(b.updateDate)
+      );
+    }
+
+    setCards(sortedCards);
+  };
 
   const addNewCard = async () => {
     setAddLoading(true);
@@ -87,6 +120,7 @@ const Page = () => {
             title: createdPage.title,
             description: createdPage.content,
             createDate: createdPage.createdAt,
+            updateDate: createdPage.updatedAt,
           },
         ]);
         message.success("Page created!");
@@ -116,11 +150,7 @@ const Page = () => {
 
   const showDeleteConfirm = (cardId) => {
     setDeletingCardId(cardId);
-    if (forceDelete) {
-      deleteCard(cardId);
-    } else {
-      setIsModalVisible(true);
-    }
+    setIsModalVisible(true);
   };
 
   const handleDeleteConfirm = () => {
@@ -134,26 +164,86 @@ const Page = () => {
     setIsModalVisible(false);
   };
 
-  const handleSwitchChange = (checked) => {
-    setForceDelete(checked);
-    localStorage.setItem("forceDelete", JSON.stringify(checked));
+  const handleFilterChange = async ({ key }) => {
+    setFilter(key);
+    localStorage.setItem("filter", key);
+    sortCards(cards, key);
   };
+
+  const filterMenu = (
+    <Menu onClick={handleFilterChange}>
+      <Menu.Item
+        key="newest"
+        className={`filter-option ${filter === "newest" ? "selected" : ""}`}
+      >
+        created newest
+      </Menu.Item>
+      <Menu.Item
+        key="oldest"
+        className={`filter-option ${filter === "oldest" ? "selected" : ""}`}
+      >
+        created oldest
+      </Menu.Item>
+      <Menu.Item
+        key="modified_newest"
+        className={`filter-option ${
+          filter === "modified_newest" ? "selected" : ""
+        }`}
+      >
+        modified newest
+      </Menu.Item>
+      <Menu.Item
+        key="modified_oldest"
+        className={`filter-option ${
+          filter === "modified_oldest" ? "selected" : ""
+        }`}
+      >
+        modified oldest
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <div className="flex justify-center align-middle">
       <div className="container-content-page m-3" style={{ width: "100%" }}>
         <div className="profile-container flex !flex-col !justify-center !align-middle">
-          <div style={{ marginBottom: "10px" }}>
-            <span style={{ marginRight: "10px" }}>Force</span>
-            <Switch checked={forceDelete} onChange={handleSwitchChange} />
-          </div>
-          <button
-            onClick={addNewCard}
-            className="main-button"
-            disabled={addLoading}
+          <div
+            style={{ maxWidth: "810px", width: "80vw" }}
+            className=" flex justify-between align-middle"
           >
-            {addLoading ? <Spin size="small" /> : "Add new page"}
-          </button>
+            <Tooltip placement="right" title="add new page">
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <button
+                  onClick={addNewCard}
+                  className="main-button font-bold"
+                  disabled={addLoading}
+                >
+                  <FontAwesomeIcon className="mr-2" icon={faCirclePlus} />
+                  {addLoading ? <Spin size="small" /> : "new page"}
+                </button>
+              </div>
+            </Tooltip>
+            <Tooltip placement="left" title="filter pages">
+              <div style={{ display: "flex", alignItems: "center" }}>
+                <Dropdown
+                  placement="bottomRight"
+                  overlay={filterMenu}
+                  trigger={["click"]}
+                >
+                  <button className="main-button font-bold">
+                    <FontAwesomeIcon icon={faFilter} />
+                  </button>
+                </Dropdown>
+              </div>
+            </Tooltip>
+          </div>
+
           {loading ? (
             <Spin size="large" className="mt-5" />
           ) : cards.length === 0 ? (
@@ -189,7 +279,7 @@ const Page = () => {
                     width: "80vw",
                     maxWidth: "800px",
                     minHeight: "150px",
-                    maxHeight: "300px",
+                    maxHeight: "400px",
                     overflow: "hidden",
                     cursor: "pointer",
                     position: "relative",
@@ -199,13 +289,17 @@ const Page = () => {
                   onClick={() => handleCardClick(card.id)}
                 >
                   <div
-                    style={{ position: "absolute", top: "0", right: "10px" }}
+                    style={{
+                      position: "absolute",
+                      top: "0",
+                      right: "10px",
+                    }}
                   >
                     <span
                       className="text-gray-400"
                       style={{ fontSize: ".8em" }}
                     >
-                      {formatDate(card.createDate)}
+                      created: {formatDate(card.createDate)}
                     </span>
                   </div>
 
@@ -218,27 +312,39 @@ const Page = () => {
                     }
                     description={
                       <div
-                        style={{ maxHeight: "150px" }}
+                        style={{ maxHeight: "150px", marginBottom: "20px" }}
                         dangerouslySetInnerHTML={{ __html: card.description }}
                       />
                     }
                   />
-
-                  <div
+                  <span
+                    className="text-gray-400 mt-3 pt-3"
                     style={{
+                      fontSize: ".8em",
                       position: "absolute",
-                      bottom: "10px",
-                      right: "10px",
+                      bottom: "2px",
+                      left: "10px",
                     }}
-                    onClick={(e) => e.stopPropagation()}
                   >
-                    <FontAwesomeIcon
-                      className="text-red-400 text-xl"
-                      icon={faXmark}
-                      key="remove"
-                      onClick={() => showDeleteConfirm(card.id)}
-                    />
-                  </div>
+                    modified: {formatDate(card.updateDate)}
+                  </span>
+                  <Tooltip placement="bottomRight" title="delete page">
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: "2px",
+                        right: "5px",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FontAwesomeIcon
+                        className="text-red-400 text-xl"
+                        icon={faXmark}
+                        key="remove"
+                        onClick={() => showDeleteConfirm(card.id)}
+                      />
+                    </div>
+                  </Tooltip>
                 </Card>
                 {deleteLoading && deletingCardId === card.id && (
                   <div className="loading-overlay">

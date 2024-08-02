@@ -83,6 +83,8 @@
 }
 
 .code-block {
+  width: 80vw !important;
+  max-width: 800px !important;
   border-radius: 4px;
   position: relative;
   border: 1px solid #ccc;
@@ -93,7 +95,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 0 10px 0 10px !important;
+  margin: 5px 10px 5px 10px !important;
 }
 
 .copy-button {

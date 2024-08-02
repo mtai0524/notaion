@@ -6,7 +6,8 @@
     display: block;
     height: auto;
     margin: 1.5rem 0;
-    max-width: 100%;
+    width: 80vw !important;
+    max-width: 800px !important;
 
     &.ProseMirror-selectednode {
       outline: 3px solid var(--purple);
@@ -189,7 +190,7 @@
     outline: none;
     border-right: none !important;
     background-color: white;
-
+    border-radius: 2px;
     font-weight: bolder;
     padding-top: 7px !important;
     padding-bottom: 7px !important;
