@@ -1,6 +1,6 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 import { BubbleMenu } from "@tiptap/react";
-import { Dropdown, Menu, Tooltip } from "antd";
+import { Dropdown, Menu, Tooltip, Skeleton } from "antd";
 import {
   faBold,
   faItalic,
@@ -14,63 +14,55 @@ import {
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
 import "./MenuBar.scss";
-// import FloatingMenu from "../../ui/menu/FloatingMenu";
+import axiosInstance from "../../../axiosConfig";
 
 const MenuBar = ({ editor }) => {
   const [highlightColor, setHighlightColor] = useState("#ffc078");
-
-  // const [floatingMenu, setFloatingMenu] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const skeletonRef = useRef(null);
 
   const addImage = useCallback(() => {
     document.getElementById("fileInput").click();
   }, [editor]);
 
   const handleFileChange = useCallback(
-    (event) => {
+    async (event) => {
       const file = event.target.files[0];
-      const reader = new FileReader();
+      if (!file) return;
 
-      reader.onloadend = () => {
-        const base64Image = reader.result;
-        editor.chain().focus().setImage({ src: base64Image }).run();
-      };
+      const formData = new FormData();
+      formData.append("file", file);
 
-      if (file) {
-        reader.readAsDataURL(file);
+      setIsLoading(true);
+
+      try {
+        const response = await axiosInstance.post(
+          "/api/items/upload",
+          formData,
+          {
+            headers: {
+              "Content-Type": "multipart/form-data",
+            },
+          }
+        );
+        const imageUrl = response.data.url;
+        console.log(imageUrl);
+        editor.chain().focus().setImage({ src: imageUrl }).run();
+      } catch (error) {
+        console.error("Failed to upload image", error);
+      } finally {
+        setIsLoading(false);
       }
     },
     [editor]
   );
 
-  // useEffect(() => {
-  //   if (!editor) return;
-
-  //   const handleKeyDown = (event) => {
-  //     const { state } = editor;
-  //     const { from } = state.selection;
-
-  //     if (event.key === "/") {
-  //       setFloatingMenu({
-  //         top: editor.view.coordsAtPos(from).top,
-  //         left: editor.view.coordsAtPos(from).left,
-  //         visible: false,
-  //       });
-
-  //       event.preventDefault();
-
-  //       const transaction = editor.state.tr.delete(from - 1, from);
-  //       editor.view.dispatch(transaction);
-  //     } else {
-  //       setFloatingMenu((prev) => ({ ...prev, visible: false }));
-  //     }
-  //   };
-
-  //   editor.view.dom.addEventListener("keydown", handleKeyDown);
-
-  //   return () => {
-  //     editor.view.dom.removeEventListener("keydown", handleKeyDown);
-  //   };
-  // }, [editor]);
+  const handleMouseMove = (event) => {
+    if (skeletonRef.current) {
+      skeletonRef.current.style.left = `${event.clientX}px`;
+      skeletonRef.current.style.top = `${event.clientY}px`;
+    }
+  };
 
   if (!editor) return null;
   const headingMenu = (
@@ -80,28 +72,28 @@ const MenuBar = ({ editor }) => {
         onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
         className={editor.isActive("heading", { level: 1 }) ? "is-active" : ""}
       >
-        Heading 1
+        <span className="font-bold">Heading 1</span>
       </Menu.Item>
       <Menu.Item
         key="h2"
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         className={editor.isActive("heading", { level: 2 }) ? "is-active" : ""}
       >
-        Heading 2
+        <span className="font-bold">Heading 2</span>
       </Menu.Item>
       <Menu.Item
         key="h3"
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         className={editor.isActive("heading", { level: 3 }) ? "is-active" : ""}
       >
-        Heading 3
+        <span className="font-bold">Heading 3</span>
       </Menu.Item>
       <Menu.Item
         key="paragraph"
         onClick={() => editor.chain().focus().setParagraph().run()}
         className={editor.isActive("paragraph") ? "is-active" : ""}
       >
-        Paragraph
+        <span className="font-bold">Paragraph</span>
       </Menu.Item>
     </Menu>
   );
@@ -172,7 +164,10 @@ const MenuBar = ({ editor }) => {
           </Tooltip>
           <Tooltip title="Font: ctrl + alt + number">
             <Dropdown overlay={headingMenu}>
-              <button className="dropbtn">Font</button>
+              <button className="dropbtn">
+                {" "}
+                <span className="font-bold">Font</span>
+              </button>
             </Dropdown>
           </Tooltip>
           <Tooltip placement="bottom" title="Bullet list: ctrl + shift + 8">
@@ -246,7 +241,7 @@ const MenuBar = ({ editor }) => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"></path>
+                <path d="M6 21c3 0 4-2.692 4-5V5c0-1.25-.757-2.017-2-2H4C2.75 3 2 3.75 2 4.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
                 <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"></path>
               </svg>
             </button>
@@ -306,7 +301,15 @@ const MenuBar = ({ editor }) => {
           </Tooltip>
         </div>
       </BubbleMenu>
-      {/* <FloatingMenu editor={editor} menu={{ ...floatingMenu, isActive }} /> */}
+      {isLoading && (
+        <div
+          ref={skeletonRef}
+          className="skeleton-fullscreen"
+          onMouseMove={handleMouseMove}
+        >
+          <Skeleton.Image active style={{ width: "50vw", height: "50vh" }} />
+        </div>
+      )}
     </div>
   );
 };

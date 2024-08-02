@@ -24,7 +24,6 @@
     }
   }
 
-  /* Task list specific styles */
   ul[data-type="taskList"] {
     list-style: none;
     margin-left: 0;
@@ -279,4 +278,16 @@ p.is-editor-empty:first-child::before {
   border: none;
   background: none;
   cursor: pointer;
+}
+.skeleton-fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  pointer-events: none;
 }

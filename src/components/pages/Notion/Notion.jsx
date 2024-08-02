@@ -228,7 +228,9 @@ const Notion = () => {
     setItems(updatedItems);
     await saveItems(updatedItems, false);
   };
+
   const editingItemIdRef = useRef(null);
+
   const handleFileChange = async (e) => {
     const id = editingItemIdRef.current;
     setLoadingImage(id);
@@ -264,7 +266,7 @@ const Notion = () => {
     editingItemIdRef.current = id;
     const scrollY = window.scrollY;
     if (e.key === "choose-image") {
-      fileInputRef.current.click(); // Kích hoạt dialog chọn file
+      fileInputRef.current.click(); //  dialog chọn file
     }
     if (e.key === "delete") {
       setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose

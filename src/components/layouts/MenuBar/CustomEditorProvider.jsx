@@ -1,59 +1,25 @@
-import { useEffect, useState } from "react";
-import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
+import { useEffect, useState, useCallback } from "react";
+import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Color } from "@tiptap/extension-color";
-import Highlight from "@tiptap/extension-highlight";
-import ListItem from "@tiptap/extension-list-item";
-import TextStyle from "@tiptap/extension-text-style";
-import Underline from "@tiptap/extension-underline";
-import MenuBar from "./MenuBar";
+import { Image } from "@tiptap/extension-image";
 import Dropcursor from "@tiptap/extension-dropcursor";
-import Image from "@tiptap/extension-image";
-import Placeholder from "@tiptap/extension-placeholder";
-import OrderedList from "@tiptap/extension-ordered-list";
-import CodeBlockComponent from "../../ui/codeBlock/CodeBlockComponent";
-import CodeBlockLowlight from "@tiptap/extension-code-block-lowlight";
-import TaskList from "@tiptap/extension-task-list";
-import TaskItem from "@tiptap/extension-task-item";
-import { common, createLowlight } from "lowlight";
 import axiosInstance from "../../../axiosConfig";
+import MenuBar from "./MenuBar";
 import PropTypes from "prop-types";
-
-const lowlight = createLowlight(common);
-
-const extensions = [
-  CodeBlockLowlight.extend({
-    addNodeView() {
-      return ReactNodeViewRenderer(CodeBlockComponent);
-    },
-  }).configure({ lowlight }),
-  Highlight.configure({
-    multicolor: true,
-  }),
-  OrderedList,
-  Image.configure({ allowBase64: true }),
-  Dropcursor,
-  Underline,
-  Color.configure({ types: [TextStyle.name, ListItem.name] }),
-  TextStyle.configure({ types: [ListItem.name] }),
-  StarterKit.configure({
-    bulletList: { keepMarks: true, keepAttributes: false },
-    orderedList: { keepMarks: true, keepAttributes: false },
-  }),
-  Placeholder.configure({ placeholder: "Write something …" }),
-  TaskList.configure({
-    itemTypeName: "taskItem",
-  }),
-  TaskItem.configure({
-    nested: true,
-  }),
-];
-
+import "antd/dist/reset.css";
+import "ldrs/bouncy";
 const CustomEditorProvider = ({ pageId }) => {
   const [content, setContent] = useState("");
   console.log(content);
+  const [loading, setLoading] = useState(false);
+  const [spinPosition, setSpinPosition] = useState({ top: "50%", left: "50%" });
+
   const editor = useEditor({
-    extensions,
+    extensions: [
+      StarterKit,
+      Image.configure({ allowBase64: false }),
+      Dropcursor,
+    ],
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
       const titleMatch = content.match(/<h1[^>]*>(.*?)<\/h1>/);
@@ -96,6 +62,63 @@ const CustomEditorProvider = ({ pageId }) => {
     }
   };
 
+  const handlePaste = useCallback(
+    async (event) => {
+      const items = event.clipboardData.items;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          const formData = new FormData();
+          formData.append("file", file);
+
+          setLoading(true);
+          try {
+            const response = await axiosInstance.post(
+              "/api/items/upload",
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              }
+            );
+            const imageUrl = response.data.url;
+            editor.chain().focus().setImage({ src: imageUrl }).run();
+          } catch (error) {
+            console.error("Failed to upload image", error);
+          } finally {
+            setLoading(false);
+          }
+          break;
+        }
+      }
+    },
+    [editor]
+  );
+
+  useEffect(() => {
+    if (editor) {
+      editor.view.dom.addEventListener("paste", handlePaste);
+      return () => {
+        editor.view.dom.removeEventListener("paste", handlePaste);
+      };
+    }
+  }, [editor, handlePaste]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrollTop = window.scrollY || document.documentElement.scrollTop;
+
+      setSpinPosition({
+        top: `${scrollTop + window.innerHeight / 2}px`,
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <div
       style={{
@@ -103,8 +126,25 @@ const CustomEditorProvider = ({ pageId }) => {
         width: "80vw",
         maxWidth: "800px",
         marginBottom: "100px",
+        position: "relative",
       }}
     >
+      {loading && (
+        <div
+          style={{
+            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            position: "absolute",
+            top: `calc(${spinPosition.top} - 150px)`,
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 1000,
+            padding: "20px",
+            borderRadius: "8px",
+          }}
+        >
+          <l-bouncy size="60" color="#DF74B4"></l-bouncy>
+        </div>
+      )}
       <MenuBar editor={editor} />
       <EditorContent editor={editor} />
     </div>
