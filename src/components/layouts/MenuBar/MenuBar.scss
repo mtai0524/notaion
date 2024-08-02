@@ -180,11 +180,39 @@
   outline: 1px solid black;
   width: 85%;
 }
-.bubble-menu {
+.menubar-controls {
   box-shadow: -2px 2px 0 0 #111827 !important;
   border: 2px solid #111827 !important;
   border-radius: 4px;
 
+  button {
+    outline: none;
+    border-right: none !important;
+    background-color: white;
+
+    font-weight: bolder;
+    padding-top: 7px !important;
+    padding-bottom: 7px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+    margin: 0 !important;
+    &:hover {
+      background-color: #f2f2f2;
+    }
+
+    &.is-active {
+      background-color: #e5e5e5;
+
+      &:hover {
+        background-color: #e5e5e5;
+      }
+    }
+  }
+}
+.bubble-menu {
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
+  border-radius: 4px;
   button {
     background-color: white;
 

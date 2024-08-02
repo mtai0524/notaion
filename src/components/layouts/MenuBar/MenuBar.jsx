@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useState, useRef, useEffect } from "react";
 import { BubbleMenu } from "@tiptap/react";
 import { Dropdown, Menu, Tooltip, Skeleton } from "antd";
 import {
@@ -10,6 +10,7 @@ import {
   faPenToSquare,
   faUnderline,
   faListCheck,
+  faBroom,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
@@ -20,6 +21,42 @@ const MenuBar = ({ editor }) => {
   const [highlightColor, setHighlightColor] = useState("#ffc078");
   const [isLoading, setIsLoading] = useState(false);
   const skeletonRef = useRef(null);
+  const [isBubbleMenuVisible, setIsBubbleMenuVisible] = useState(() => {
+    const saved = localStorage.getItem("isBubbleMenuVisible");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  const [isControlsMenuVisible, setIsControlsMenuVisible] = useState(() => {
+    const saved = localStorage.getItem("isControlsMenuVisible");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(
+      "isBubbleMenuVisible",
+      JSON.stringify(isBubbleMenuVisible)
+    );
+    localStorage.setItem(
+      "isControlsMenuVisible",
+      JSON.stringify(isControlsMenuVisible)
+    );
+  }, [isBubbleMenuVisible, isControlsMenuVisible]);
+
+  useEffect(() => {
+    const savedBubbleMenuVisibility = localStorage.getItem(
+      "isBubbleMenuVisible"
+    );
+    const savedControlsMenuVisibility = localStorage.getItem(
+      "isControlsMenuVisible"
+    );
+
+    if (savedBubbleMenuVisibility !== null) {
+      setIsBubbleMenuVisible(JSON.parse(savedBubbleMenuVisibility));
+    }
+    if (savedControlsMenuVisibility !== null) {
+      setIsControlsMenuVisible(JSON.parse(savedControlsMenuVisibility));
+    }
+  }, []);
 
   const addImage = useCallback(() => {
     document.getElementById("fileInput").click();
@@ -65,6 +102,7 @@ const MenuBar = ({ editor }) => {
   };
 
   if (!editor) return null;
+
   const headingMenu = (
     <Menu>
       <Menu.Item
@@ -102,15 +140,33 @@ const MenuBar = ({ editor }) => {
 
   return (
     <div className="control-group">
+      {/* <button
+        className="toggle-bubble-menu-btn w-6"
+        onClick={() => setIsBubbleMenuVisible(!isBubbleMenuVisible)}
+      >
+        Toggle Bubble Menu
+      </button>
+      <button
+        className="toggle-controls-menu-btn w-6"
+        onClick={() => setIsControlsMenuVisible(!isControlsMenuVisible)}
+      >
+        Toggle Controls Menu
+      </button> */}
       <BubbleMenu
-        className="bubble-menu"
+        className={`bubble-menu ${!isBubbleMenuVisible ? "hidden" : ""}`}
         editor={editor}
         tippyOptions={{ duration: 100 }}
       >
-        <div className="bubble-menu-controls">
+        <div className="bubble-menu-controls "></div>
+      </BubbleMenu>
+      <div
+        className={`button-group ${
+          !isControlsMenuVisible ? "hidden" : ""
+        } w-full flex justify-center align-middle absolute z-5011111111`}
+      >
+        <div className="menubar-controls">
           <Tooltip title="Image">
             <button onClick={addImage}>
-              {" "}
               <FontAwesomeIcon icon={faImage} />
             </button>
           </Tooltip>
@@ -148,7 +204,7 @@ const MenuBar = ({ editor }) => {
           <Tooltip title="Underline:  ctrl + u">
             <button
               onClick={() => editor.chain().focus().toggleUnderline().run()}
-              className={isActive("underline") ? "is-active" : ""}
+              className={editor.isActive("underline") ? "is-active" : ""}
             >
               <FontAwesomeIcon icon={faUnderline} />
             </button>
@@ -162,10 +218,16 @@ const MenuBar = ({ editor }) => {
               <FontAwesomeIcon icon={faCode} />
             </button>
           </Tooltip>
+          <Tooltip title="Clear format">
+            <button
+              onClick={() => editor.chain().focus().unsetAllMarks().run()}
+            >
+              <FontAwesomeIcon icon={faBroom} />
+            </button>
+          </Tooltip>
           <Tooltip title="Font: ctrl + alt + number">
             <Dropdown overlay={headingMenu}>
               <button className="dropbtn">
-                {" "}
                 <span className="font-bold">Font</span>
               </button>
             </Dropdown>
@@ -173,7 +235,7 @@ const MenuBar = ({ editor }) => {
           <Tooltip placement="bottom" title="Bullet list: ctrl + shift + 8">
             <button
               onClick={() => editor.chain().focus().toggleBulletList().run()}
-              className={isActive("bulletList") ? "is-active" : ""}
+              className={editor.isActive("bulletList") ? "is-active" : ""}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -203,7 +265,6 @@ const MenuBar = ({ editor }) => {
               <FontAwesomeIcon icon={faListCheck} />
             </button>
           </Tooltip>
-
           <Tooltip placement="bottom" title="Code block: control + alt + c">
             <button
               onClick={() => editor.chain().focus().toggleCodeBlock().run()}
@@ -300,7 +361,8 @@ const MenuBar = ({ editor }) => {
             </div>
           </Tooltip>
         </div>
-      </BubbleMenu>
+      </div>
+
       {isLoading && (
         <div
           ref={skeletonRef}

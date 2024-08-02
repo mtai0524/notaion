@@ -2,9 +2,19 @@ import { useEffect, useState, useCallback } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
+import TextStyle from "@tiptap/extension-text-style";
+import Underline from "@tiptap/extension-underline";
+import Document from "@tiptap/extension-document";
+import ListItem from "@tiptap/extension-list-item";
+import Paragraph from "@tiptap/extension-paragraph";
+import TaskList from "@tiptap/extension-task-list";
+import { Color } from "@tiptap/extension-color";
 import Dropcursor from "@tiptap/extension-dropcursor";
 import axiosInstance from "../../../axiosConfig";
 import MenuBar from "./MenuBar";
+import Placeholder from "@tiptap/extension-placeholder";
+import Highlight from "@tiptap/extension-highlight";
+import TaskItem from "@tiptap/extension-task-item";
 import PropTypes from "prop-types";
 import "antd/dist/reset.css";
 import "ldrs/bouncy";
@@ -16,9 +26,24 @@ const CustomEditorProvider = ({ pageId }) => {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      Document,
+      Paragraph,
+      Text,
+      TaskList,
+      TaskItem.configure({
+        nested: true,
+      }),
+      Underline,
+      Color.configure({ types: [TextStyle.name, ListItem.name] }),
+      TextStyle.configure({ types: [ListItem.name] }),
+      StarterKit.configure({
+        bulletList: { keepMarks: true, keepAttributes: false },
+        orderedList: { keepMarks: true, keepAttributes: false },
+      }),
+      Highlight.configure({ multicolor: true }),
       Image.configure({ allowBase64: false }),
       Dropcursor,
+      Placeholder.configure({ placeholder: "Write something …" }),
     ],
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
@@ -55,6 +80,7 @@ const CustomEditorProvider = ({ pageId }) => {
       setContent(fetchedContent);
       if (editor) {
         editor.commands.setContent(fetchedContent);
+        editor.chain().focus().run();
       }
     } catch (error) {
       console.error("Failed to fetch content from API", error);
@@ -146,7 +172,10 @@ const CustomEditorProvider = ({ pageId }) => {
         </div>
       )}
       <MenuBar editor={editor} />
-      <EditorContent editor={editor} />
+      <EditorContent
+        style={{ marginTop: "90px", minWidth: "80vw" }}
+        editor={editor}
+      />
     </div>
   );
 };
