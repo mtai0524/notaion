@@ -26,7 +26,9 @@ const Page = () => {
   const [filter, setFilter] = useState(
     localStorage.getItem("filter") || "newest"
   );
-
+  const [force, setForce] = useState(
+    localStorage.getItem("forceDelete") || "true"
+  );
   const navigate = useNavigate();
 
   const formatDate = (date) => {
@@ -36,6 +38,9 @@ const Page = () => {
   useEffect(() => {
     const fetchPages = async () => {
       try {
+        const getForceFromLocal = localStorage.getItem("forceDelete");
+        console.log(force);
+        setForce(getForceFromLocal);
         const tokenFromStorage = Cookies.get("token");
         const decodedToken = jwt_decode(tokenFromStorage);
         const userId =
@@ -150,7 +155,12 @@ const Page = () => {
 
   const showDeleteConfirm = (cardId) => {
     setDeletingCardId(cardId);
-    setIsModalVisible(true);
+
+    if (force === "true") {
+      deleteCard(cardId);
+    } else {
+      setIsModalVisible(true);
+    }
   };
 
   const handleDeleteConfirm = () => {

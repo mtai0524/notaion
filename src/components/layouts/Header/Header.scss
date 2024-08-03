@@ -1,14 +1,13 @@
-.navbar {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
-}
 .container-nav {
   width: 100vw;
   display: flex;
   justify-content: center;
 }
 .navbar {
-  width: 50vw;
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
+  max-width: 700px;
+  width: 80vw;
   height: 60px;
   margin: 20px;
   border-radius: 6px;

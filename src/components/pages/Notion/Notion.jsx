@@ -592,7 +592,7 @@ const Notion = () => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
-      <div className="w-full flex justify-end pr-10">
+      <div className="w-full flex justify-end pr-10 font-bold">
         <Popconfirm
           placement="topRight"
           title="Delete all"

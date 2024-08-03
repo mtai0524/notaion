@@ -5,6 +5,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Dropdown, Menu, Space } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
+  faGears,
   faHome,
   faNewspaper,
   faSignInAlt,
@@ -29,6 +30,9 @@ const Header = () => {
         break;
       case "page":
         navigate("/page");
+        break;
+      case "setting":
+        navigate("/setting");
         break;
       case "profile":
         try {
@@ -83,6 +87,9 @@ const Header = () => {
           </Menu.Item>
           <Menu.Item key="profile" icon={<FontAwesomeIcon icon={faUser} />}>
             Profile
+          </Menu.Item>
+          <Menu.Item key="setting" icon={<FontAwesomeIcon icon={faGears} />}>
+            Setting
           </Menu.Item>
           <Menu.Item
             key="logout"

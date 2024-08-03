@@ -1,0 +1,16 @@
+.page-container-setting {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 40vh;
+  margin-top: 20px;
+}
+.page-setting {
+  border-radius: 6px;
+  width: 80vw;
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
+  max-width: 400px;
+  height: 100%;
+}

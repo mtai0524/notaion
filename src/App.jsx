@@ -9,6 +9,7 @@ import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
 import Page from "./components/pages/Page/Page";
 import Content from "./components/pages/Content/Content";
+import Setting from "./components/pages/Setting/Setting";
 
 const App = () => {
   return (
@@ -26,6 +27,7 @@ const App = () => {
             <Route path="/profile/" element={<Profile />} />
             <Route path="/page/" element={<Page />} />
             <Route path="/page/content/:id" element={<Content />} />
+            <Route path="/setting/" element={<Setting />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
