@@ -4,6 +4,7 @@ import "./Home.scss";
 import { DatePicker } from "antd";
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import Notion from "../Notion/Notion";
 dayjs.extend(customParseFormat);
 const Home = ({ backgroundColor, title, message }) => {
   const dateFormat = "YYYY-MM-DD";
@@ -32,7 +33,7 @@ const Home = ({ backgroundColor, title, message }) => {
           maxDate={dayjs("2020-10-31", dateFormat)}
         />
       </div>
-
+      <Notion></Notion>
       <div className="game-container">
         <div className="board-game">
           <div className="square" data-index="0"></div>

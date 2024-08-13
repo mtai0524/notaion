@@ -320,3 +320,14 @@ p.is-editor-empty:first-child::before {
   z-index: 9999;
   pointer-events: none;
 }
+.input-icon-wrapper {
+  cursor: pointer;
+}
+
+.custom-color-picker {
+  cursor: pointer;
+}
+
+input[type="color"] {
+  cursor: pointer;
+}
