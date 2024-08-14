@@ -17,7 +17,7 @@
   display: flex;
   flex-direction: column;
   word-break: break-word;
-  background-color: #fff9f9;
+  background-color: #f1eeee;
 }
 
 .chat-header {
@@ -42,13 +42,14 @@
 }
 
 .chat-input {
+  background-color: white !important;
   width: 100%;
+  border-top: 1px solid #bcbcbd;
   display: flex;
 }
 
 .chat-input button {
   padding: 0 10px 0 5px;
-  border-top: 1px solid #bcbcbd;
   flex: 1;
   color: #111827;
   cursor: pointer;
@@ -59,7 +60,6 @@
   width: 99%;
   padding: 8px;
   box-sizing: border-box;
-  border-top: 1px solid #bcbcbd;
   max-height: 20vh;
 }
 .chatbox-input:focus {
