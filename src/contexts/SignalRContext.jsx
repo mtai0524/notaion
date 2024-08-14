@@ -11,8 +11,11 @@ export const SignalRProvider = ({ children }) => {
   const [connectionId, setConnectionId] = useState(null);
 
   useEffect(() => {
+    const signalRUrl =
+      import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+
     const connect = new signalR.HubConnectionBuilder()
-      .withUrl("https://localhost:7059/chathub", {
+      .withUrl(signalRUrl, {
         withCredentials: true,
       })
       .configureLogging(signalR.LogLevel.Information)
