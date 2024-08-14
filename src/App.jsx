@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import Header from "./components/layouts/Header/Header";
 import { BrowserRouter, Navigate } from "react-router-dom";
@@ -13,14 +14,23 @@ import Setting from "./components/pages/Setting/Setting";
 import { SignalRProvider } from "./contexts/SignalRContext";
 import FloatingButton from "./components/pages/ChatBox/FloatingButton";
 import ChatBox from "./components/pages/ChatBox/ChatBox";
-import { useState } from "react";
 import { ChatProvider } from "./contexts/ChatContext";
+
 const App = () => {
   const [showChatBox, setShowChatBox] = useState(false);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
 
   const handleFloatingButtonClick = () => {
+    if (showChatBox) {
+      setNewMessagesCount(0);
+    }
     setShowChatBox(!showChatBox);
   };
+
+  const incrementNewMessages = () => {
+    setNewMessagesCount((prevCount) => prevCount + 1);
+  };
+
   return (
     <>
       <AuthProvider>
@@ -40,8 +50,16 @@ const App = () => {
                 <Route path="/page/content/:id" element={<Content />} />
                 <Route path="/setting/" element={<Setting />} />
               </Routes>
-              <FloatingButton onClick={handleFloatingButtonClick} />
-              {showChatBox && <ChatBox onClose={handleFloatingButtonClick} />}
+              <FloatingButton
+                onClick={handleFloatingButtonClick}
+                newMessagesCount={newMessagesCount}
+              />
+              {showChatBox && (
+                <ChatBox
+                  onClose={handleFloatingButtonClick}
+                  incrementNewMessages={incrementNewMessages}
+                />
+              )}
             </BrowserRouter>
           </ChatProvider>
         </SignalRProvider>

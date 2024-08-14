@@ -7,12 +7,13 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
-const ChatBox = ({ onClose }) => {
+const ChatBox = ({ onClose, incrementNewMessages }) => {
   const [message, setMessage] = useState("");
   const { messages, setMessages } = useChat();
   const { connection, connectionId } = useSignalR();
 
   const textareaRef = useRef(null);
+  const chatMessagesRef = useRef(null);
 
   useEffect(() => {
     if (!connection) return;
@@ -24,6 +25,7 @@ const ChatBox = ({ onClose }) => {
           ...prevMessages,
           { user, message: receivedMessage },
         ]);
+        incrementNewMessages();
       }
     };
 
@@ -32,17 +34,30 @@ const ChatBox = ({ onClose }) => {
     return () => {
       connection.off("ReceiveMessage", handleReceiveMessage);
     };
-  }, [connection, setMessages, connectionId]);
+  }, [connection, setMessages, connectionId, incrementNewMessages]);
+
+  useEffect(() => {
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
+      const tempMessageId = Date.now();
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { user: connectionId, message: "sending...", id: tempMessageId },
+      ]);
+
       try {
         await connection.invoke("SendMessage", connectionId, message);
 
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { user: connectionId, message },
-        ]);
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg.id === tempMessageId ? { ...msg, message } : msg
+          )
+        );
         setMessage("");
 
         if (textareaRef.current) {
@@ -50,6 +65,10 @@ const ChatBox = ({ onClose }) => {
         }
       } catch (err) {
         console.error("Send message failed: ", err);
+
+        setMessages((prevMessages) =>
+          prevMessages.filter((msg) => msg.id !== tempMessageId)
+        );
       }
     }
   }, [message, connection, setMessages, connectionId]);
@@ -73,14 +92,19 @@ const ChatBox = ({ onClose }) => {
   return (
     <div className="chat-box">
       <div className="chat-header">
-        <h3 className="m-0 ">Chat</h3>
-        <button onClick={onClose}>
+        <h3 className="m-0 p-1 font-extrabold">Chat</h3>
+        <button className="p-1" onClick={onClose}>
           <FontAwesomeIcon icon={faXmark} />
         </button>
       </div>
-      <div className="chat-messages">
+      <div className="chat-messages" ref={chatMessagesRef}>
         {messages.map((msg, index) => (
-          <div key={index} className="chat-message">
+          <div
+            key={index}
+            className={`chat-message ${
+              msg.message === "sending..." ? "sending-message" : ""
+            }`}
+          >
             <strong>{msg.user}:</strong> {msg.message}
           </div>
         ))}
@@ -106,6 +130,7 @@ const ChatBox = ({ onClose }) => {
 
 ChatBox.propTypes = {
   onClose: PropTypes.func.isRequired,
+  incrementNewMessages: PropTypes.func.isRequired,
 };
 
 export default ChatBox;
