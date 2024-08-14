@@ -40,10 +40,7 @@ const App = () => {
                 <Route path="/page/content/:id" element={<Content />} />
                 <Route path="/setting/" element={<Setting />} />
               </Routes>
-              <FloatingButton
-                onClick={handleFloatingButtonClick}
-                icon={<span>+</span>}
-              />
+              <FloatingButton onClick={handleFloatingButtonClick} />
               {showChatBox && <ChatBox onClose={handleFloatingButtonClick} />}
             </BrowserRouter>
           </ChatProvider>
