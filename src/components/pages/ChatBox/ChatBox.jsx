@@ -3,6 +3,9 @@ import PropTypes from "prop-types";
 import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
 const ChatBox = ({ onClose }) => {
   const [message, setMessage] = useState("");
@@ -70,8 +73,10 @@ const ChatBox = ({ onClose }) => {
   return (
     <div className="chat-box">
       <div className="chat-header">
-        <h3>Chat</h3>
-        <button onClick={onClose}>&times;</button>
+        <h3 className="m-0 ">Chat</h3>
+        <button onClick={onClose}>
+          <FontAwesomeIcon icon={faXmark} />
+        </button>
       </div>
       <div className="chat-messages">
         {messages.map((msg, index) => (
@@ -91,7 +96,9 @@ const ChatBox = ({ onClose }) => {
           rows={1}
           style={{ overflow: "hidden", resize: "none" }}
         />
-        <button onClick={handleSendMessage}>Send</button>
+        <button onClick={handleSendMessage}>
+          <FontAwesomeIcon icon={faPaperPlane} />
+        </button>
       </div>
     </div>
   );
