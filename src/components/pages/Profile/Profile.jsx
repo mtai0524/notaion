@@ -20,6 +20,7 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
 } from "@ant-design/icons";
+
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -28,6 +29,9 @@ const Profile = () => {
   const { identifier } = useParams();
   const navigate = useNavigate();
   const [avatar, setAvatar] = useState("");
+  const [pages, setPages] = useState([]);
+  const [pagesLoading, setPagesLoading] = useState(false);
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       setLoading(true);
@@ -54,6 +58,8 @@ const Profile = () => {
           `/api/account/profile/${identifier}`
         );
         setUserProfile(response.data);
+
+        fetchPublicPages(identifier);
       } catch (error) {
         setLoading(false);
         message.error("User not found");
@@ -65,10 +71,24 @@ const Profile = () => {
     fetchUserProfile();
   }, [identifier, navigate]);
 
+  const fetchPublicPages = async (userId) => {
+    setPagesLoading(true);
+    console.log(userId);
+
+    try {
+      const response = await axiosInstance.get(`/api/Page/user/${userId}`);
+      const publicPages = response.data.filter((page) => page.public);
+      setPages(publicPages);
+    } catch (error) {
+      console.error("Error fetching pages:", error);
+    } finally {
+      setPagesLoading(false);
+    }
+  };
+
   const showActions =
     currentUserId === identifier || currentUsername === identifier;
 
-  // handle random avatar
   const setAvatarRandom = () => {
     const seed = Math.floor(Math.random() * 1000000000);
     const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}`;
@@ -79,8 +99,6 @@ const Profile = () => {
     if (showActions) {
       const newAvatar = setAvatarRandom();
       const encodedAvatar = encodeURIComponent(newAvatar);
-      console.log(encodedAvatar);
-      console.log(newAvatar);
       try {
         await axiosInstance.post(
           `/api/account/change-avatar/${currentUserId}/${encodedAvatar}`
@@ -100,6 +118,7 @@ const Profile = () => {
       </div>
     );
   }
+
   const onDownload = (imgUrl) => {
     fetch(imgUrl)
       .then((response) => response.blob())
@@ -114,6 +133,7 @@ const Profile = () => {
         link.remove();
       });
   };
+
   return (
     <div className="profile-container">
       <Card
@@ -174,6 +194,61 @@ const Profile = () => {
           description={`Username: ${userProfile.userName}`}
         />
       </Card>
+
+      <div className="pages-container">
+        <h2>Public Pages</h2>
+        {pagesLoading ? (
+          <Spin size="large" className="mt-5" />
+        ) : pages.length === 0 ? (
+          <Card
+            style={{
+              width: "80vw",
+              maxWidth: "800px",
+              minHeight: "150px",
+              maxHeight: "300px",
+              overflow: "hidden",
+              cursor: "pointer",
+              position: "relative",
+              textAlign: "center",
+            }}
+            className="profile-card"
+            bordered={false}
+          >
+            <Meta
+              title="No public pages available"
+              description="This user does not have any public pages."
+            />
+          </Card>
+        ) : (
+          pages.map((page) => (
+            <Card
+              key={page.id}
+              style={{
+                width: "80vw",
+                maxWidth: "800px",
+                minHeight: "150px",
+                maxHeight: "400px",
+                overflow: "hidden",
+                cursor: "pointer",
+                position: "relative",
+              }}
+              className="profile-card"
+              bordered={false}
+              onClick={() => navigate(`/page/content/${page.id}`)}
+            >
+              <Meta
+                title={page.title}
+                description={
+                  <div
+                    style={{ maxHeight: "150px", marginBottom: "20px" }}
+                    dangerouslySetInnerHTML={{ __html: page.content }}
+                  />
+                }
+              />
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };

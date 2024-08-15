@@ -6,72 +6,73 @@ import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
 
-const ChatBox = ({ onClose, incrementNewMessages }) => {
+const useUsername = () => {
+  const tokenFromStorage = Cookies.get("token");
+  if (tokenFromStorage) {
+    try {
+      const decodedToken = jwt_decode(tokenFromStorage);
+      return decodedToken[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+      ];
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      return "mèo con ẩn danh";
+    }
+  }
+  return "mèo con ẩn danh";
+};
+
+const ChatBox = ({ onClose }) => {
   const [message, setMessage] = useState("");
+  const [latestMessageFromUser, setLatestMessageFromUser] = useState(false);
   const { messages, setMessages } = useChat();
-  const { connection, connectionId } = useSignalR();
-
+  const { connection } = useSignalR();
   const textareaRef = useRef(null);
   const chatMessagesRef = useRef(null);
 
-  useEffect(() => {
-    if (!connection) return;
-
-    const handleReceiveMessage = (user, receivedMessage) => {
-      console.log("Message received:", user, receivedMessage);
-      if (user !== connectionId) {
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          { user, message: receivedMessage },
-        ]);
-        incrementNewMessages();
-      }
-    };
-
-    connection.on("ReceiveMessage", handleReceiveMessage);
-
-    return () => {
-      connection.off("ReceiveMessage", handleReceiveMessage);
-    };
-  }, [connection, setMessages, connectionId, incrementNewMessages]);
+  const username = useUsername();
 
   useEffect(() => {
-    if (chatMessagesRef.current) {
-      chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+    if (chatMessagesRef.current && latestMessageFromUser) {
+      chatMessagesRef.current.scrollTo({
+        top: chatMessagesRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+      setLatestMessageFromUser(false);
     }
-  }, [messages]);
+  }, [messages, latestMessageFromUser]);
 
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
       const tempMessageId = Date.now();
       setMessages((prevMessages) => [
         ...prevMessages,
-        { user: connectionId, message: "sending...", id: tempMessageId },
+        { user: username, message: "sending...", id: tempMessageId },
       ]);
 
       try {
-        await connection.invoke("SendMessage", connectionId, message);
-
+        await connection.invoke("SendMessage", username, message);
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg.id === tempMessageId ? { ...msg, message } : msg
           )
         );
         setMessage("");
-
+        setLatestMessageFromUser(true); // Mark that the latest message is from the user
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
         }
       } catch (err) {
         console.error("Send message failed: ", err);
-
         setMessages((prevMessages) =>
           prevMessages.filter((msg) => msg.id !== tempMessageId)
         );
       }
     }
-  }, [message, connection, setMessages, connectionId]);
+  }, [message, connection, setMessages, username]);
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -103,9 +104,10 @@ const ChatBox = ({ onClose, incrementNewMessages }) => {
             key={index}
             className={`chat-message ${
               msg.message === "sending..." ? "sending-message" : ""
-            }`}
+            } ${msg.user === username ? "sent-message" : "received-message"}`}
           >
-            <strong>{msg.user}:</strong> {msg.message}
+            <strong className="chat-user">{msg.user}</strong>
+            <p className="chat-text">{msg.message}</p>
           </div>
         ))}
       </div>
@@ -130,7 +132,6 @@ const ChatBox = ({ onClose, incrementNewMessages }) => {
 
 ChatBox.propTypes = {
   onClose: PropTypes.func.isRequired,
-  incrementNewMessages: PropTypes.func.isRequired,
 };
 
 export default ChatBox;

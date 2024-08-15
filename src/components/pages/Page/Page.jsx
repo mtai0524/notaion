@@ -13,6 +13,7 @@ import {
   faXmark,
 } from "@fortawesome/free-solid-svg-icons";
 import { format } from "date-fns";
+import { faShareFromSquare } from "@fortawesome/free-regular-svg-icons";
 
 const { Meta } = Card;
 
@@ -111,7 +112,7 @@ const Page = () => {
         title: "Title",
         content: "",
         userId: userId,
-        public: true,
+        public: false,
       };
 
       const response = await axiosInstance.post("/api/Page", newPage);
@@ -137,6 +138,18 @@ const Page = () => {
     }
   };
 
+  const publicPage = async (cardId) => {
+    try {
+      const response = await axiosInstance.post(
+        `/api/Page/public-page/${cardId}`
+      );
+      message.success("Public successful!");
+      console.log(response);
+    } catch (error) {
+      console.error("Error deleting page:", error);
+    }
+  };
+
   const deleteCard = async (cardId) => {
     setDeleteLoading(true);
     try {
@@ -151,6 +164,10 @@ const Page = () => {
 
   const handleCardClick = (cardId) => {
     navigate(`/page/content/${cardId}`);
+  };
+
+  const handlePublicPage = (cardId) => {
+    publicPage(cardId);
   };
 
   const showDeleteConfirm = (cardId) => {
@@ -312,7 +329,24 @@ const Page = () => {
                       created: {formatDate(card.createDate)}
                     </span>
                   </div>
-
+                  <Tooltip placement="bottomRight" title="public page">
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: "2px",
+                        left: "5px",
+                        fontSize: "4px",
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <FontAwesomeIcon
+                        className="text-gray-600 text-sm"
+                        icon={faShareFromSquare}
+                        key="remove"
+                        onClick={() => handlePublicPage(card.id)}
+                      />
+                    </div>
+                  </Tooltip>
                   <Meta
                     title={
                       <div
@@ -338,6 +372,7 @@ const Page = () => {
                   >
                     modified: {formatDate(card.updateDate)}
                   </span>
+
                   <Tooltip placement="bottomRight" title="delete page">
                     <div
                       style={{
