@@ -16,3 +16,19 @@
 .switch-login-page {
   color: #6394f7 !important;
 }
+.ant-popover-content {
+  margin-top: -10px;
+  margin: -10px 10px 0 10px;
+  width: 100%;
+  max-width: 350px;
+}
+.ant-popover-inner-content {
+  max-height: 300px;
+  overflow-y: scroll;
+}
+.ant-popover-inner-content > div > p {
+  margin: 5px !important;
+}
+.ant-popover-inner {
+  padding-right: 0 !important;
+}

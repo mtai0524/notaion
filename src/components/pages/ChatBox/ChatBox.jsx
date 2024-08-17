@@ -35,6 +35,40 @@ const ChatBox = ({ onClose }) => {
 
   const username = useUsername();
 
+  const handleScroll = () => {
+    if (chatMessagesRef.current) {
+      sessionStorage.setItem(
+        "chatScrollPosition",
+        chatMessagesRef.current.scrollTop
+      );
+    }
+  };
+
+  useEffect(() => {
+    const storedScrollPosition = sessionStorage.getItem("chatScrollPosition");
+    if (chatMessagesRef.current && storedScrollPosition) {
+      chatMessagesRef.current.scrollTop = parseInt(storedScrollPosition, 10);
+    }
+
+    const chatMessagesCurrent = chatMessagesRef.current;
+    if (chatMessagesCurrent) {
+      chatMessagesCurrent.addEventListener("scroll", handleScroll);
+    }
+
+    return () => {
+      if (chatMessagesCurrent) {
+        chatMessagesCurrent.removeEventListener("scroll", handleScroll);
+      }
+
+      if (chatMessagesRef.current) {
+        sessionStorage.setItem(
+          "chatScrollPosition",
+          chatMessagesRef.current.scrollTop
+        );
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (chatMessagesRef.current && latestMessageFromUser) {
       chatMessagesRef.current.scrollTo({
@@ -52,7 +86,7 @@ const ChatBox = ({ onClose }) => {
         ...prevMessages,
         { user: username, message: "sending...", id: tempMessageId },
       ]);
-
+      setLatestMessageFromUser(true);
       try {
         await connection.invoke("SendMessage", username, message);
         setMessages((prevMessages) =>
@@ -61,7 +95,7 @@ const ChatBox = ({ onClose }) => {
           )
         );
         setMessage("");
-        setLatestMessageFromUser(true); // Mark that the latest message is from the user
+        setLatestMessageFromUser(true);
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
         }

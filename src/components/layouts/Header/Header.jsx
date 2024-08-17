@@ -2,7 +2,7 @@ import { UserOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import "./Header.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Dropdown, Menu, Space } from "antd";
+import { Dropdown, Menu, Popover, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faGears,
@@ -15,6 +15,7 @@ import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
 import { message } from "antd";
 import jwt_decode from "jwt-decode";
+import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const navigate = useNavigate();
@@ -102,6 +103,32 @@ const Header = () => {
       )}
     </Menu>
   );
+  const content = (
+    <div>
+      <p>Hi there!</p>
+      <p>
+        I&apos;m Minh Tai, and I&apos;m looking forward to making new friends.
+        I&apos;d love to connect with you and learn more about your interests
+        and experiences.
+      </p>
+      <p>
+        Whether it&apos;s discussing our favorite books, sharing travel stories,
+        or simply having a good chat, I&apos;m excited to get to know you
+        better.
+      </p>
+      <p>
+        Feel free to reach out anytime. Let&apos;s make this a fun and enriching
+        friendship journey!
+      </p>
+      <p>Looking forward to hearing from you soon.</p>
+      <p>
+        Best regards,
+        <br />
+        Minh Tai
+      </p>
+    </div>
+  );
+
   return (
     <>
       <div className="container-nav">
@@ -109,26 +136,51 @@ const Header = () => {
           <Link to="/home-page" className="ml-5 text-black font-bold">
             Notaion
           </Link>
-          <Dropdown
-            placement="bottomRight"
-            overlay={menuProfile}
-            trigger={["click"]}
-            onClick={() => setDropdownVisible(!dropdownVisible)}
-            onOpenChange={(visible) => setDropdownVisible(visible)}
-            className="mr-5"
-          >
-            <a
-              className="ant-dropdown-link"
-              onClick={(e) => e.preventDefault()}
+          <div className="flex items-center">
+            <Popover
+              content={content}
+              title="Notification"
+              trigger="click"
+              placement="bottom"
             >
-              <Space>
-                <UserOutlined
-                  style={{ cursor: "pointer" }}
-                  className="text-black text-sm p-2 mr-1 rounded-full bg-white outline-1 outline-black !border-black border-2 "
+              <Tooltip title="notification" placement="bottom">
+                <FontAwesomeIcon
+                  style={{
+                    backgroundColor: "#faf8f7",
+                    padding: "10px",
+                    cursor: "pointer",
+                  }}
+                  className="text-black text-lg mr-4 rounded-full"
+                  icon={faEnvelope}
                 />
-              </Space>
-            </a>
-          </Dropdown>
+              </Tooltip>
+            </Popover>
+
+            <Dropdown
+              placement="bottom"
+              overlay={menuProfile}
+              trigger={["click"]}
+              onClick={() => setDropdownVisible(!dropdownVisible)}
+              onOpenChange={(visible) => setDropdownVisible(visible)}
+              className="mr-5"
+            >
+              <a
+                className="ant-dropdown-link"
+                onClick={(e) => e.preventDefault()}
+              >
+                <Tooltip title="user" placement="bottom">
+                  <UserOutlined
+                    style={{
+                      backgroundColor: "#faf8f7",
+                      padding: "10px",
+                      cursor: "pointer",
+                    }}
+                    className="text-black text-lg  rounded-full"
+                  />
+                </Tooltip>
+              </a>
+            </Dropdown>
+          </div>
         </nav>
       </div>
     </>
