@@ -8,6 +8,7 @@ import { faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
+import axiosInstance from "../../../axiosConfig";
 
 const useUsername = () => {
   const tokenFromStorage = Cookies.get("token");
@@ -25,6 +26,22 @@ const useUsername = () => {
   return "mèo con ẩn danh";
 };
 
+const useUserId = () => {
+  const tokenFromStorage = Cookies.get("token");
+  if (tokenFromStorage) {
+    try {
+      const decodedToken = jwt_decode(tokenFromStorage);
+      return decodedToken[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+      ];
+    } catch (error) {
+      console.error("Error decoding token:", error);
+      return null;
+    }
+  }
+  return null;
+};
+
 const ChatBox = ({ onClose }) => {
   const [message, setMessage] = useState("");
   const [latestMessageFromUser, setLatestMessageFromUser] = useState(false);
@@ -34,6 +51,7 @@ const ChatBox = ({ onClose }) => {
   const chatMessagesRef = useRef(null);
 
   const username = useUsername();
+  const userId = useUserId();
 
   const handleScroll = () => {
     if (chatMessagesRef.current) {
@@ -79,34 +97,87 @@ const ChatBox = ({ onClose }) => {
     }
   }, [messages, latestMessageFromUser]);
 
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const response = await axiosInstance.get("/api/Chat/get-chats");
+        console.log("cc", response.data);
+
+        if (response.status === 200) {
+          const chatMessages = response.data;
+          setMessages(chatMessages);
+        } else {
+          console.error("Failed to fetch messages");
+        }
+      } catch (error) {
+        console.error("Error fetching messages: ", error);
+      }
+    };
+
+    fetchMessages();
+  }, [setMessages]);
+
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
       const tempMessageId = Date.now();
-      setMessages((prevMessages) => [
-        ...prevMessages,
-        { user: username, message: "sending...", id: tempMessageId },
-      ]);
+      const newMessage = {
+        userId: userId || "anonymous",
+        userName: username || "mèo con ẩn danh",
+        content: message,
+        sentDate: new Date().toISOString(),
+        id: tempMessageId,
+        status: "sending",
+      };
+
+      setMessages((prevMessages) => [...prevMessages, newMessage]);
+      setMessage("");
       setLatestMessageFromUser(true);
+
       try {
-        await connection.invoke("SendMessage", username, message);
-        setMessages((prevMessages) =>
-          prevMessages.map((msg) =>
-            msg.id === tempMessageId ? { ...msg, message } : msg
-          )
-        );
-        setMessage("");
-        setLatestMessageFromUser(true);
+        const response = await axiosInstance.post("/api/Chat/add-chat", {
+          userId: userId,
+          userName: username,
+          content: message,
+        });
+
+        if (response.status === 200) {
+          const savedMessage = response.data;
+
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.id === tempMessageId
+                ? { ...savedMessage, status: "sent" }
+                : msg
+            )
+          );
+
+          await connection.invoke(
+            "SendMessage",
+            username,
+            savedMessage.content
+          );
+        } else {
+          console.error("Failed to send message");
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.id === tempMessageId ? { ...msg, status: "failed" } : msg
+            )
+          );
+        }
+
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
         }
       } catch (err) {
         console.error("Send message failed: ", err);
         setMessages((prevMessages) =>
-          prevMessages.filter((msg) => msg.id !== tempMessageId)
+          prevMessages.map((msg) =>
+            msg.id === tempMessageId ? { ...msg, status: "failed" } : msg
+          )
         );
       }
     }
-  }, [message, connection, setMessages, username]);
+  }, [message, userId, username, setMessages, connection]);
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -137,11 +208,25 @@ const ChatBox = ({ onClose }) => {
           <div
             key={index}
             className={`chat-message ${
-              msg.message === "sending..." ? "sending-message" : ""
-            } ${msg.user === username ? "sent-message" : "received-message"}`}
+              msg.status === "sending" ? "sending-message" : ""
+            } ${
+              msg.userName === username ? "sent-message" : "received-message"
+            }`}
           >
-            <strong className="chat-user">{msg.user}</strong>
-            <p className="chat-text">{msg.message}</p>
+            <strong className="chat-user">{msg.userName}</strong>
+
+            <p className="chat-text">{msg.content}</p>
+            <p className="chat-date">
+              {new Date(msg.sentDate)
+                .toLocaleString("en-GB", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  day: "2-digit",
+                  month: "long",
+                  year: "numeric",
+                })
+                .replace(",", ", ")}
+            </p>
           </div>
         ))}
       </div>

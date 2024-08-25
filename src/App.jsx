@@ -39,6 +39,7 @@ const MainApp = () => {
 
   const { messages, setMessages } = useChat();
   const { connection } = useSignalR();
+  console.log(messages);
 
   const tokenFromStorage = Cookies.get("token");
   let username;
@@ -60,14 +61,18 @@ const MainApp = () => {
 
   useEffect(() => {
     if (!connection) return;
-    console.log(messages);
 
     const handleReceiveMessage = (user, receivedMessage) => {
       console.log("Message received:", user, receivedMessage);
+
       if (user !== username) {
         setMessages((prevMessages) => [
           ...prevMessages,
-          { user, message: receivedMessage },
+          {
+            userName: user,
+            content: receivedMessage,
+            sentDate: new Date().toISOString(),
+          },
         ]);
         setNewMessagesCount((prevCount) => {
           const newCount = prevCount + 1;
