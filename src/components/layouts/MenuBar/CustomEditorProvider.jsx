@@ -184,7 +184,10 @@ const CustomEditorProvider = ({ pageId }) => {
       )}
       <MenuBar editor={editor} />
       <EditorContent
-        style={{ marginTop: "90px", minWidth: "80vw" }}
+        style={{
+          marginTop: "90px",
+          maxWidth: "80vw",
+        }}
         editor={editor}
       />
     </div>
