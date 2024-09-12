@@ -45,6 +45,8 @@ const useUserId = () => {
 const ChatBox = ({ onClose }) => {
   const [message, setMessage] = useState("");
   const [latestMessageFromUser, setLatestMessageFromUser] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true); // Thêm cờ này
+  const [messagesLoaded, setMessagesLoaded] = useState(false); // Cờ để theo dõi việc tải tin nhắn
   const { messages, setMessages } = useChat();
   const { connection } = useSignalR();
   const textareaRef = useRef(null);
@@ -88,24 +90,13 @@ const ChatBox = ({ onClose }) => {
   }, []);
 
   useEffect(() => {
-    if (chatMessagesRef.current && latestMessageFromUser) {
-      chatMessagesRef.current.scrollTo({
-        top: chatMessagesRef.current.scrollHeight,
-        behavior: "smooth",
-      });
-      setLatestMessageFromUser(false);
-    }
-  }, [messages, latestMessageFromUser]);
-
-  useEffect(() => {
     const fetchMessages = async () => {
       try {
         const response = await axiosInstance.get("/api/Chat/get-chats");
-        console.log("cc", response.data);
-
         if (response.status === 200) {
           const chatMessages = response.data;
           setMessages(chatMessages);
+          setMessagesLoaded(true); // Đặt cờ này khi tin nhắn được tải thành công
         } else {
           console.error("Failed to fetch messages");
         }
@@ -116,6 +107,26 @@ const ChatBox = ({ onClose }) => {
 
     fetchMessages();
   }, [setMessages]);
+
+  useEffect(() => {
+    if (messagesLoaded && chatMessagesRef.current) {
+      // Nếu tin nhắn đã tải và lần đầu load, cuộn xuống cuối
+      if (initialLoad) {
+        chatMessagesRef.current.scrollTo({
+          top: chatMessagesRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+        setInitialLoad(false); // Đặt lại cờ để lần sau không cuộn nữa
+      } else if (latestMessageFromUser) {
+        // Khi có tin nhắn mới
+        chatMessagesRef.current.scrollTo({
+          top: chatMessagesRef.current.scrollHeight,
+          behavior: "smooth",
+        });
+        setLatestMessageFromUser(false);
+      }
+    }
+  }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
 
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
@@ -207,11 +218,9 @@ const ChatBox = ({ onClose }) => {
         {messages.map((msg, index) => (
           <div
             key={index}
-            className={`chat-message ${
-              msg.status === "sending" ? "sending-message" : ""
-            } ${
-              msg.userName === username ? "sent-message" : "received-message"
-            }`}
+            className={`chat-message ${msg.status === "sending" ? "sending-message" : ""
+              } ${msg.userName === username ? "sent-message" : "received-message"
+              }`}
           >
             <strong className="chat-user">{msg.userName}</strong>
 
@@ -248,6 +257,8 @@ const ChatBox = ({ onClose }) => {
     </div>
   );
 };
+
+
 
 ChatBox.propTypes = {
   onClose: PropTypes.func.isRequired,
