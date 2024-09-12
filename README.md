@@ -14,7 +14,7 @@ https://notaion.onrender.com/
 
 ## Screenshots
 
-![main page](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144725/Screenshot_2024-09-12_193353_xi4825.png)
+![main page](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144725/Screenshot_2024-09-12_193245_cl1he1.png)
 
 ![profile](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144726/Screenshot_2024-09-12_193302_lhgtgw.png)
 
