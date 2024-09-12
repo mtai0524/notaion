@@ -49,7 +49,7 @@ const MainApp = () => {
       const decodedToken = jwt_decode(tokenFromStorage);
       username =
         decodedToken[
-          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
         ];
     } catch (error) {
       console.error("Error decoding token:", error);

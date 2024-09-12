@@ -4,12 +4,11 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import axiosInstance from "../../../axiosConfig";
-
 const useUsername = () => {
   const tokenFromStorage = Cookies.get("token");
   if (tokenFromStorage) {
@@ -25,7 +24,6 @@ const useUsername = () => {
   }
   return "mèo con ẩn danh";
 };
-
 const useUserId = () => {
   const tokenFromStorage = Cookies.get("token");
   if (tokenFromStorage) {
@@ -41,20 +39,17 @@ const useUserId = () => {
   }
   return null;
 };
-
 const ChatBox = ({ onClose }) => {
   const [message, setMessage] = useState("");
   const [latestMessageFromUser, setLatestMessageFromUser] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true); // Thêm cờ này
-  const [messagesLoaded, setMessagesLoaded] = useState(false); // Cờ để theo dõi việc tải tin nhắn
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [messagesLoaded, setMessagesLoaded] = useState(false);
   const { messages, setMessages } = useChat();
   const { connection } = useSignalR();
   const textareaRef = useRef(null);
   const chatMessagesRef = useRef(null);
-
   const username = useUsername();
   const userId = useUserId();
-
   const handleScroll = () => {
     if (chatMessagesRef.current) {
       sessionStorage.setItem(
@@ -63,23 +58,19 @@ const ChatBox = ({ onClose }) => {
       );
     }
   };
-
   useEffect(() => {
     const storedScrollPosition = sessionStorage.getItem("chatScrollPosition");
     if (chatMessagesRef.current && storedScrollPosition) {
       chatMessagesRef.current.scrollTop = parseInt(storedScrollPosition, 10);
     }
-
     const chatMessagesCurrent = chatMessagesRef.current;
     if (chatMessagesCurrent) {
       chatMessagesCurrent.addEventListener("scroll", handleScroll);
     }
-
     return () => {
       if (chatMessagesCurrent) {
         chatMessagesCurrent.removeEventListener("scroll", handleScroll);
       }
-
       if (chatMessagesRef.current) {
         sessionStorage.setItem(
           "chatScrollPosition",
@@ -88,7 +79,6 @@ const ChatBox = ({ onClose }) => {
       }
     };
   }, []);
-
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -96,7 +86,7 @@ const ChatBox = ({ onClose }) => {
         if (response.status === 200) {
           const chatMessages = response.data;
           setMessages(chatMessages);
-          setMessagesLoaded(true); // Đặt cờ này khi tin nhắn được tải thành công
+          setMessagesLoaded(true);
         } else {
           console.error("Failed to fetch messages");
         }
@@ -104,21 +94,17 @@ const ChatBox = ({ onClose }) => {
         console.error("Error fetching messages: ", error);
       }
     };
-
     fetchMessages();
   }, [setMessages]);
-
   useEffect(() => {
     if (messagesLoaded && chatMessagesRef.current) {
-      // Nếu tin nhắn đã tải và lần đầu load, cuộn xuống cuối
       if (initialLoad) {
         chatMessagesRef.current.scrollTo({
           top: chatMessagesRef.current.scrollHeight,
           behavior: "smooth",
         });
-        setInitialLoad(false); // Đặt lại cờ để lần sau không cuộn nữa
+        setInitialLoad(false);
       } else if (latestMessageFromUser) {
-        // Khi có tin nhắn mới
         chatMessagesRef.current.scrollTo({
           top: chatMessagesRef.current.scrollHeight,
           behavior: "smooth",
@@ -127,7 +113,6 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
-
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
       const tempMessageId = Date.now();
@@ -139,33 +124,23 @@ const ChatBox = ({ onClose }) => {
         id: tempMessageId,
         status: "sending",
       };
-
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setMessage("");
       setLatestMessageFromUser(true);
-
       try {
         const response = await axiosInstance.post("/api/Chat/add-chat", {
           userId: userId,
           userName: username,
           content: message,
         });
-
         if (response.status === 200) {
           const savedMessage = response.data;
-
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === tempMessageId
                 ? { ...savedMessage, status: "sent" }
                 : msg
             )
-          );
-
-          await connection.invoke(
-            "SendMessage",
-            username,
-            savedMessage.content
           );
         } else {
           console.error("Failed to send message");
@@ -175,7 +150,6 @@ const ChatBox = ({ onClose }) => {
             )
           );
         }
-
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
         }
@@ -189,7 +163,6 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [message, userId, username, setMessages, connection]);
-
   const handleChange = (e) => {
     setMessage(e.target.value);
     const textarea = textareaRef.current;
@@ -198,21 +171,30 @@ const ChatBox = ({ onClose }) => {
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
   };
-
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
-
   return (
     <div className="chat-box">
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat</h3>
-        <button className="p-1" onClick={onClose}>
-          <FontAwesomeIcon icon={faXmark} />
-        </button>
+        <div className="section">
+          <button className="p-1 mr-2">
+            <FontAwesomeIcon icon={faGear} />
+          </button>
+          <button className="p-1" onClick={onClose}>
+            <FontAwesomeIcon icon={faXmark} />
+          </button>
+        </div>
+
       </div>
       <div className="chat-messages" ref={chatMessagesRef}>
         {messages.map((msg, index) => (
@@ -223,7 +205,6 @@ const ChatBox = ({ onClose }) => {
               }`}
           >
             <strong className="chat-user">{msg.userName}</strong>
-
             <p className="chat-text">{msg.content}</p>
             <p className="chat-date">
               {new Date(msg.sentDate)
@@ -254,14 +235,10 @@ const ChatBox = ({ onClose }) => {
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
       </div>
-    </div>
+    </div >
   );
 };
-
-
-
 ChatBox.propTypes = {
   onClose: PropTypes.func.isRequired,
 };
-
 export default ChatBox;

@@ -1,8 +1,40 @@
-# React + Vite
+# NOTAION
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Fast note for dev
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Demo
+
+https://notaion.onrender.com/
+
+
+## 🛠 Component
+```ASP.NET 7 API``` ```ReactJS``` ```Vite```  
+
+
+## Screenshots
+
+![main page](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144725/Screenshot_2024-09-12_193353_xi4825.png)
+
+![profile](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144726/Screenshot_2024-09-12_193302_lhgtgw.png)
+
+![list pages](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144725/Screenshot_2024-09-12_193200_tzkmjc.png)
+
+![content](https://res.cloudinary.com/dl3hvap4a/image/upload/v1726144725/Screenshot_2024-09-12_193353_xi4825.png)
+## Running
+
+To run tests, run the following command
+
+```bash
+  npm run dev
+```
+
+
+## Installation
+
+Install ```notaion``` with npm
+
+```bash
+  npm install
+```
+    
