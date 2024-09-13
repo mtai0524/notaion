@@ -467,7 +467,7 @@ const Notion = () => {
   const saveItemsDebounced = useCallback(
     debounce(async (updatedItems) => {
       await saveItems(updatedItems, false);
-    }, 1000), // thời gian gọi cập nhật thay đổi khi người dùng không thay đổi nội dung trong textarea
+    }, 1000),
     []
   );
 

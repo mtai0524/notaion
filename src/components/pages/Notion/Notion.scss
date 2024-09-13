@@ -14,6 +14,7 @@
 }
 
 .edit-textarea {
+  height: auto;
   font-size: 0.7em;
   font-weight: bold;
   width: 100%;
@@ -26,11 +27,13 @@
   overflow: hidden;
   box-shadow: none;
 }
+
 .edit-textarea:focus {
   border: none !important;
   outline: none !important;
   background-color: #ededed;
 }
+
 .edit-textarea:hover {
   background-color: #ededed;
 }
@@ -48,14 +51,17 @@
   font-family: "Source Code Pro", monospace;
   background-color: rgb(66, 66, 66);
 }
+
 .heading-heading-4:hover {
   background-color: rgb(66, 66, 66);
   color: #fdf57d;
 }
+
 .heading-heading-4:focus {
   background-color: rgb(66, 66, 66);
   color: #fdf57d;
 }
+
 .heading-heading-1 {
   font-size: 1.2em;
   font-weight: bold;
@@ -81,9 +87,11 @@
 .dd-item-pages .ant-btn:focus {
   background: transparent;
 }
+
 .ant-dropdown {
   z-index: 10000000000000000000 !important;
 }
+
 .custom-dropdown-menu {
   .ant-dropdown-menu-item {
     width: 100%;
@@ -98,6 +106,7 @@
     color: #ff4d4f;
   }
 }
+
 .ant-dropdown-menu,
 .ant-popover-inner {
   box-shadow: -2px 2px 0 0 #111827 !important;
@@ -123,6 +132,7 @@
   border: 2px solid #111827 !important;
   font-size: 0.6em;
 }
+
 .loading-overlay {
   position: absolute;
   top: 0;
@@ -137,6 +147,7 @@
 }
 
 .container-block {
+  height: auto;
   position: relative;
   width: 100%;
   display: flex;
