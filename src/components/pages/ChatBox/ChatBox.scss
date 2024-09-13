@@ -146,15 +146,6 @@
 
 .sending-message {
   opacity: 0.6;
-  background-color: #f0f0f0;
+  background-color: #ccc9c9;
   position: relative;
-}
-
-.sending-message::after {
-  content: "Sending...";
-  font-size: 0.75rem;
-  color: #999;
-  position: absolute;
-  bottom: 5px;
-  right: 10px;
 }

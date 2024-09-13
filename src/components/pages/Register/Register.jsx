@@ -5,12 +5,13 @@ import axiosInstance from "../../../axiosConfig";
 import { message, Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
-
+import { useNavigate } from "react-router-dom";
 const Register = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const setAvatarRandom = () => {
     const seed = Math.floor(Math.random() * 1000000000);
@@ -30,7 +31,9 @@ const Register = () => {
       password,
       avatar: avatarUrl,
     };
-
+    // sessionStorage.setItem('username', `${username}`);
+    // sessionStorage.setItem('email', `${email}`);
+    // sessionStorage.setItem('password', `${password}`);
     try {
       const response = await axiosInstance.post(
         "/api/account/SignUp",
@@ -39,10 +42,16 @@ const Register = () => {
           headers: { "Content-Type": "application/json" },
         }
       );
-
       if (response.status === 200) {
         message.success("Register successful");
+        localStorage.setItem('userData', JSON.stringify(userData));
+        message.loading("Redirecting to login...", 1).then(() => {
+          setTimeout(() => {
+            navigate("/login");
+          }, 1000);
+        });
       }
+
     } catch (error) {
       if (error.response && error.response.status === 400) {
         const errors = error.response.data.errors;

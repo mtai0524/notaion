@@ -11,6 +11,8 @@ import {
   faUnderline,
   faListCheck,
   faBroom,
+  faRotateLeft,
+  faRotateRight,
 } from "@fortawesome/free-solid-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
@@ -353,12 +355,21 @@ const MenuBar = ({ editor }) => {
               />
             </div>
           </Tooltip>
+          <Tooltip placement="bottom" title="undo">
+            <button onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+              <FontAwesomeIcon style={{ margin: '0 0 1px -1px' }} icon={faRotateLeft}></FontAwesomeIcon>
+            </button>
+          </Tooltip>
+          <Tooltip placement="bottom" title="redo">
+            <button onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+              <FontAwesomeIcon style={{ margin: '0 0px 1px -6px' }} icon={faRotateRight}></FontAwesomeIcon>
+            </button>
+          </Tooltip>
         </div>
       </BubbleMenu>
       <div
-        className={`button-group ${
-          !isControlsMenuVisible ? "hidden" : ""
-        } w-full flex justify-center align-middle absolute z-5011111111`}
+        className={`button-group ${!isControlsMenuVisible ? "hidden" : ""
+          } w-full flex justify-center align-middle absolute z-5011111111`}
       >
         <div className="menubar-controls">
           <Tooltip title="Image">
@@ -555,6 +566,16 @@ const MenuBar = ({ editor }) => {
                 }}
               />
             </div>
+          </Tooltip>
+          <Tooltip placement="bottom" title="undo">
+            <button onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
+              <FontAwesomeIcon style={{ margin: '0 0 1px -1px' }} icon={faRotateLeft}></FontAwesomeIcon>
+            </button>
+          </Tooltip>
+          <Tooltip placement="bottom" title="redo">
+            <button onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()}>
+              <FontAwesomeIcon style={{ margin: '0 0px 1px -6px' }} icon={faRotateRight}></FontAwesomeIcon>
+            </button>
           </Tooltip>
         </div>
       </div>
