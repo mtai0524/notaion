@@ -41,7 +41,7 @@ const Header = () => {
           const decodedToken = jwt_decode(tokenFromStorage);
           const userId =
             decodedToken[
-              "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
             ];
           navigate(`/profile/${userId}`);
         } catch {
@@ -53,7 +53,7 @@ const Header = () => {
         message.warning("Logout");
 
         setToken(null);
-        navigate("/home-page");
+        navigate("/login");
         break;
       default:
         break;

@@ -446,14 +446,12 @@ const Notion = () => {
     if (!apiAvailable) {
       return;
     }
-    const hideLoading = showNoti ? handleAction("Saving") : () => {};
+    const hideLoading = showNoti ? handleAction("Saving") : () => { };
 
     try {
       console.log("Saving items:", updatedItems);
       await axiosInstance.post("/api/Items/bulk", updatedItems);
-      if (showNoti) {
-        message.success("Saved", 1);
-      }
+
     } catch (error) {
       console.error("Error saving items:", error);
       if (showNoti) {
@@ -461,7 +459,7 @@ const Notion = () => {
       }
     } finally {
       if (hideLoading) {
-        setTimeout(hideLoading, 500);
+        setTimeout(hideLoading, 100);
       }
     }
   };
@@ -638,9 +636,8 @@ const Notion = () => {
                               ref={(el) =>
                                 (editTextareaRefs.current[item.id] = el)
                               }
-                              className={`edit-textarea ${
-                                item.heading ? `heading-${item.heading}` : ""
-                              }`}
+                              className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""
+                                }`}
                             />
                           )}
                           {loadingImage === item.id && (

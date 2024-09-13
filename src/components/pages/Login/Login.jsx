@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { message, Spin } from "antd";
 import axiosInstance from "../../../axiosConfig";
@@ -15,6 +15,15 @@ const Login = () => {
   const navigate = useNavigate();
   const { setToken } = useAuth();
 
+  useEffect(() => {
+    const userDataSession = JSON.parse(localStorage.getItem('userData'));
+
+    if (userDataSession) {
+      setEmailOrUsername(userDataSession.username);
+      setPassword(userDataSession.password);
+    }
+  }, []);
+
   const handleLoginSuccess = async () => {
     navigate("/home-page");
   };
@@ -26,6 +35,7 @@ const Login = () => {
       const formData = {
         email: emailOrUsername,
         password: password,
+        username: emailOrUsername,
       };
 
       const response = await axiosInstance.post(
@@ -38,6 +48,8 @@ const Login = () => {
         setToken(data.token);
         Cookies.set("token", data.token, { expires: 7 });
         message.success("Login successful");
+        localStorage.setItem('userData', JSON.stringify(formData));
+
         handleLoginSuccess();
       }
     } catch (err) {
