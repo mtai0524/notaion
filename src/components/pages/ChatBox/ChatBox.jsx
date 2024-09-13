@@ -97,13 +97,15 @@ const ChatBox = ({ onClose }) => {
     fetchMessages();
   }, [setMessages]);
   useEffect(() => {
+    const isFirstLoad = sessionStorage.getItem("isFirstLoad");
     if (messagesLoaded && chatMessagesRef.current) {
-      if (initialLoad) {
+      if (initialLoad && !isFirstLoad) {
         chatMessagesRef.current.scrollTo({
           top: chatMessagesRef.current.scrollHeight,
           behavior: "smooth",
         });
         setInitialLoad(false);
+        sessionStorage.setItem("isFirstLoad", "false");
       } else if (latestMessageFromUser) {
         chatMessagesRef.current.scrollTo({
           top: chatMessagesRef.current.scrollHeight,
@@ -113,6 +115,7 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
+
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
       const tempMessageId = Date.now();
