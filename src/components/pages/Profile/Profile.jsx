@@ -8,6 +8,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { EditOutlined, EllipsisOutlined, SettingOutlined } from "@ant-design/icons";
 import { DownloadOutlined, RotateLeftOutlined, RotateRightOutlined, SwapOutlined, UndoOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import * as signalR from "@microsoft/signalr";
+import { useSignalR } from "../../../contexts/SignalRContext";
 
 const { Meta } = Card;
 
@@ -19,9 +20,10 @@ const Profile = () => {
   const { identifier } = useParams();
   const navigate = useNavigate();
   const [avatar, setAvatar] = useState("");
+  const [avatarToken, setAvatarToken] = useState("");
   const [pages, setPages] = useState([]);
   const [pagesLoading, setPagesLoading] = useState(false);
-  const [hubConnection, setHubConnection] = useState(null);
+  const { connection } = useSignalR();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -31,6 +33,7 @@ const Profile = () => {
         const decodedToken = jwt_decode(tokenFromStorage);
         const id = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
         const userNameToken = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+        setAvatarToken(decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country"]);
         setCurrentUserId(id);
         setCurrentUsername(userNameToken);
 
@@ -54,28 +57,7 @@ const Profile = () => {
     fetchUserProfile();
   }, [identifier, navigate]);
 
-  useEffect(() => {
-    // Initialize SignalR connection
-    const connection = new signalR.HubConnectionBuilder()
-      .withUrl("https://localhost:7059/chathub") // Replace with your server URL
-      .configureLogging(signalR.LogLevel.Information)
-      .build();
 
-    connection.on("ReceiveFriendRequest", (requesterId, requesterName) => {
-      console.log("Received friend request from:", requesterName);
-    });
-
-    connection.start()
-      .then(() => {
-        console.log("SignalR Connected");
-        setHubConnection(connection);
-      })
-      .catch(err => console.error("SignalR Connection Error: ", err));
-
-    return () => {
-      connection.stop();
-    };
-  }, []);
 
   const fetchPublicPages = async (userId) => {
     setPagesLoading(true);
@@ -118,21 +100,26 @@ const Profile = () => {
       return;
     }
     try {
-      await axiosInstance.post('/api/Friend/send-friend-request', {
+      const friendRequestPayload = {
         requesterId: currentUserId,
         requesterName: currentUsername,
-        recipientId: identifier
+        recipientId: identifier,
+        avatar: avatarToken,
+      };
 
-      });
-      if (hubConnection) {
-        localStorage.setItem("recv_name", identifier);
-        await hubConnection.invoke("SendFriendRequest", currentUserId, identifier, currentUsername);
+      await axiosInstance.post('/api/Friend/send-friend-request', friendRequestPayload);
+
+      if (connection) {
+        await connection.invoke("SendFriendRequest", currentUserId, identifier, currentUsername);
         message.success("Friend request sent!");
       }
     } catch (error) {
       message.error("Failed to send friend request");
+      console.log("avatar:" + avatarToken);
+
     }
   };
+
 
   if (loading || !userProfile) {
     return (

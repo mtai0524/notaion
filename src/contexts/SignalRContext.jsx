@@ -26,11 +26,10 @@ export const SignalRProvider = ({ children }) => {
         console.log("Connected!");
         setConnectionId(connect.connectionId);
         setConnection(connect);
-        connect.on("ReceiveFriendRequest", (requesterId, requesterName) => {
-          console.log("Received friend request:", requesterId, requesterName);
-          notification.info({
-            message: `New friend request from ${requesterName}`,
-          });
+
+
+        connection.on("ReceiveFriendRequest", (requesterId, requesterName) => {
+          console.log("Received friend request from:", requesterName);
         });
       })
       .catch((err) => {

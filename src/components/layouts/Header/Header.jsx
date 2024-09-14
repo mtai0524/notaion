@@ -17,7 +17,7 @@ import { message } from "antd";
 import jwt_decode from "jwt-decode";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
-import axios from 'axios'; // Make sure you have axios installed
+import axiosInstance from "../../../axiosConfig";
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -26,45 +26,58 @@ const Header = () => {
   const { token, setToken } = useAuth();
   const [avatar, setAvatar] = useState("");
   const [currentUser, setCurrentUser] = useState("");
-
-  useEffect(() => {
-    // Get the username from localStorage
-    const recvName = localStorage.getItem("recv_name");
-    if (recvName) {
-      setCurrentUser(recvName);
-    }
-  }, []);
-
   useEffect(() => {
     const connection = new HubConnectionBuilder()
       .withUrl("https://localhost:7059/chathub")
       .build();
-
-    connection.on("ReceiveFriendRequest", async (senderId, senderName) => {
+    connection.on("ReceiveFriendRequest", async (senderId, receiverId, senderName) => {
       try {
-        const response = await axios.get(`https://localhost:7059/api/account/user/${senderId}`);
-        const user = response.data;
-
-        setNotifications((prevNotifications) => [
-          ...prevNotifications,
-          {
-            senderName: user.userName,
-            message: "Wants to be your friend",
-            avatarUrl: user.avatar
+        const tokenFromStorage = Cookies.get("token");
+        if (tokenFromStorage) {
+          const decodedToken = jwt_decode(tokenFromStorage);
+          const currentUserId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+          const response = await axiosInstance.get(`/api/account/user/${senderId}`);
+          const user = response.data;
+          if (currentUserId === receiverId) {
+            setNotifications((prevNotifications) => [
+              ...prevNotifications,
+              {
+                senderName,
+                content: `${senderName} has sent you a friend request.`,
+                senderAvatar: user.avatar,
+              },
+            ]);
           }
-        ]);
+        }
       } catch (error) {
-        console.error("Error fetching user info:", error);
+        console.error("Error processing notification:", error);
       }
     });
-
     connection.start().catch((err) => console.error("SignalR Connection Error: ", err));
-
     return () => {
       connection.stop();
     };
-  }, [currentUser]);
-
+  }, []);
+  useEffect(() => {
+    const fetchUserAndNotifications = async () => {
+      const tokenFromCookie = Cookies.get('token');
+      if (tokenFromCookie) {
+        setToken(tokenFromCookie);
+        try {
+          const decodedToken = jwt_decode(tokenFromCookie);
+          const userId = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+          const response = await axiosInstance.get(`/api/account/user/${userId}`);
+          const user = response.data;
+          setAvatar(user.avatar);
+          const notiResponse = await axiosInstance.get(`/api/Friend/get-noti-by-recvid/${userId}`);
+          setNotifications(notiResponse.data);
+        } catch {
+          console.log('Not found or invalid token');
+        }
+      }
+    };
+    fetchUserAndNotifications();
+  }, [setToken]);
   const handleMenuClick = (e) => {
     switch (e.key) {
       case "login":
@@ -93,7 +106,6 @@ const Header = () => {
       case "logout":
         Cookies.remove("token");
         message.warning("Logout");
-
         setToken(null);
         navigate("/login");
         break;
@@ -101,21 +113,6 @@ const Header = () => {
         break;
     }
   };
-
-  useEffect(() => {
-    const tokenFromCookie = Cookies.get("token");
-    if (tokenFromCookie) {
-      setToken(tokenFromCookie);
-      try {
-        const decodedToken = jwt_decode(tokenFromCookie);
-        const avatarUrl = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/portrait"]; // Change the key if needed
-        setAvatar(avatarUrl);
-      } catch {
-        console.log("Not found or invalid token");
-      }
-    }
-  }, [setToken]);
-
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu">
       <Menu.Item key="home" icon={<FontAwesomeIcon icon={faHome} />}>
@@ -152,7 +149,6 @@ const Header = () => {
       )}
     </Menu>
   );
-
   const content = (
     <div className="container-noti mr-2">
       {notifications.length === 0 ? (
@@ -167,7 +163,7 @@ const Header = () => {
             <Image
               className="rounded-full mr-3"
               style={{ width: '50px', height: '50px' }}
-              src={notification.avatarUrl || avatar} // Use default avatar if not available
+              src={notification.senderAvatar || avatar}
               alt="Avatar"
             />
             <div className="flex-1">
@@ -175,7 +171,7 @@ const Header = () => {
                 <span className="font-bold">{notification.senderName}</span>
               </p>
               <p className="text-xs text-gray-600" style={{ marginTop: '-4px' }}>
-                {notification.message}
+                {notification.content}
               </p>
               <div className="flex space-x-1 justify-end">
                 <button className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition">
@@ -191,7 +187,6 @@ const Header = () => {
       )}
     </div>
   );
-
   return (
     <>
       <div className="container-nav">
@@ -218,7 +213,6 @@ const Header = () => {
                 />
               </Tooltip>
             </Popover>
-
             <Dropdown
               placement="bottom"
               overlay={menuProfile}
@@ -249,5 +243,4 @@ const Header = () => {
     </>
   );
 };
-
 export default Header;
