@@ -1,25 +1,15 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin, Card, Image, Space } from "antd";
+import { message, Spin, Card, Image, Space, Button } from "antd";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import "./Profile.scss";
 import { useParams, useNavigate } from "react-router-dom";
+import { EditOutlined, EllipsisOutlined, SettingOutlined } from "@ant-design/icons";
+import { DownloadOutlined, RotateLeftOutlined, RotateRightOutlined, SwapOutlined, UndoOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
+import * as signalR from "@microsoft/signalr";
+
 const { Meta } = Card;
-import {
-  EditOutlined,
-  EllipsisOutlined,
-  SettingOutlined,
-} from "@ant-design/icons";
-import {
-  DownloadOutlined,
-  RotateLeftOutlined,
-  RotateRightOutlined,
-  SwapOutlined,
-  UndoOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
-} from "@ant-design/icons";
 
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
@@ -31,6 +21,7 @@ const Profile = () => {
   const [avatar, setAvatar] = useState("");
   const [pages, setPages] = useState([]);
   const [pagesLoading, setPagesLoading] = useState(false);
+  const [hubConnection, setHubConnection] = useState(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -38,14 +29,8 @@ const Profile = () => {
       const tokenFromStorage = Cookies.get("token");
       try {
         const decodedToken = jwt_decode(tokenFromStorage);
-        const id =
-          decodedToken[
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-          ];
-        const userNameToken =
-          decodedToken[
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
-          ];
+        const id = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+        const userNameToken = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
         setCurrentUserId(id);
         setCurrentUsername(userNameToken);
 
@@ -54,9 +39,7 @@ const Profile = () => {
           return;
         }
 
-        const response = await axiosInstance.get(
-          `/api/account/profile/${identifier}`
-        );
+        const response = await axiosInstance.get(`/api/account/profile/${identifier}`);
         setUserProfile(response.data);
 
         fetchPublicPages(identifier);
@@ -71,10 +54,31 @@ const Profile = () => {
     fetchUserProfile();
   }, [identifier, navigate]);
 
+  useEffect(() => {
+    // Initialize SignalR connection
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl("https://localhost:7059/chathub") // Replace with your server URL
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+
+    connection.on("ReceiveFriendRequest", (requesterId, requesterName) => {
+      console.log("Received friend request from:", requesterName);
+    });
+
+    connection.start()
+      .then(() => {
+        console.log("SignalR Connected");
+        setHubConnection(connection);
+      })
+      .catch(err => console.error("SignalR Connection Error: ", err));
+
+    return () => {
+      connection.stop();
+    };
+  }, []);
+
   const fetchPublicPages = async (userId) => {
     setPagesLoading(true);
-    console.log(userId);
-
     try {
       const response = await axiosInstance.get(`/api/Page/user/${userId}`);
       const publicPages = response.data.filter((page) => page.public);
@@ -86,8 +90,7 @@ const Profile = () => {
     }
   };
 
-  const showActions =
-    currentUserId === identifier || currentUsername === identifier;
+  const showActions = currentUserId === identifier || currentUsername === identifier;
 
   const setAvatarRandom = () => {
     const seed = Math.floor(Math.random() * 1000000000);
@@ -100,14 +103,34 @@ const Profile = () => {
       const newAvatar = setAvatarRandom();
       const encodedAvatar = encodeURIComponent(newAvatar);
       try {
-        await axiosInstance.post(
-          `/api/account/change-avatar/${currentUserId}/${encodedAvatar}`
-        );
+        await axiosInstance.post(`/api/account/change-avatar/${currentUserId}/${encodedAvatar}`);
         setAvatar(newAvatar);
         message.success("Updated successfully");
       } catch (error) {
         message.error("Failed to update avatar");
       }
+    }
+  };
+
+  const handleAddFriend = async () => {
+    if (currentUserId === identifier) {
+      message.warning("You cannot send a friend request to yourself.");
+      return;
+    }
+    try {
+      await axiosInstance.post('/api/Friend/send-friend-request', {
+        requesterId: currentUserId,
+        requesterName: currentUsername,
+        recipientId: identifier
+
+      });
+      if (hubConnection) {
+        localStorage.setItem("recv_name", identifier);
+        await hubConnection.invoke("SendFriendRequest", currentUserId, identifier, currentUsername);
+        message.success("Friend request sent!");
+      }
+    } catch (error) {
+      message.error("Failed to send friend request");
     }
   };
 
@@ -136,20 +159,23 @@ const Profile = () => {
 
   return (
     <div className="profile-container">
+      <Button className="makeFriend" onClick={handleAddFriend}>
+        Add friend
+      </Button>
       <Card
         className="profile-card"
         bordered={false}
         actions={
           showActions
             ? [
-                <SettingOutlined key="setting" />,
-                <EditOutlined
-                  title="change avatar"
-                  key="edit"
-                  onClick={handleEditClick}
-                />,
-                <EllipsisOutlined key="ellipsis" />,
-              ]
+              <SettingOutlined key="setting" />,
+              <EditOutlined
+                title="change avatar"
+                key="edit"
+                onClick={handleEditClick}
+              />,
+              <EllipsisOutlined key="ellipsis" />,
+            ]
             : []
         }
       >

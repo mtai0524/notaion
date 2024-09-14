@@ -21,12 +21,17 @@ export const SignalRProvider = ({ children }) => {
       .configureLogging(signalR.LogLevel.Information)
       .build();
 
-    connect
-      .start()
+    connect.start()
       .then(() => {
         console.log("Connected!");
-        setConnectionId(connect.connectionId); // Set connectionId
+        setConnectionId(connect.connectionId);
         setConnection(connect);
+        connect.on("ReceiveFriendRequest", (requesterId, requesterName) => {
+          console.log("Received friend request:", requesterId, requesterName);
+          notification.info({
+            message: `New friend request from ${requesterName}`,
+          });
+        });
       })
       .catch((err) => {
         console.error("Connection failed: ", err);

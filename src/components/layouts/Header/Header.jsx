@@ -2,7 +2,7 @@ import { UserOutlined } from "@ant-design/icons";
 import { useState, useEffect } from "react";
 import "./Header.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Dropdown, Menu, Popover, Tooltip } from "antd";
+import { Dropdown, Image, Menu, Popover, Tooltip } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faGears,
@@ -16,10 +16,54 @@ import { useAuth } from "../../../contexts/AuthContext";
 import { message } from "antd";
 import jwt_decode from "jwt-decode";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import axios from 'axios'; // Make sure you have axios installed
+
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const navigate = useNavigate();
+  const [notifications, setNotifications] = useState([]);
   const { token, setToken } = useAuth();
+  const [avatar, setAvatar] = useState("");
+  const [currentUser, setCurrentUser] = useState("");
+
+  useEffect(() => {
+    // Get the username from localStorage
+    const recvName = localStorage.getItem("recv_name");
+    if (recvName) {
+      setCurrentUser(recvName);
+    }
+  }, []);
+
+  useEffect(() => {
+    const connection = new HubConnectionBuilder()
+      .withUrl("https://localhost:7059/chathub")
+      .build();
+
+    connection.on("ReceiveFriendRequest", async (senderId, senderName) => {
+      try {
+        const response = await axios.get(`https://localhost:7059/api/account/user/${senderId}`);
+        const user = response.data;
+
+        setNotifications((prevNotifications) => [
+          ...prevNotifications,
+          {
+            senderName: user.userName,
+            message: "Wants to be your friend",
+            avatarUrl: user.avatar
+          }
+        ]);
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
+    });
+
+    connection.start().catch((err) => console.error("SignalR Connection Error: ", err));
+
+    return () => {
+      connection.stop();
+    };
+  }, [currentUser]);
 
   const handleMenuClick = (e) => {
     switch (e.key) {
@@ -40,9 +84,7 @@ const Header = () => {
           const tokenFromStorage = Cookies.get("token");
           const decodedToken = jwt_decode(tokenFromStorage);
           const userId =
-            decodedToken[
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
-            ];
+            decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
           navigate(`/profile/${userId}`);
         } catch {
           console.log("Not found");
@@ -64,8 +106,15 @@ const Header = () => {
     const tokenFromCookie = Cookies.get("token");
     if (tokenFromCookie) {
       setToken(tokenFromCookie);
+      try {
+        const decodedToken = jwt_decode(tokenFromCookie);
+        const avatarUrl = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/portrait"]; // Change the key if needed
+        setAvatar(avatarUrl);
+      } catch {
+        console.log("Not found or invalid token");
+      }
     }
-  }, []);
+  }, [setToken]);
 
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu">
@@ -103,29 +152,43 @@ const Header = () => {
       )}
     </Menu>
   );
+
   const content = (
-    <div>
-      <p>Hi there!</p>
-      <p>
-        I&apos;m Minh Tai, and I&apos;m looking forward to making new friends.
-        I&apos;d love to connect with you and learn more about your interests
-        and experiences.
-      </p>
-      <p>
-        Whether it&apos;s discussing our favorite books, sharing travel stories,
-        or simply having a good chat, I&apos;m excited to get to know you
-        better.
-      </p>
-      <p>
-        Feel free to reach out anytime. Let&apos;s make this a fun and enriching
-        friendship journey!
-      </p>
-      <p>Looking forward to hearing from you soon.</p>
-      <p>
-        Best regards,
-        <br />
-        Minh Tai
-      </p>
+    <div className="container-noti mr-2">
+      {notifications.length === 0 ? (
+        <p className="text-center text-gray-600">No notifications</p>
+      ) : (
+        notifications.map((notification, index) => (
+          <div
+            key={index}
+            className="bg-white shadow-md rounded-lg p-3 max-w-xs flex items-center border border-gray-300 mt-2"
+            style={{ minWidth: '200px' }}
+          >
+            <Image
+              className="rounded-full mr-3"
+              style={{ width: '50px', height: '50px' }}
+              src={notification.avatarUrl || avatar} // Use default avatar if not available
+              alt="Avatar"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-gray-800 text-sm">
+                <span className="font-bold">{notification.senderName}</span>
+              </p>
+              <p className="text-xs text-gray-600" style={{ marginTop: '-4px' }}>
+                {notification.message}
+              </p>
+              <div className="flex space-x-1 justify-end">
+                <button className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition">
+                  Decline
+                </button>
+                <button className="bg-blue-500 text-white px-2 py-1 text-xs rounded hover:bg-blue-600 transition">
+                  Agree
+                </button>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
   );
 
@@ -141,9 +204,9 @@ const Header = () => {
               content={content}
               title="Notification"
               trigger="click"
-              placement="bottom"
+              placement="bottomLeft"
             >
-              <Tooltip title="notification" placement="bottom">
+              <Tooltip title="notification" placement="left">
                 <FontAwesomeIcon
                   style={{
                     backgroundColor: "#faf8f7",

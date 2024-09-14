@@ -3,6 +3,7 @@
   display: flex;
   justify-content: center;
 }
+
 .navbar {
   box-shadow: -2px 2px 0 0 #111827 !important;
   border: 2px solid #111827 !important;
@@ -16,19 +17,41 @@
 .switch-login-page {
   color: #6394f7 !important;
 }
+
 .ant-popover-content {
   margin-top: -10px;
   margin: -10px 10px 0 10px;
   width: 100%;
   max-width: 350px;
 }
+
 .ant-popover-inner-content {
   max-height: 300px;
   overflow-y: scroll;
 }
-.ant-popover-inner-content > div > p {
+
+.ant-popover-inner-content>div>p {
   margin: 5px !important;
 }
+
 .ant-popover-inner {
   padding-right: 0 !important;
+}
+
+@media screen and (max-width: 400px) {
+
+  .ant-popover-content,
+  .ant-popover-inner {
+    margin-left: 62px;
+  }
+}
+
+
+.ant-image-mask-info {
+  display: none !important;
+
+}
+
+.ant-image-mask {
+  background-color: transparent !important;
 }
