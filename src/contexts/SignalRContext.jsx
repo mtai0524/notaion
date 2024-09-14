@@ -18,19 +18,16 @@ export const SignalRProvider = ({ children }) => {
       .withUrl(signalRUrl, {
         withCredentials: true,
       })
+      .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
       .build();
-
+    connect.serverTimeoutInMilliseconds = 3000000;
     connect.start()
       .then(() => {
         console.log("Connected!");
         setConnectionId(connect.connectionId);
         setConnection(connect);
 
-
-        connection.on("ReceiveFriendRequest", (requesterId, requesterName) => {
-          console.log("Received friend request from:", requesterName);
-        });
       })
       .catch((err) => {
         console.error("Connection failed: ", err);

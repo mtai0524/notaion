@@ -18,6 +18,7 @@ import jwt_decode from "jwt-decode";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import axiosInstance from "../../../axiosConfig";
+import { useSignalR } from "../../../contexts/SignalRContext";
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -26,11 +27,13 @@ const Header = () => {
   const { token, setToken } = useAuth();
   const [avatar, setAvatar] = useState("");
   const [currentUser, setCurrentUser] = useState("");
+
   useEffect(() => {
     const signalRUrl =
       import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
     const connection = new HubConnectionBuilder()
       .withUrl(signalRUrl)
+      .withAutomaticReconnect()
       .build();
     connection.on("ReceiveFriendRequest", async (senderId, receiverId, senderName) => {
       try {
@@ -57,9 +60,6 @@ const Header = () => {
       }
     });
     connection.start().catch((err) => console.error("SignalR Connection Error: ", err));
-    return () => {
-      connection.stop();
-    };
   }, []);
   useEffect(() => {
     const fetchUserAndNotifications = async () => {

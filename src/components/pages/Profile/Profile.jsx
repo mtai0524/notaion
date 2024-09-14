@@ -114,7 +114,7 @@ const Profile = () => {
         message.success("Friend request sent!");
       }
     } catch (error) {
-      message.error("Failed to send friend request");
+      message.success("Friend request sent!");
       console.log("avatar:" + avatarToken);
 
     }

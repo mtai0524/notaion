@@ -160,11 +160,7 @@ const ChatBox = ({ onClose }) => {
             )
           );
 
-          await connection.invoke(
-            "SendMessage",
-            username,
-            savedMessage.content
-          );
+
 
         } else {
           console.error("Failed to send message");
