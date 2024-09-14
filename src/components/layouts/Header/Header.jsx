@@ -27,8 +27,10 @@ const Header = () => {
   const [avatar, setAvatar] = useState("");
   const [currentUser, setCurrentUser] = useState("");
   useEffect(() => {
+    const signalRUrl =
+      import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
     const connection = new HubConnectionBuilder()
-      .withUrl("https://localhost:7059/chathub")
+      .withUrl(signalRUrl)
       .build();
     connection.on("ReceiveFriendRequest", async (senderId, receiverId, senderName) => {
       try {
@@ -43,7 +45,8 @@ const Header = () => {
               ...prevNotifications,
               {
                 senderName,
-                content: `${senderName} has sent you a friend request.`,
+                // content: `${senderName} has sent you a friend request.`,
+                content: `muốn kết nghĩa với bạn`,
                 senderAvatar: user.avatar,
               },
             ]);
@@ -152,7 +155,12 @@ const Header = () => {
   const content = (
     <div className="container-noti mr-2">
       {notifications.length === 0 ? (
-        <p className="text-center text-gray-600">No notifications</p>
+        <div
+          className="bg-white shadow-md rounded-lg p-3 max-w-xs flex items-center border border-gray-300 mt-2"
+          style={{ minWidth: '250px', textAlign: 'center' }}
+        >
+          <p className="text-gray-600 w-full">Empty notification</p>
+        </div>
       ) : (
         notifications.map((notification, index) => (
           <div
@@ -167,11 +175,11 @@ const Header = () => {
               alt="Avatar"
             />
             <div className="flex-1">
-              <p className="font-medium text-gray-800 text-sm">
+              <p className="font-medium text-gray-800 text-sm mb-1">
                 <span className="font-bold">{notification.senderName}</span>
               </p>
-              <p className="text-xs text-gray-600" style={{ marginTop: '-4px' }}>
-                {notification.content}
+              <p className="text-xs text-gray-600" style={{ marginTop: '5px' }}>
+                muốn kết nghĩa với bạn
               </p>
               <div className="flex space-x-1 justify-end">
                 <button className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition">
@@ -187,6 +195,7 @@ const Header = () => {
       )}
     </div>
   );
+
   return (
     <>
       <div className="container-nav">
