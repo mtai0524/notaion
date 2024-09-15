@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin, Card, Image, Space, Button } from "antd";
+import { message, Spin, Card, Image, Space, Button, Tooltip } from "antd";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import "./Profile.scss";
@@ -9,12 +9,16 @@ import { EditOutlined, EllipsisOutlined, SettingOutlined } from "@ant-design/ico
 import { DownloadOutlined, RotateLeftOutlined, RotateRightOutlined, SwapOutlined, UndoOutlined, ZoomInOutlined, ZoomOutOutlined } from "@ant-design/icons";
 import * as signalR from "@microsoft/signalr";
 import { useSignalR } from "../../../contexts/SignalRContext";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { cardio } from 'ldrs';
+cardio.register();
 
 const { Meta } = Card;
-
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [loadingRequest, setLoadingRequest] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentUsername, setCurrentUsername] = useState(null);
   const { identifier } = useParams();
@@ -24,6 +28,8 @@ const Profile = () => {
   const [pages, setPages] = useState([]);
   const [pagesLoading, setPagesLoading] = useState(false);
   const { connection } = useSignalR();
+  const [isRequesting, setIsRequesting] = useState(false);
+  const [added, setAdded] = useState(false);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -99,6 +105,11 @@ const Profile = () => {
       message.warning("You cannot send a friend request to yourself.");
       return;
     }
+
+    if (isRequesting) return;
+
+    setIsRequesting(true);
+
     try {
       const friendRequestPayload = {
         requesterId: currentUserId,
@@ -111,12 +122,12 @@ const Profile = () => {
 
       if (connection) {
         await connection.invoke("SendFriendRequest", currentUserId, identifier, currentUsername);
-        message.success("Friend request sent!");
+        message.success("Request sent!");
       }
     } catch (error) {
-      message.success("Friend request sent!");
-      console.log("avatar:" + avatarToken);
-
+      message.success("Request sent!");
+    } finally {
+      setIsRequesting(false);
     }
   };
 
@@ -124,7 +135,12 @@ const Profile = () => {
   if (loading || !userProfile) {
     return (
       <div className="loading-container">
-        <Spin />
+        <l-cardio
+          size="60"
+          stroke="3"
+          speed="1"
+          color="black"
+        />
       </div>
     );
   }
@@ -144,11 +160,22 @@ const Profile = () => {
       });
   };
 
+  const handleClick = async () => {
+    setLoadingRequest(true);
+    try {
+      await handleAddFriend();
+      setAdded(true);
+    } catch (error) {
+      console.error("Error adding friend:", error);
+    } finally {
+      setLoadingRequest(false);
+    }
+  };
+
+
   return (
     <div className="profile-container">
-      <Button className="makeFriend" onClick={handleAddFriend}>
-        Add friend
-      </Button>
+
       <Card
         className="profile-card"
         bordered={false}
@@ -206,12 +233,58 @@ const Profile = () => {
           title={`Email: ${userProfile.email}`}
           description={`Username: ${userProfile.userName}`}
         />
+        <div className="flex justify-end mt-2 -mb-4 -mr-2">
+          {(currentUserId !== identifier && currentUsername !== identifier) && (
+            <button
+              className={`makeFriend ${added ? 'bg-gray-400 cursor-not-allowed' : 'bg-zinc-700'} text-white px-2 py-1 text-xs rounded transition font-medium`}
+              onClick={!added ? handleClick : undefined}
+              disabled={added || loadingRequest}
+            >
+              {loadingRequest ? (
+                <l-cardio
+                  size="20"
+                  stroke="2"
+                  speed="0.5"
+                  color="white"
+                  className="mr-2"
+                />
+              ) : (
+                <FontAwesomeIcon icon={faUserPlus} />
+              )}
+              {loadingRequest ? null : (added ? ' Requested' : ' Request')}
+            </button>
+          )}
+        </div>
       </Card>
 
       <div className="pages-container">
         <h2>Public Pages</h2>
         {pagesLoading ? (
-          <Spin size="large" className="mt-5" />
+          <div className="card-loading-container">
+            <Card
+              style={{
+                width: "80vw",
+                maxWidth: "800px",
+                minHeight: "150px",
+                maxHeight: "300px",
+                overflow: "hidden",
+                cursor: "pointer",
+                position: "relative",
+                textAlign: "center",
+              }}
+              className="profile-card"
+              bordered={false}
+            >
+              <div className="loading-overlay">
+                <l-cardio
+                  size="30"
+                  stroke="2"
+                  speed="0.5"
+                  color="black"
+                />
+              </div>
+            </Card>
+          </div>
         ) : pages.length === 0 ? (
           <Card
             style={{
@@ -228,6 +301,7 @@ const Profile = () => {
             bordered={false}
           >
             <Meta
+              className="flex items-center justify-center h-full min-h-[150px]"
               title="No public pages available"
               description="This user does not have any public pages."
             />

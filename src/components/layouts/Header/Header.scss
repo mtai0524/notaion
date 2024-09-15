@@ -55,3 +55,19 @@
 .ant-image-mask {
   background-color: transparent !important;
 }
+
+.btn-close-noti {
+  position: absolute;
+  top: 2px;
+  right: 5px;
+}
+
+.ant-popover-inner-content {
+  overflow-y: auto;
+  max-height: 300px;
+  scrollbar-width: none;
+}
+
+.ant-popover-inner-content::-webkit-scrollbar {
+  display: none;
+}

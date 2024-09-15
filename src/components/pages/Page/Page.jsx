@@ -14,7 +14,8 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { format } from "date-fns";
 import { faShareFromSquare } from "@fortawesome/free-regular-svg-icons";
-
+import { cardio } from 'ldrs';
+cardio.register();
 const { Meta } = Card;
 
 const Page = () => {
@@ -46,7 +47,7 @@ const Page = () => {
         const decodedToken = jwt_decode(tokenFromStorage);
         const userId =
           decodedToken[
-            "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
           ];
 
         const response = await axiosInstance.get(`/api/Page/user/${userId}`);
@@ -105,7 +106,7 @@ const Page = () => {
       const decodedToken = jwt_decode(tokenFromStorage);
       const userId =
         decodedToken[
-          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
         ];
 
       const newPage = {
@@ -213,17 +214,15 @@ const Page = () => {
       </Menu.Item>
       <Menu.Item
         key="modified_newest"
-        className={`filter-option ${
-          filter === "modified_newest" ? "selected" : ""
-        }`}
+        className={`filter-option ${filter === "modified_newest" ? "selected" : ""
+          }`}
       >
         modified newest
       </Menu.Item>
       <Menu.Item
         key="modified_oldest"
-        className={`filter-option ${
-          filter === "modified_oldest" ? "selected" : ""
-        }`}
+        className={`filter-option ${filter === "modified_oldest" ? "selected" : ""
+          }`}
       >
         modified oldest
       </Menu.Item>
@@ -272,7 +271,15 @@ const Page = () => {
           </div>
 
           {loading ? (
-            <Spin size="large" className="mt-5" />
+            <div className="mt-10">
+              <l-cardio
+                size="60"
+                stroke="3"
+                speed="1"
+                color="black"
+              />
+            </div>
+
           ) : cards.length === 0 ? (
             <Card
               style={{

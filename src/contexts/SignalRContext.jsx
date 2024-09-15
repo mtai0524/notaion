@@ -21,7 +21,7 @@ export const SignalRProvider = ({ children }) => {
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
       .build();
-    connect.serverTimeoutInMilliseconds = 3000000;
+
     connect.start()
       .then(() => {
         console.log("Connected!");
@@ -33,16 +33,7 @@ export const SignalRProvider = ({ children }) => {
         console.error("Connection failed: ", err);
       });
 
-    return () => {
-      connect
-        .stop()
-        .then(() => {
-          console.log("Disconnected!");
-        })
-        .catch((err) => {
-          console.error("Disconnection failed: ", err);
-        });
-    };
+
   }, []);
 
   return (
