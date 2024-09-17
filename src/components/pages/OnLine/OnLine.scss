@@ -1,0 +1,24 @@
+.online-users {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.online-users h2 {
+    margin-bottom: 10px;
+}
+
+.online-users ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+.online-users li {
+    padding: 5px;
+    border-bottom: 1px solid #ddd;
+}
+
+.online-users li:last-child {
+    border-bottom: none;
+}

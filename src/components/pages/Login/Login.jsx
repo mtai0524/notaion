@@ -1,3 +1,4 @@
+// Login.js
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { message, Spin } from "antd";
@@ -7,7 +8,9 @@ import "./Login.scss";
 import Cookies from "js-cookie";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
-
+import { HubConnectionBuilder } from "@microsoft/signalr";
+import * as signalR from "@microsoft/signalr";
+import jwt_decode from "jwt-decode";
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -25,8 +28,47 @@ const Login = () => {
   }, []);
 
   const handleLoginSuccess = async () => {
+    const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(signalRUrl, { withCredentials: true })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+
+    if (!connection) {
+      console.error("SignalR connection is not initialized");
+      return;
+    }
+
+    try {
+      await connection.start();
+      console.log("Connected to SignalR");
+
+
+      const tokenFromStorage = Cookies.get("token");
+      if (tokenFromStorage) {
+        const decodedToken = jwt_decode(tokenFromStorage);
+        const userId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+        const userNameToken = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+        try {
+          await connection.invoke("RegisterUser", { UserId: userId, UserName: userNameToken })
+            .catch(err => console.error("Error while calling RegisterUser: ", err));
+          console.log(`User ${userNameToken} registered successfully`);
+        } catch (error) {
+          console.error('Error registering user:', error);
+        }
+      } else {
+        console.warn('No token found in cookies.');
+      }
+
+    } catch (err) {
+      console.error("SignalR connection error: ", err);
+    }
+
     navigate("/home-page");
   };
+
   const handleSignIn = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -38,10 +80,7 @@ const Login = () => {
         username: emailOrUsername,
       };
 
-      const response = await axiosInstance.post(
-        "/api/account/SignIn",
-        formData
-      );
+      const response = await axiosInstance.post("/api/account/SignIn", formData);
 
       if (response.status === 200) {
         const data = response.data;

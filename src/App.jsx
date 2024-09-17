@@ -18,12 +18,15 @@ import { ChatProvider, useChat } from "./contexts/ChatContext";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import NotFound from "./components/pages/NotFound/NotFound";
+import OnlineUsers from "./components/pages/OnLine/OnLine";
+import { useSignalRConnection } from "./hooks/useSignalRConnection";
 
 const App = () => {
   return (
     <AuthProvider>
       <SignalRProvider>
         <ChatProvider>
+          <OnlineUsers />
           <MainApp />
         </ChatProvider>
       </SignalRProvider>
@@ -39,7 +42,6 @@ const MainApp = () => {
 
   const { messages, setMessages } = useChat();
   const { connection } = useSignalR();
-  console.log(messages);
 
   const tokenFromStorage = Cookies.get("token");
   let username;
@@ -47,10 +49,7 @@ const MainApp = () => {
   if (tokenFromStorage) {
     try {
       const decodedToken = jwt_decode(tokenFromStorage);
-      username =
-        decodedToken[
-        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
-        ];
+      username = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
     } catch (error) {
       console.error("Error decoding token:", error);
       username = "mèo con ẩn danh";

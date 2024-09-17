@@ -21,6 +21,7 @@ import jwt_decode from "jwt-decode";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import axiosInstance from "../../../axiosConfig";
+import { useSignalR } from "../../../contexts/SignalRContext";
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -30,6 +31,7 @@ const Header = () => {
   const [avatar, setAvatar] = useState("");
   const [currentUser, setCurrentUser] = useState("");
   const [notificationCount, setNotificationCount] = useState(0);
+  const { connection } = useSignalR();
 
   useEffect(() => {
     const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
@@ -55,7 +57,7 @@ const Header = () => {
                 senderName,
                 content: `muốn kết nghĩa với bạn`,
                 senderAvatar: user.avatar,
-                isRead: false, //read/unread status
+                isRead: false, // read/unread status
               },
             ]);
             setNotificationCount((prevCount) => prevCount + 1); // Update count
@@ -95,7 +97,7 @@ const Header = () => {
     fetchUserAndNotifications();
   }, [setToken]);
 
-  const handleMenuClick = (e) => {
+  const handleMenuClick = async (e) => {
     switch (e.key) {
       case "login":
         navigate("/login");
@@ -121,14 +123,28 @@ const Header = () => {
         }
         break;
       case "logout":
-        Cookies.remove("token");
-        message.warning("Logout");
-        setToken(null);
-        navigate("/login");
+        await handleLogout();
         break;
       default:
         break;
     }
+  };
+
+  const handleLogout = async () => {
+
+    if (connection) {
+      try {
+        await connection.stop();
+      } catch (error) {
+        console.error("Error stopping SignalR connection:", error);
+      }
+    }
+
+    Cookies.remove("token");
+    message.warning("Logout");
+    setToken(null);
+
+    navigate("/login");
   };
 
   const menuProfile = (
@@ -355,7 +371,6 @@ const Header = () => {
                 </div>
               </Tooltip>
             </Popover>
-
             <Dropdown
               placement="bottom"
               overlay={menuProfile}
