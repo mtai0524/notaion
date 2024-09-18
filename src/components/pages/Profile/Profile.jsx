@@ -30,6 +30,7 @@ const Profile = () => {
   const { connection } = useSignalR();
   const [isRequesting, setIsRequesting] = useState(false);
   const [added, setAdded] = useState(false);
+  const { onlineUsers } = useSignalR();
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -172,6 +173,7 @@ const Profile = () => {
     }
   };
 
+  const isOnline = onlineUsers.some(user => user.userName === userProfile.userName);
 
   return (
     <div className="profile-container">
@@ -193,7 +195,7 @@ const Profile = () => {
             : []
         }
       >
-        <div className="profile-header">
+        <div className="profile-header" style={{ position: 'relative' }}>
           <Image
             preview={{
               toolbarRender: (
@@ -225,8 +227,21 @@ const Profile = () => {
               ),
             }}
             className="avatar-profile"
-            src={avatar || userProfile.avatar}
+            src={userProfile.avatar}
             alt="User"
+          />
+
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '10px',
+              right: '90px',
+              width: '20px',
+              height: '20px',
+              backgroundColor: isOnline ? '#28df28' : '#f32a2a',
+              borderRadius: '50%',
+              border: '3px solid white',
+            }}
           />
         </div>
         <Meta

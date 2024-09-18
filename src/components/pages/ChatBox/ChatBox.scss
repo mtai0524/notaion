@@ -161,15 +161,16 @@
   bottom: -2px;
   right: -3px;
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
+  border: 2px solid white;
 }
 
 .online {
-  background-color: rgb(40, 223, 40);
+  background-color: #28df28;
 }
 
 .offline {
-  background-color: rgb(243, 42, 42);
+  background-color: #f32a2a;
 }

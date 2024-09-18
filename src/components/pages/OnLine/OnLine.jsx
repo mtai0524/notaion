@@ -32,9 +32,9 @@ const OnlineUsers = () => {
                                             src={user.avatar}
                                             alt={`${user.userName}'s avatar`}
                                             className="avatarOnline"
-                                            style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid gray' }}
+                                            style={{ width: '40px', height: '40px', borderRadius: '50%', outline: '1px solid gray' }}
                                         />
-                                        <div className="absolute w-2 h-2 bg-green-400 bottom-[1px] right-[3px] rounded" />
+                                        <div className="absolute w-[10px] h-[10px] bg-[#28df28] bottom-[0px] right-[1px] rounded-full border-[2px] border-white" />
                                     </div>
                                 </Tooltip>
                             </Dropdown>
