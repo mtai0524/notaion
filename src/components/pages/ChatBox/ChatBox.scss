@@ -156,3 +156,20 @@
   justify-content: center;
   align-items: center;
 }
+
+.status-dot {
+  bottom: -2px;
+  right: -3px;
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.online {
+  background-color: rgb(40, 223, 40);
+}
+
+.offline {
+  background-color: rgb(243, 42, 42);
+}

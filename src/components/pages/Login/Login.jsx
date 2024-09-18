@@ -51,8 +51,10 @@ const Login = () => {
         const decodedToken = jwt_decode(tokenFromStorage);
         const userId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
         const userNameToken = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+        const avatar = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country"];
+
         try {
-          await connection.invoke("RegisterUser", { UserId: userId, UserName: userNameToken })
+          await connection.invoke("RegisterUser", { UserId: userId, UserName: userNameToken, Avatar: avatar })
             .catch(err => console.error("Error while calling RegisterUser: ", err));
           console.log(`User ${userNameToken} registered successfully`);
         } catch (error) {

@@ -55,6 +55,8 @@ const ChatBox = ({ onClose }) => {
   const userId = useUserId();
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { onlineUsers } = useSignalR();
+
 
   const handleScroll = () => {
     if (chatMessagesRef.current) {
@@ -325,42 +327,49 @@ const ChatBox = ({ onClose }) => {
       <div className="chat-messages" ref={chatMessagesRef}>
         {isDeleting ? (
           <div className="no-messages">
-            <l-cardio
-              size="50"
-              stroke="4"
-              speed="0.5"
-              color="black"
-            ></l-cardio>
+            <l-cardio size="50" stroke="4" speed="0.5" color="black"></l-cardio>
           </div>
-
         ) : messages.length === 0 ? (
           <div className="no-messages">
             <h1>Empty messages</h1>
           </div>
-        ) :
-          (messages.map((msg, index) => (
-            <div
-              key={index}
-              className={`chat-message ${msg.status === "sending" ? "sending-message" : ""
-                } ${msg.userName === username ? "sent-message" : "received-message"
-                }`}
-            >
-              <strong className="chat-user">{msg.userName}</strong>
-              <p className="chat-text">{msg.content}</p>
-              <p className="chat-date">
-                {new Date(msg.sentDate)
-                  .toLocaleString("en-GB", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                  })
-                  .replace(",", ", ")}
-              </p>
-            </div>
-          )))}
+        ) : (
+          messages.map((msg, index) => {
+            // user online không
+            const isOnline = onlineUsers.some(
+              (user) => user.userName === msg.userName
+            );
+
+            return (
+              <div
+                key={index}
+                className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"}`}
+              >
+                <strong className="chat-user">
+                  {msg.userName}
+                  <span
+                    className={`status-dot ${isOnline ? "online" : "offline"}`}
+                  ></span>
+                </strong>
+                <p className="chat-text">{msg.content}</p>
+                <p className="chat-date">
+                  {new Date(msg.sentDate)
+                    .toLocaleString("en-GB", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })
+                    .replace(",", ", ")}
+                </p>
+              </div>
+            );
+          })
+        )}
       </div>
+
+
       <div className="chat-input">
         <textarea
           className="chatbox-input"

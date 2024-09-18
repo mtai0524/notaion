@@ -26,7 +26,6 @@ const App = () => {
     <AuthProvider>
       <SignalRProvider>
         <ChatProvider>
-          <OnlineUsers />
           <MainApp />
         </ChatProvider>
       </SignalRProvider>
@@ -99,6 +98,7 @@ const MainApp = () => {
   return (
     <BrowserRouter>
       <Header />
+      <OnlineUsers />
       <Routes>
         <Route path="/" element={<Navigate to="/home-page" />} />
         <Route path="/signal" element={<Realtime />} />

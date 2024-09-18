@@ -131,21 +131,25 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
-
     if (connection) {
       try {
-        await connection.stop();
-      } catch (error) {
-        console.error("Error stopping SignalR connection:", error);
+        const token = Cookies.get("token");
+        const decodedToken = jwt_decode(token);
+        const userId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+
+        await connection.invoke("LogoutUser", userId)
+          .then(() => console.log("User logged out successfully"))
+          .catch(err => console.error("Error logging out user:", err));
+
+        Cookies.remove("token");
+
+        navigate("/login");
+      } catch (err) {
+        console.error("Logout error: ", err);
       }
     }
-
-    Cookies.remove("token");
-    message.warning("Logout");
-    setToken(null);
-
-    navigate("/login");
   };
+
 
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu">

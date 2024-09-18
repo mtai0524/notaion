@@ -599,9 +599,11 @@ const Notion = () => {
           cancelText="No"
           onConfirm={handleDeleteAll}
         >
-          <button style={{ borderColor: "#21242b" }} className="main-button ">
+
+          {/* <button style={{ borderColor: "#21242b" }} className="main-button ">
             <span>Delete all</span>
-          </button>
+          </button> */}
+
         </Popconfirm>
       </div>
       <div style={{ overflow: "hidden" }}>

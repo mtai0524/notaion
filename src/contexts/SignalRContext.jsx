@@ -46,10 +46,11 @@ export const SignalRProvider = ({ children }) => {
         if (tokenFromStorage) {
           const decodedToken = jwt_decode(tokenFromStorage);
           const userId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
-          const userNameToken = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+          const userName = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+          const avatar = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country"];
           try {
-            await connect.invoke('RegisterUser', { userId, userName: userNameToken });
-            console.log(`User ${userNameToken} registered successfully`);
+            await connect.invoke('RegisterUser', { userId, userName, avatar });
+            console.log(`User ${userName} registered successfully`);
           } catch (error) {
             console.error('Error registering user:', error);
           }

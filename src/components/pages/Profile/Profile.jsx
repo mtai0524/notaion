@@ -230,8 +230,8 @@ const Profile = () => {
           />
         </div>
         <Meta
-          title={`Email: ${userProfile.email}`}
-          description={`Username: ${userProfile.userName}`}
+          title={`Email: ${userProfile.userName}`}
+          description={`Username: ${userProfile.email}`}
         />
         <div className="flex justify-end mt-2 -mb-4 -mr-2">
           {(currentUserId !== identifier && currentUsername !== identifier) && (
