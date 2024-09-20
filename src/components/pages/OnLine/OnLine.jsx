@@ -10,7 +10,7 @@ const OnlineUsers = () => {
     const renderMenu = (userName, userId) => (
         <Menu>
             <Menu.Item key="username" onClick={() => switchPageProfile(userName)}>
-                <span>{userName}</span>
+                <span>profile</span>
             </Menu.Item>
         </Menu>
     );

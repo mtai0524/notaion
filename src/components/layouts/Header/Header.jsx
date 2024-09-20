@@ -137,6 +137,7 @@ const Header = () => {
         const decodedToken = jwt_decode(token);
         const userId = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
 
+        // call signal logout user
         await connection.invoke("LogoutUser", userId)
           .then(() => console.log("User logged out successfully"))
           .catch(err => console.error("Error logging out user:", err));
@@ -244,6 +245,25 @@ const Header = () => {
     await markAsRead(notificationId);
   };
 
+
+  const handleAcceptFriendRequest = async (senderId, receiverId, notificationId, index) => {
+    try {
+      const response = await axiosInstance.post('/api/FriendShip/accept-friend-request', {
+        senderId: senderId,
+        receiverId: receiverId
+      });
+
+      if (response.status === 200) {
+        message.success('accepted!');
+
+        removeNotification(notificationId, index);
+      }
+    } catch (error) {
+      message.error('Failed to accept friend request.');
+      console.error('Error accepting friend request:', error);
+    }
+  }
+
   const content = (
     <div className="container-noti mr-2 !min-h-20">
       {notifications.length === 0 ? (
@@ -259,7 +279,7 @@ const Header = () => {
             key={index}
             className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
             style={{ minWidth: '200px', position: 'relative' }}
-            onClick={() => handleNotificationClick(notification.id)} //  click to read
+            onClick={() => handleNotificationClick(notification.id)} //  click to set read status
           >
             {!notification.isRead && (
               <div
@@ -287,6 +307,7 @@ const Header = () => {
                   Decline
                 </button>
                 <button
+                  onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
                   className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
                 >
                   Agree
@@ -375,6 +396,7 @@ const Header = () => {
                 </div>
               </Tooltip>
             </Popover>
+
             <Dropdown
               placement="bottom"
               overlay={menuProfile}

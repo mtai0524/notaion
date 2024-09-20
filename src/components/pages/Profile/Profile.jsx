@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin, Card, Image, Space, Button, Tooltip } from "antd";
+import { message, Spin, Card, Image, Space, Button, Tooltip, Menu, Dropdown, Modal, Tabs } from "antd";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import "./Profile.scss";
@@ -10,7 +10,7 @@ import { DownloadOutlined, RotateLeftOutlined, RotateRightOutlined, SwapOutlined
 import * as signalR from "@microsoft/signalr";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUserPlus } from "@fortawesome/free-solid-svg-icons";
+import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
 import { cardio } from 'ldrs';
 cardio.register();
 
@@ -31,6 +31,62 @@ const Profile = () => {
   const [isRequesting, setIsRequesting] = useState(false);
   const [added, setAdded] = useState(false);
   const { onlineUsers } = useSignalR();
+  const [isFriend, setIsFriend] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalListFriend, setModalListFriend] = useState(false);
+  const [friends, setFriends] = useState([]);
+
+
+  const generateAvatars = (avatarType) => {
+    return Array.from({ length: 10 }, (_, index) => {
+      const seed = Math.floor(Math.random() * 1000000000 + index);
+      return `https://api.dicebear.com/9.x/${avatarType}/svg?seed=${seed}`;
+    });
+  };
+  const [avatars, setAvatars] = useState(generateAvatars("notionists"));
+  const [avatarType, setAvatarType] = useState("notionists");
+
+  const refreshAvatars = () => {
+    setAvatars(generateAvatars(avatarType));
+  };
+
+  const fetchFriends = async () => {
+    try {
+      const response = await axiosInstance.get(`/api/FriendShip/get-friends/${currentUserId}`);
+      setFriends(response.data);
+    } catch (error) {
+      console.error('Error fetching friends', error);
+    }
+  };
+
+  useEffect(() => {
+    if (modalListFriend) {
+      fetchFriends();
+    }
+  }, [modalListFriend]);
+
+
+  useEffect(() => {
+    if (userProfile) {
+      setUserProfile(prev => ({
+        ...prev,
+        avatar: avatar
+      }));
+    }
+  }, [avatar]);
+
+  useEffect(() => {
+    const checkFriendship = async () => {
+      try {
+        const response = await axiosInstance.get(`/api/FriendShip/check-friendship/${currentUserId}/${identifier}`);
+        setIsFriend(response.data.isFriend);
+      } catch (error) {
+        console.error('Failed to check friendship:', error);
+      }
+    };
+
+    checkFriendship();
+  }, [currentUserId, identifier]);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -52,6 +108,8 @@ const Profile = () => {
         const response = await axiosInstance.get(`/api/account/profile/${identifier}`);
         setUserProfile(response.data);
 
+        setAvatar(response.data.avatar);
+
         fetchPublicPages(identifier);
       } catch (error) {
         setLoading(false);
@@ -63,7 +121,6 @@ const Profile = () => {
 
     fetchUserProfile();
   }, [identifier, navigate]);
-
 
 
   const fetchPublicPages = async (userId) => {
@@ -81,25 +138,29 @@ const Profile = () => {
 
   const showActions = currentUserId === identifier || currentUsername === identifier;
 
-  const setAvatarRandom = () => {
-    const seed = Math.floor(Math.random() * 1000000000);
-    const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}`;
-    return avatarUrl;
-  };
-
-  const handleEditClick = async () => {
+  const handleEditClick = () => {
     if (showActions) {
-      const newAvatar = setAvatarRandom();
-      const encodedAvatar = encodeURIComponent(newAvatar);
-      try {
-        await axiosInstance.post(`/api/account/change-avatar/${currentUserId}/${encodedAvatar}`);
-        setAvatar(newAvatar);
-        message.success("Updated successfully");
-      } catch (error) {
-        message.error("Failed to update avatar");
-      }
+      setModalVisible(true);
     }
   };
+
+  const handleAvatarSelect = async (avatarUrl) => {
+    const encodedAvatar = encodeURIComponent(avatarUrl);
+    try {
+      const response = await axiosInstance.put(`/api/account/change-avatar/${currentUserId}/${encodedAvatar}`);
+
+      const updatedAvatar = response.data.avatar;
+      console.log("avaatar" + updatedAvatar);
+
+      setAvatar(updatedAvatar);
+
+      message.success("Updated successfully");
+      setModalVisible(false);
+    } catch (error) {
+      message.error("Failed to update avatar");
+    }
+  };
+
 
   const handleAddFriend = async () => {
     if (currentUserId === identifier) {
@@ -110,6 +171,7 @@ const Profile = () => {
     if (isRequesting) return;
 
     setIsRequesting(true);
+    setLoadingRequest(true);
 
     try {
       const friendRequestPayload = {
@@ -123,25 +185,20 @@ const Profile = () => {
 
       if (connection) {
         await connection.invoke("SendFriendRequest", currentUserId, identifier, currentUsername);
-        message.success("Request sent!");
       }
     } catch (error) {
       message.success("Request sent!");
     } finally {
       setIsRequesting(false);
+      setLoadingRequest(false);
+
     }
   };
-
 
   if (loading || !userProfile) {
     return (
       <div className="loading-container">
-        <l-cardio
-          size="60"
-          stroke="3"
-          speed="1"
-          color="black"
-        />
+        <l-cardio size="60" stroke="3" speed="1" color="black" />
       </div>
     );
   }
@@ -161,23 +218,99 @@ const Profile = () => {
       });
   };
 
-  const handleClick = async () => {
-    setLoadingRequest(true);
+  const isOnline = onlineUsers.some(user => user.userName === userProfile.userName);
+
+  const showMenuPersonal = async (e) => {
+    switch (e.key) {
+      case 'friends':
+        showListFriend();
+        break;
+      default:
+        break;
+    }
+
+  }
+  const menuPersonal = (
+    <Menu onClick={showMenuPersonal}>
+      <Menu.Item key="friends" icon={<FontAwesomeIcon icon={faUserGroup} />}>
+        Friends
+      </Menu.Item>
+    </Menu>
+  );
+
+  const onTabChange = (key) => {
+    setAvatarType(key);
+    setAvatars(generateAvatars(key));
+  };
+
+  const tabs = [
+    {
+      key: "notionists",
+      label: "Notionists",
+    },
+    {
+      key: "open-peeps",
+      label: "Open Peeps",
+    },
+    {
+      key: "croodles",
+      label: "Croodles",
+    },
+    {
+      key: "lorelei",
+      label: "Lorelei",
+    },
+    {
+      key: "pixel-art",
+      label: "Pixel",
+    },
+  ];
+
+
+  const showListFriend = () => {
+    setModalListFriend(true);
+  }
+
+
+  const handleRemoveFriend = async (friendId) => {
     try {
-      await handleAddFriend();
-      setAdded(true);
+      await axiosInstance.delete(`/api/friendship/${friendId}`);
+      fetchFriends();
     } catch (error) {
-      console.error("Error adding friend:", error);
-    } finally {
-      setLoadingRequest(false);
+      console.error("Error removing friend:", error);
     }
   };
 
-  const isOnline = onlineUsers.some(user => user.userName === userProfile.userName);
 
   return (
     <div className="profile-container">
+      <Modal
+        title="List friend"
+        visible={modalListFriend}
+        onCancel={() => setModalListFriend(false)}>
+        <ul className="friends-list">
+          {friends.length > 0 ? (
+            friends.map((friend) => {
+              const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
+              const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
+              const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
 
+              return (
+                <li key={friend.id}>
+                  <img src={friendAvatar} alt={`${friendUserName}'s avatar`} />
+                  {friendUserName}
+                  <button onClick={() => handleRemoveFriend(friend.friendshipId)}>Remove</button>
+                </li>
+              );
+            })
+          ) : (
+            <div style={{ minHeight: '70px' }} className="flex justify-center items-center">
+              <span className="font-semibold">No friends found.</span>
+            </div>
+          )}
+        </ul>
+
+      </Modal>
       <Card
         className="profile-card"
         bordered={false}
@@ -185,12 +318,14 @@ const Profile = () => {
           showActions
             ? [
               <SettingOutlined key="setting" />,
-              <EditOutlined
-                title="change avatar"
-                key="edit"
-                onClick={handleEditClick}
-              />,
-              <EllipsisOutlined key="ellipsis" />,
+              <EditOutlined title="change avatar" key="edit" onClick={handleEditClick} />,
+              <Dropdown placement="bottom" overlay={menuPersonal} trigger={["click"]} className="mr-5">
+                <a className="ant-dropdown-link" onClick={(e) => e.preventDefault()}>
+                  <Tooltip title="personal">
+                    <EllipsisOutlined key="ellipsis" />
+                  </Tooltip>
+                </a>
+              </Dropdown>
             ]
             : []
         }
@@ -229,6 +364,7 @@ const Profile = () => {
             className="avatar-profile"
             src={userProfile.avatar}
             alt="User"
+
           />
 
           <div
@@ -251,9 +387,9 @@ const Profile = () => {
         <div className="flex justify-end mt-2 -mb-4 -mr-2">
           {(currentUserId !== identifier && currentUsername !== identifier) && (
             <button
-              className={`makeFriend ${added ? 'bg-gray-400 cursor-not-allowed' : 'bg-zinc-700'} text-white px-2 py-1 text-xs rounded transition font-medium`}
-              onClick={!added ? handleClick : undefined}
-              disabled={added || loadingRequest}
+              className={`makeFriend ${isFriend || added ? 'bg-gray-600 cursor-not-allowed' : 'bg-zinc-700'} text-white px-2 py-1 text-xs rounded transition font-medium`}
+              onClick={!isFriend && !added ? handleAddFriend : undefined}
+              disabled={isFriend || added || loadingRequest}
             >
               {loadingRequest ? (
                 <l-cardio
@@ -263,10 +399,11 @@ const Profile = () => {
                   color="white"
                   className="mr-2"
                 />
+              ) : isFriend ? (
+                "Already Friends"
               ) : (
-                <FontAwesomeIcon icon={faUserPlus} />
+                added ? "Requested" : "Request"
               )}
-              {loadingRequest ? null : (added ? ' Requested' : ' Request')}
             </button>
           )}
         </div>
@@ -351,8 +488,41 @@ const Profile = () => {
           ))
         )}
       </div>
+
+      <div className="profile-container">
+        <Modal
+          title="Choose an Avatar"
+          visible={modalVisible}
+          onCancel={() => setModalVisible(false)}
+          footer={[
+            <Button key="refresh" onClick={refreshAvatars}>
+              refresh
+            </Button>
+          ]}
+        >
+          <Tabs defaultActiveKey="notionists" onChange={onTabChange}>
+            {tabs.map((tab) => (
+              <Tabs.TabPane tab={tab.label} key={tab.key}>
+                <div className="avatar-selection">
+                  {avatars.map((url, index) => (
+                    <div key={index} className="avatar-item">
+                      <img
+                        src={url}
+                        alt={`Avatar ${index + 1}`}
+                        onClick={() => handleAvatarSelect(url)}
+                        className="avatar-image"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </Tabs.TabPane>
+            ))}
+          </Tabs>
+        </Modal>
+      </div>
     </div>
   );
 };
 
 export default Profile;
+
