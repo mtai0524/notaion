@@ -35,7 +35,7 @@ const Profile = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalListFriend, setModalListFriend] = useState(false);
   const [friends, setFriends] = useState([]);
-
+  const [loadingListFriend, setLoadingListFriend] = useState(true);
 
   const generateAvatars = (avatarType) => {
     return Array.from({ length: 10 }, (_, index) => {
@@ -56,6 +56,9 @@ const Profile = () => {
       setFriends(response.data);
     } catch (error) {
       console.error('Error fetching friends', error);
+    }
+    finally {
+      setLoadingListFriend(false);
     }
   };
 
@@ -287,30 +290,38 @@ const Profile = () => {
       <Modal
         title="List friend"
         visible={modalListFriend}
-        onCancel={() => setModalListFriend(false)}>
-        <ul className="friends-list">
-          {friends.length > 0 ? (
-            friends.map((friend) => {
-              const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
-              const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
-              const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
+        onCancel={() => setModalListFriend(false)}
+      >
+        {/* show loading list friend */}
+        {loadingListFriend ? (
+          <div className="flex justify-center items-center" style={{ minHeight: '70px' }}>
+            <l-cardio size="40" stroke="3" speed="1" color="black" />
+          </div>
+        ) : (
+          <ul className="friends-list">
+            {friends.length > 0 ? (
+              friends.map((friend) => {
+                const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
+                const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
+                const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
 
-              return (
-                <li key={friend.id}>
-                  <img src={friendAvatar} alt={`${friendUserName}'s avatar`} />
-                  {friendUserName}
-                  <button onClick={() => handleRemoveFriend(friend.friendshipId)}>Remove</button>
-                </li>
-              );
-            })
-          ) : (
-            <div style={{ minHeight: '70px' }} className="flex justify-center items-center">
-              <span className="font-semibold">No friends found.</span>
-            </div>
-          )}
-        </ul>
-
+                return (
+                  <li key={friend.id}>
+                    <img src={friendAvatar} alt={`${friendUserName}'s avatar`} />
+                    {friendUserName}
+                    <button onClick={() => handleRemoveFriend(friend.friendshipId)}>Remove</button>
+                  </li>
+                );
+              })
+            ) : (
+              <div style={{ minHeight: '70px' }} className="flex justify-center items-center">
+                <span className="font-semibold">No friends found.</span>
+              </div>
+            )}
+          </ul>
+        )}
       </Modal>
+
       <Card
         className="profile-card"
         bordered={false}
@@ -520,7 +531,7 @@ const Profile = () => {
           </Tabs>
         </Modal>
       </div>
-    </div>
+    </div >
   );
 };
 

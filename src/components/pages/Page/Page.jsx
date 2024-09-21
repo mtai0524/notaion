@@ -291,8 +291,9 @@ const Page = () => {
                 cursor: "pointer",
                 position: "relative",
                 textAlign: "center",
+
               }}
-              className="profile-card"
+              className="profile-card flex justify-center items-center"
               bordered={false}
             >
               <Meta

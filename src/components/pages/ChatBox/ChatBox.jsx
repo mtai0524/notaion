@@ -56,6 +56,7 @@ const ChatBox = ({ onClose }) => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { onlineUsers } = useSignalR();
+  const [loadingChatbox, setLoadingChatbox] = useState(true);
 
 
   const handleScroll = () => {
@@ -108,6 +109,9 @@ const ChatBox = ({ onClose }) => {
         }
       } catch (error) {
         console.error("Error fetching messages: ", error);
+      }
+      finally {
+        setLoadingChatbox(false);
       }
     };
     fetchMessages();
@@ -325,48 +329,53 @@ const ChatBox = ({ onClose }) => {
 
       </div>
       <div className="chat-messages" ref={chatMessagesRef}>
-        {isDeleting ? (
-          <div className="no-messages">
-            <l-cardio size="50" stroke="4" speed="0.5" color="black"></l-cardio>
+        {loadingChatbox ? (
+          <div className="flex justify-center items-center h-full">
+            <l-cardio size="40" stroke="3" speed="1" color="black" />
           </div>
-        ) : messages.length === 0 ? (
-          <div className="no-messages">
-            <h1>Empty messages</h1>
-          </div>
-        ) : (
-          messages.map((msg, index) => {
-            // user online không
-            const isOnline = onlineUsers.some(
-              (user) => user.userName === msg.userName
-            );
+        )
+          : isDeleting ? (
+            <div className="no-messages">
+              <l-cardio size="50" stroke="4" speed="0.5" color="black"></l-cardio>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="no-messages">
+              <h1>Empty messages</h1>
+            </div>
+          ) : (
+            messages.map((msg, index) => {
+              // user online không
+              const isOnline = onlineUsers.some(
+                (user) => user.userName === msg.userName
+              );
 
-            return (
-              <div
-                key={index}
-                className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"}`}
-              >
-                <strong className="chat-user">
-                  {msg.userName}
-                  <span
-                    className={`status-dot ${isOnline ? "online" : "offline"}`}
-                  ></span>
-                </strong>
-                <p className="chat-text">{msg.content}</p>
-                <p className="chat-date">
-                  {new Date(msg.sentDate)
-                    .toLocaleString("en-GB", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                      day: "2-digit",
-                      month: "long",
-                      year: "numeric",
-                    })
-                    .replace(",", ", ")}
-                </p>
-              </div>
-            );
-          })
-        )}
+              return (
+                <div
+                  key={index}
+                  className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"}`}
+                >
+                  <strong className="chat-user">
+                    {msg.userName}
+                    <span
+                      className={`status-dot ${isOnline ? "online" : "offline"}`}
+                    ></span>
+                  </strong>
+                  <p className="chat-text">{msg.content}</p>
+                  <p className="chat-date">
+                    {new Date(msg.sentDate)
+                      .toLocaleString("en-GB", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        day: "2-digit",
+                        month: "long",
+                        year: "numeric",
+                      })
+                      .replace(",", ", ")}
+                  </p>
+                </div>
+              );
+            })
+          )}
       </div>
 
 
