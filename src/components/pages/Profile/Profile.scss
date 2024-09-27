@@ -63,49 +63,48 @@
 
 
 .friends-list {
-  list-style-type: none;
+  list-style: none;
   padding: 0;
   margin: 0;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  overflow: hidden;
 }
 
 .friends-list li {
   display: flex;
   align-items: center;
-  padding: 10px 15px;
-  border-bottom: 1px solid #e0e0e0;
-  transition: background-color 0.3s;
+  padding: 10px;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.friends-list li:hover {
-  background-color: #f7f7f7;
-}
-
-.friends-list img {
+.friends-list li img {
+  border-radius: 50%;
   width: 40px;
   height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
+  margin-right: 15px;
 }
 
-.friends-list p {
-  text-align: center;
-  padding: 20px;
-  color: #757575;
-}
-
-.friends-list button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  background-color: #f44336;
-  color: white;
+.friends-list li button {
+  margin-left: auto;
+  background-color: #ff4d4f;
   border: none;
+  color: white;
+  padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
+  transition: background-color 0.3s ease;
 }
 
-.friends-list button:hover {
-  background-color: #d32f2f;
+.friends-list li button:hover {
+  background-color: #ff7875;
+}
+
+.friends-list .no-friends {
+  min-height: 70px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.friends-list .no-friends span {
+  font-weight: 600;
+  color: #595959;
 }

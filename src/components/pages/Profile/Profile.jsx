@@ -13,7 +13,7 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
 import { cardio } from 'ldrs';
 cardio.register();
-
+import { MoreOutlined } from '@ant-design/icons';
 const { Meta } = Card;
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
@@ -35,7 +35,7 @@ const Profile = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalListFriend, setModalListFriend] = useState(false);
   const [friends, setFriends] = useState([]);
-  const [loadingListFriend, setLoadingListFriend] = useState(true);
+
 
   const generateAvatars = (avatarType) => {
     return Array.from({ length: 10 }, (_, index) => {
@@ -56,9 +56,6 @@ const Profile = () => {
       setFriends(response.data);
     } catch (error) {
       console.error('Error fetching friends', error);
-    }
-    finally {
-      setLoadingListFriend(false);
     }
   };
 
@@ -283,7 +280,56 @@ const Profile = () => {
       console.error("Error removing friend:", error);
     }
   };
+  const { confirm } = Modal;
 
+  const showConfirm = (friendshipId) => {
+    let loading = false;
+
+    const handleOk = async () => {
+      loading = true;
+      try {
+        await handleRemoveFriend(friendshipId);
+      } catch (error) {
+        console.error('Error while unfriending:', error);
+      } finally {
+        loading = false;
+      }
+    };
+
+    confirm({
+      title: 'Are you sure you want to unfriend this person?',
+      content: 'This action cannot be undone.',
+      okText: 'Yes',
+      okType: 'danger',
+      cancelText: 'No',
+      okButtonProps: {
+        loading: loading,
+      },
+      onOk() {
+        handleOk();
+      },
+      onCancel() {
+        console.log('Unfriend canceled');
+      },
+    });
+  };
+
+  const handleViewProfile = (friendUserName) => {
+    setModalListFriend(false);
+    navigate(`/profile/${friendUserName}`);
+  };
+
+
+  const menu = (friendshipId, friendUserName) => (
+    <Menu>
+      <Menu.Item onClick={() => handleViewProfile(friendUserName)}>
+        <span className="font-semibold text-xs">Profile</span>
+      </Menu.Item>
+      <Menu.Item danger onClick={() => showConfirm(friendshipId)}>
+        <span className="font-semibold text-xs">Unfriend</span>
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <div className="profile-container">
@@ -291,35 +337,31 @@ const Profile = () => {
         title="List friend"
         visible={modalListFriend}
         onCancel={() => setModalListFriend(false)}
+        footer={null}
       >
-        {/* show loading list friend */}
-        {loadingListFriend ? (
-          <div className="flex justify-center items-center" style={{ minHeight: '70px' }}>
-            <l-cardio size="40" stroke="3" speed="1" color="black" />
-          </div>
-        ) : (
-          <ul className="friends-list">
-            {friends.length > 0 ? (
-              friends.map((friend) => {
-                const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
-                const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
-                const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
+        <ul className="friends-list">
+          {friends.length > 0 ? (
+            friends.map((friend) => {
+              const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
+              const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
+              const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
 
-                return (
-                  <li key={friend.id}>
-                    <img src={friendAvatar} alt={`${friendUserName}'s avatar`} />
-                    {friendUserName}
-                    <button onClick={() => handleRemoveFriend(friend.friendshipId)}>Remove</button>
-                  </li>
-                );
-              })
-            ) : (
-              <div style={{ minHeight: '70px' }} className="flex justify-center items-center">
-                <span className="font-semibold">No friends found.</span>
-              </div>
-            )}
-          </ul>
-        )}
+              return (
+                <li key={friend.id} style={{ display: 'flex', alignItems: 'center' }}>
+                  <img src={friendAvatar} alt={`${friendUserName}'s avatar`} style={{ marginRight: '10px' }} />
+                  {friendUserName}
+                  <Dropdown overlay={menu(friend.friendshipId, friendUserName)} trigger={['click']}>
+                    <MoreOutlined style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.6' }} />
+                  </Dropdown>
+                </li>
+              );
+            })
+          ) : (
+            <div className="no-friends">
+              <span>No friends found.</span>
+            </div>
+          )}
+        </ul>
       </Modal>
 
       <Card
@@ -531,7 +573,7 @@ const Profile = () => {
           </Tabs>
         </Modal>
       </div>
-    </div >
+    </div>
   );
 };
 

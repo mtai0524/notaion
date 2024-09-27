@@ -32,7 +32,7 @@ const Header = () => {
   const [currentUser, setCurrentUser] = useState("");
   const [notificationCount, setNotificationCount] = useState(0);
   const { connection } = useSignalR();
-  const [loadingNotification, setLoadingNotification] = useState(true);
+
   useEffect(() => {
     const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
     const connection = new HubConnectionBuilder()
@@ -54,8 +54,6 @@ const Header = () => {
               ...prevNotifications,
               {
                 id: notificationId,
-                senderId,
-                receiverId,
                 senderName,
                 content: `muốn kết nghĩa với bạn`,
                 senderAvatar: user.avatar,
@@ -92,9 +90,6 @@ const Header = () => {
           setNotificationCount(unreadCount);
         } catch {
           console.log('Not found or invalid token');
-        }
-        finally {
-          setLoadingNotification(false);
         }
       }
     };
@@ -148,7 +143,7 @@ const Header = () => {
           .catch(err => console.error("Error logging out user:", err));
 
         Cookies.remove("token");
-
+        setToken(null);
         navigate("/login");
       } catch (err) {
         console.error("Logout error: ", err);
@@ -252,14 +247,6 @@ const Header = () => {
 
 
   const handleAcceptFriendRequest = async (senderId, receiverId, notificationId, index) => {
-    if (!senderId || !receiverId) {
-      console.error("Missing senderId or receiverId");
-      console.log("senderId" + senderId);
-      console.log("receiverId" + receiverId);
-
-      return;
-    }
-
     try {
       const response = await axiosInstance.post('/api/FriendShip/accept-friend-request', {
         senderId: senderId,
@@ -268,81 +255,74 @@ const Header = () => {
 
       if (response.status === 200) {
         message.success('accepted!');
+
         removeNotification(notificationId, index);
-
-
       }
     } catch (error) {
       message.error('Failed to accept friend request.');
       console.error('Error accepting friend request:', error);
     }
-  };
-
+  }
 
   const content = (
     <div className="container-noti mr-2 !min-h-20">
-      {loadingNotification ? (
-        <div className="flex justify-center items-center !min-h-20">
-          <l-cardio size="20" stroke="2" speed="1" color="black" />
+      {notifications.length === 0 ? (
+        <div
+          className="bg-white rounded-lg p-3 max-w-xs flex items-center border-2 !border-gray-950"
+          style={{ minWidth: '240px', textAlign: 'center' }}
+        >
+          <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">Empty notification</div>
         </div>
-      ) :
-        notifications.length === 0 ? (
+      ) : (
+        notifications.map((notification, index) => (
           <div
-            className="bg-white rounded-lg p-3 max-w-xs flex items-center border-2 !border-gray-950"
-            style={{ minWidth: '240px', textAlign: 'center' }}
+            key={index}
+            className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
+            style={{ minWidth: '200px', position: 'relative' }}
+            onClick={() => handleNotificationClick(notification.id)} //  click to set read status
           >
-            <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">Empty notification</div>
-          </div>
-        ) : (
-          notifications.map((notification, index) => (
-            <div
-              key={index}
-              className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
-              style={{ minWidth: '200px', position: 'relative' }}
-              onClick={() => handleNotificationClick(notification.id)} //  click to set read status
-            >
-              {!notification.isRead && (
-                <div
-                  className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full"
-                  style={{ zIndex: 1 }}
-                ></div>
-              )}
-              <Image
-                className="rounded-full mr-3"
-                style={{ width: '60px', height: '60px' }}
-                src={notification.senderAvatar || avatar}
-                alt="Avatar"
-              />
-              <div className="flex-1">
-                <p className="font-medium text-gray-800 text-sm mb-1">
-                  <span className="font-bold">{notification.senderName}</span>
-                </p>
-                <p className="text-xs text-gray-600" style={{ marginTop: '5px' }}>
-                  muốn kết nghĩa với bạn
-                </p>
-                <div className="flex space-x-1 justify-end mt-2">
-                  <button
-                    className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
-                  >
-                    Decline
-                  </button>
-                  <button
-                    onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
-                    className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
-                  >
-                    Agree
-                  </button>
-                  <button
-                    onClick={() => removeNotification(notification.id, index)}
-                    className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
-                  >
-                    <FontAwesomeIcon icon={faClose} />
-                  </button>
-                </div>
+            {!notification.isRead && (
+              <div
+                className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full"
+                style={{ zIndex: 1 }}
+              ></div>
+            )}
+            <Image
+              className="rounded-full mr-3"
+              style={{ width: '60px', height: '60px' }}
+              src={notification.senderAvatar || avatar}
+              alt="Avatar"
+            />
+            <div className="flex-1">
+              <p className="font-medium text-gray-800 text-sm mb-1">
+                <span className="font-bold">{notification.senderName}</span>
+              </p>
+              <p className="text-xs text-gray-600" style={{ marginTop: '5px' }}>
+                muốn kết nghĩa với bạn
+              </p>
+              <div className="flex space-x-1 justify-end mt-2">
+                <button
+                  className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
+                >
+                  Decline
+                </button>
+                <button
+                  onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
+                  className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
+                >
+                  Agree
+                </button>
+                <button
+                  onClick={() => removeNotification(notification.id, index)}
+                  className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
+                >
+                  <FontAwesomeIcon icon={faClose} />
+                </button>
               </div>
             </div>
-          ))
-        )}
+          </div>
+        ))
+      )}
     </div>
   );
 

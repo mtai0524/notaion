@@ -8,6 +8,7 @@ import Notion from "./components/pages/Notion/Notion";
 import Login from "./components/pages/Login/Login";
 import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
+import Guide from "./components/pages/Guide/Guide";
 import Page from "./components/pages/Page/Page";
 import Content from "./components/pages/Content/Content";
 import Setting from "./components/pages/Setting/Setting";
@@ -110,6 +111,7 @@ const MainApp = () => {
         <Route path="/page/" element={<Page />} />
         <Route path="/page/content/:id" element={<Content />} />
         <Route path="/setting/" element={<Setting />} />
+        <Route path="/guide/" element={<Guide />} />
         <Route path="*" element={<NotFound />}></Route>
       </Routes>
       <FloatingButton
