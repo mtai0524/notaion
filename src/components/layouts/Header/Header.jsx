@@ -1,8 +1,8 @@
-import { UserOutlined } from "@ant-design/icons";
-import { useState, useEffect } from "react";
+import { UserOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import { useState, useEffect, useRef } from "react";
 import "./Header.scss";
 import { Link, useNavigate } from "react-router-dom";
-import { Dropdown, Image, Menu, Popover, Tooltip } from "antd";
+import { Dropdown, Empty, Image, Menu, Popover, Tooltip, Tour } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBan,
@@ -268,10 +268,15 @@ const Header = () => {
     <div className="container-noti mr-2 !min-h-20">
       {notifications.length === 0 ? (
         <div
-          className="bg-white rounded-lg p-3 max-w-xs flex items-center border-2 !border-gray-950"
+          className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col"
           style={{ minWidth: '240px', textAlign: 'center' }}
         >
-          <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">Empty notification</div>
+          <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
+            <div className="flex flex-col">
+              <Empty description={false}></Empty>
+              <span>Empty notification</span>
+            </div>
+          </div>
         </div>
       ) : (
         notifications.map((notification, index) => (
@@ -326,6 +331,82 @@ const Header = () => {
     </div>
   );
 
+  const ref1 = useRef(null);
+  const ref2 = useRef(null);
+  const ref3 = useRef(null);
+  const [openTour, setOpenTour] = useState(false);
+  const steps = [
+    {
+      title: 'Login',
+      description: 'Click here and choose login.',
+      target: () => ref1.current,
+    },
+    {
+      title: 'Notification',
+      description: 'You can see notifications about request from everyone',
+      target: () => ref2.current,
+    },
+    {
+      title: 'Trial account',
+      description: <div>
+        <span className="font-medium">Welcome to Notaion. <br></br><span className="font-medium">You can use a trial account to test the web</span></span>
+        <br />
+        <div className="flex justify-center flex-col " >
+          <span className="font-semibold">Username: <span className="underline">test</span></span>
+          <span className="font-semibold">Password: <span className="underline">123</span></span>
+        </div>
+      </div>,
+      target: () => ref3.current,
+    },
+    {
+      title: 'I got our back',
+      description: <span>
+        <div className="flex justify-center flex-col" >
+          <div>
+            <span className="font-semibold">Tri Cao</span>: <span className="italic font-medium">"Backend lỏ, dùng solid vào"</span>
+          </div>
+          <div>
+            <span className="font-semibold">Dang Tien</span>: <span className="italic font-medium">"Notaion hahaha, có gì mới chưa Tài?"</span>
+          </div>
+          <div>
+            <span className="font-semibold">Si Trinh</span>: <span className="italic font-medium">"Bận quá"</span>
+          </div>
+          <div>
+            <span className="font-semibold">Tuan Vinh</span>: <span className="italic font-medium">"Notion hả"</span>
+          </div>
+        </div>
+      </span>,
+      target: () => ref3.current,
+    },
+    {
+      title: 'Contact',
+      description: <div>
+        <div className="flex flex-col items-center justify-center">
+          <span className="font-semibold">Minh Tai</span>
+          <div className="flex items-center">
+            <span className="font-semibold mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 24 24">
+                <path d="M10.9,2.1c-4.6,0.5-8.3,4.2-8.8,8.7c-0.5,4.7,2.2,8.9,6.3,10.5C8.7,21.4,9,21.2,9,20.8v-1.6c0,0-0.4,0.1-0.9,0.1 c-1.4,0-2-1.2-2.1-1.9c-0.1-0.4-0.3-0.7-0.6-1C5.1,16.3,5,16.3,5,16.2C5,16,5.3,16,5.4,16c0.6,0,1.1,0.7,1.3,1c0.5,0.8,1.1,1,1.4,1 c0.4,0,0.7-0.1,0.9-0.2c0.1-0.7,0.4-1.4,1-1.8c-2.3-0.5-4-1.8-4-4c0-1.1,0.5-2.2,1.2-3C7.1,8.8,7,8.3,7,7.6c0-0.4,0-0.9,0.2-1.3 C7.2,6.1,7.4,6,7.5,6c0,0,0.1,0,0.1,0C8.1,6.1,9.1,6.4,10,7.3C10.6,7.1,11.3,7,12,7s1.4,0.1,2,0.3c0.9-0.9,2-1.2,2.5-1.3 c0,0,0.1,0,0.1,0c0.2,0,0.3,0.1,0.4,0.3C17,6.7,17,7.2,17,7.6c0,0.8-0.1,1.2-0.2,1.4c0.7,0.8,1.2,1.8,1.2,3c0,2.2-1.7,3.5-4,4 c0.6,0.5,1,1.4,1,2.3v2.6c0,0.3,0.3,0.6,0.7,0.5c3.7-1.5,6.3-5.1,6.3-9.3C22,6.1,16.9,1.4,10.9,2.1z"></path>
+              </svg>
+            </span>
+
+            <span className="font-semibold ">mtai0524</span>
+          </div>
+          <div className="flex items-center">
+            <span className="font-semibold mr-2">
+              <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="20" height="20" viewBox="0 0 50 50">
+                <path d="M 5.5 7 C 3.019531 7 1 9.019531 1 11.5 L 1 11.925781 L 25 29 L 49 11.925781 L 49 11.5 C 49 9.019531 46.980469 7 44.5 7 Z M 6.351563 9 L 43.644531 9 L 25 22 Z M 1 14.027344 L 1 38.5 C 1 40.980469 3.019531 43 5.5 43 L 44.5 43 C 46.980469 43 49 40.980469 49 38.5 L 49 14.027344 L 43 18.296875 L 43 41 L 7 41 L 7 18.296875 Z"></path>
+              </svg>
+            </span>
+            <span className="font-semibold">duatreodaiduongden</span>
+          </div>
+          <span className="font-semibold">Have a good day at work 🌻</span>
+        </div>
+
+      </div>,
+      target: () => ref3.current,
+    },
+  ];
 
   return (
     <>
@@ -335,6 +416,18 @@ const Header = () => {
             Notaion
           </Link>
           <div className="flex items-center">
+            <Tooltip title="guide" placement="left" >
+              <QuestionCircleOutlined
+                onClick={() => setOpenTour(true)}
+                style={{
+                  backgroundColor: "#faf8f7",
+                  padding: "10px",
+                  cursor: "pointer",
+                }}
+                className="text-black text-lg rounded-full mr-4"
+              />
+            </Tooltip>
+
             <Popover
               content={content}
               title={
@@ -362,8 +455,8 @@ const Header = () => {
               trigger="click"
               placement="bottomLeft"
             >
-              <Tooltip title="notification" placement="left">
-                <div style={{ position: 'relative' }}>
+              <Tooltip title="notification" placement="left" >
+                <div style={{ position: 'relative' }} >
                   <FontAwesomeIcon
                     style={{
                       backgroundColor: "#faf8f7",
@@ -372,6 +465,8 @@ const Header = () => {
                     }}
                     className="text-black text-lg mr-4 rounded-full"
                     icon={faEnvelope}
+                    ref={ref2}
+
                   />
                   {notificationCount > 0 && (
                     <span
@@ -395,6 +490,7 @@ const Header = () => {
                   )}
                 </div>
               </Tooltip>
+
             </Popover>
 
             <Dropdown
@@ -413,11 +509,23 @@ const Header = () => {
                       padding: "10px",
                       cursor: "pointer",
                     }}
+                    ref={ref1}
                     className="text-black text-lg rounded-full"
                   />
                 </Tooltip>
               </a>
             </Dropdown>
+
+            <Tour
+              open={openTour}
+              onClose={() => setOpenTour(false)}
+              steps={steps}
+              indicatorsRender={(current, total) => (
+                <span>
+                  {current + 1} / {total}
+                </span>
+              )}
+            />
           </div>
         </nav>
       </div>

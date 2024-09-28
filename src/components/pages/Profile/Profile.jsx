@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin, Card, Image, Space, Button, Tooltip, Menu, Dropdown, Modal, Tabs } from "antd";
+import { message, Spin, Card, Image, Space, Button, Tooltip, Menu, Dropdown, Modal, Tabs, Empty } from "antd";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import "./Profile.scss";
@@ -357,7 +357,8 @@ const Profile = () => {
               );
             })
           ) : (
-            <div className="no-friends">
+            <div className="no-friends flex flex-col">
+              <Empty description={false}></Empty>
               <span>No friends found.</span>
             </div>
           )}

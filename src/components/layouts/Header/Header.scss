@@ -71,3 +71,22 @@
 .ant-popover-inner-content::-webkit-scrollbar {
   display: none;
 }
+
+.ant-empty-image {
+  height: 60px !important;
+}
+
+.ant-tour {
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
+  width: 70% !important;
+  max-width: 300px !important;
+  border-radius: 6px !important;
+
+}
+
+.ant-tour-inner,
+.ant-tour-header {
+  border-radius: 5px !important;
+
+}

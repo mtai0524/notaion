@@ -19,7 +19,6 @@ import { ChatProvider, useChat } from "./contexts/ChatContext";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import NotFound from "./components/pages/NotFound/NotFound";
-import OnlineUsers from "./components/pages/OnLine/OnLine";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
 
 const App = () => {
@@ -99,7 +98,6 @@ const MainApp = () => {
   return (
     <BrowserRouter>
       <Header />
-      <OnlineUsers />
       <Routes>
         <Route path="/" element={<Navigate to="/home-page" />} />
         <Route path="/signal" element={<Realtime />} />

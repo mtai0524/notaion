@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import PropTypes from "prop-types";
-import { Dropdown, Menu, Modal } from "antd";
+import { Dropdown, Empty, Menu, Modal } from "antd";
 import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
@@ -330,7 +330,8 @@ const ChatBox = ({ onClose }) => {
             <l-cardio size="50" stroke="4" speed="0.5" color="black"></l-cardio>
           </div>
         ) : messages.length === 0 ? (
-          <div className="no-messages">
+          <div className="no-messages flex flex-col">
+            <Empty description={false}></Empty>
             <h1>Empty messages</h1>
           </div>
         ) : (

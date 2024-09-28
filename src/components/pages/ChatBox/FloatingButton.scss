@@ -17,6 +17,45 @@
   transition: background-color 0.3s;
 }
 
+.floating-drawer {
+  cursor: grab;
+  position: fixed;
+  bottom: 90px;
+  left: 0px;
+  border: none;
+  border-radius: 0 6px 6px 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1000;
+  background-color: #fff;
+  box-shadow: -2px 2px 0 0 #111827 !important;
+  border: 2px solid #111827 !important;
+  transition: background-color 0.3s;
+}
+
+// .floating-drawer {
+//   position: fixed;
+//   bottom: 90px;
+//   left: 0px;
+//   border: none;
+//   border-radius: 0 6px 6px 0;
+//   width: 30px;
+//   height: 30px;
+//   display: flex;
+//   align-items: center;
+//   justify-content: center;
+//   cursor: pointer;
+//   z-index: 1000;
+//   background-color: #fff;
+//   box-shadow: -2px 2px 0 0 #111827 !important;
+//   border: 2px solid #111827 !important;
+//   transition: background-color 0.3s;
+// }
+
 .floating-button:hover {
   background-color: #f0f0f0;
 }
