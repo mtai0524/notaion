@@ -1,16 +1,25 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
-import Draggable from "react-draggable";
+import { useDrag } from "@use-gesture/react";
+import { useSpring, animated } from "react-spring";
 import "./FloatingButton.scss";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCommentDots } from "@fortawesome/free-regular-svg-icons";
 import { faArrowRightFromBracket } from "@fortawesome/free-solid-svg-icons";
-import { Drawer, Tooltip } from 'antd';
+import { Drawer, Tabs, Tooltip } from "antd";
 import OnlineUsers from "../OnLine/OnLine";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const FloatingButton = ({ onClick, newMessagesCount }) => {
-  const [placement] = useState('left');
+  const [placement] = useState("left");
   const [open, setOpen] = useState(false);
+  const [position, api] = useSpring(() => ({ x: 0, y: 0 }));
+  const { token, setToken } = useAuth();
+  const bind = useDrag(({ offset: [x, y] }) => {
+    api.start({ x, y });
+  });
 
   const showDrawer = () => {
     setOpen(true);
@@ -20,6 +29,27 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
     setOpen(false);
   };
 
+  const [tabPosition, setTabPosition] = useState('top');
+
+  const [username, setUsername] = useState('');
+
+  useEffect(() => {
+    const fetchUserAndNotifications = async () => {
+      const tokenFromCookie = Cookies.get('token');
+      if (tokenFromCookie) {
+        try {
+          setToken(tokenFromCookie);
+          const decodedToken = jwt_decode(tokenFromCookie);
+          const userNameToken = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'];
+          setUsername(userNameToken);
+        } catch {
+          console.log('Not found or invalid token');
+        }
+      }
+    };
+
+    fetchUserAndNotifications();
+  }, [setToken]);
   return (
     <>
       <button className="floating-button" onClick={onClick}>
@@ -31,29 +61,43 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
           <span className="new-messages-count">{newMessagesCount}</span>
         )}
       </button>
-      <Draggable axis="y" bounds={'parent'}>
-        <button className="floating-drawer" onClick={showDrawer}>
-          <Tooltip title="show drawer" placement="right">
-            <FontAwesomeIcon
-              className="text-gray-800"
-              icon={faArrowRightFromBracket}
-            />
-          </Tooltip>
-        </button>
-      </Draggable>
+      <animated.button
+        {...bind()}
+        style={position}
+        className="floating-drawer"
+        onClick={showDrawer}
+      >
+        <FontAwesomeIcon className="text-gray-800" icon={faArrowRightFromBracket} />
+      </animated.button>
 
       <Drawer
-        title="Basic Drawer"
+        title={username}
         placement={placement}
         closable={false}
         onClose={onClose}
         open={open}
         key={placement}
       >
-        <OnlineUsers />
-        <p>Some contents...</p>
-        <p>Some contents...</p>
-        <p>Some contents...</p>
+        <Tabs
+          tabPosition={tabPosition}
+          items={[
+            {
+              label: "online users",
+              key: "1",
+              children: <OnlineUsers />,
+            },
+            {
+              label: "Tab 2",
+              key: "2",
+              children: "Content of Tab 2",
+            },
+            {
+              label: "Tab 3",
+              key: "3",
+              children: "Content of Tab 3",
+            },
+          ]}
+        />
       </Drawer>
     </>
   );

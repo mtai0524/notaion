@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import "./Page.scss";
+import { DashOutlined } from '@ant-design/icons';
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -229,6 +230,17 @@ const Page = () => {
     </Menu>
   );
 
+  const renderMenu = (id) => (
+    <Menu>
+      <Menu.Item key="archive">
+        <span className='font-semibold'>archive</span>
+      </Menu.Item>
+      <Menu.Item key="delete" danger onClick={() => showDeleteConfirm(id)}>
+        <span className='font-semibold' >delete</span>
+      </Menu.Item>
+    </Menu>
+  );
+
   return (
     <div className="flex justify-center align-middle">
       <div className="container-content-page m-3" style={{ width: "100%" }}>
@@ -380,23 +392,24 @@ const Page = () => {
                     modified: {formatDate(card.updateDate)}
                   </span>
 
-                  <Tooltip placement="bottomRight" title="delete page">
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: "2px",
-                        right: "5px",
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <FontAwesomeIcon
-                        className="text-red-400 text-xl"
-                        icon={faXmark}
-                        key="remove"
-                        onClick={() => showDeleteConfirm(card.id)}
-                      />
-                    </div>
-                  </Tooltip>
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: "2px",
+                      right: "15px",
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Tooltip placement="bottomRight" title="more settings">
+                      <Dropdown overlay={renderMenu(card.id)} trigger={['click']} onClick={(e) => e.stopPropagation()}>
+                        <DashOutlined
+                          style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.8' }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </Dropdown>
+                    </Tooltip>
+                  </div>
+
                 </Card>
                 {deleteLoading && deletingCardId === card.id && (
                   <div className="loading-overlay">
@@ -407,7 +420,7 @@ const Page = () => {
             ))
           )}
         </div>
-      </div>
+      </div >
 
       <Modal
         title="Confirm Delete"
@@ -419,8 +432,9 @@ const Page = () => {
       >
         <p>Are you sure you want to delete this page?</p>
       </Modal>
-    </div>
+    </div >
   );
 };
 
 export default Page;
+

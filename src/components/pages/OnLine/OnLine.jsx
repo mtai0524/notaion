@@ -1,48 +1,90 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
 import { Dropdown, Menu, Tooltip } from 'antd';
 import { useNavigate } from 'react-router-dom';
+import { MoreOutlined } from '@ant-design/icons';
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
+import { useAuth } from '../../../contexts/AuthContext';
 
 const OnlineUsers = () => {
     const { onlineUsers } = useSignalR();
     const navigate = useNavigate();
+    const { token, setToken } = useAuth();
+    const [username, setUsername] = useState('');
+
+    useEffect(() => {
+        const fetchUserAndNotifications = async () => {
+            const tokenFromCookie = Cookies.get('token');
+            if (tokenFromCookie) {
+                try {
+                    setToken(tokenFromCookie);
+                    const decodedToken = jwt_decode(tokenFromCookie);
+                    const userNameToken = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'];
+                    setUsername(userNameToken);
+                } catch {
+                    console.log('Not found or invalid token');
+                }
+            }
+        };
+
+        fetchUserAndNotifications();
+    }, [setToken]);
 
     const renderMenu = (userName, userId) => (
         <Menu>
-            <Menu.Item key="username" onClick={() => switchPageProfile(userName)}>
-                <span>profile</span>
+            <Menu.Item key="profile" onClick={() => switchPageProfile(userName)}>
+                <span className='font-semibold'>Profile</span>
             </Menu.Item>
+            {userName === username && (
+                <Menu.Item key="page" onClick={() => switchPagePage(userId)}>
+                    <span className='font-semibold'>Page</span>
+                </Menu.Item>
+            )}
         </Menu>
     );
 
-    const switchPageProfile = (userName) => {
-        navigate(`/profile/${userName}`);
-    }
+    const switchPagePage = (userId) => {
+        navigate(`/page`);
+    };
+
+    const switchPageProfile = (userId) => {
+        navigate(`/profile/${userId}`);
+    };
 
     return (
         <div>
-            <div className="flex flex-row gap-2 justify-center items-center">
+            <div className="flex flex-col gap-2">
                 {onlineUsers.length > 0 ? (
                     onlineUsers.map((user) => (
-                        <div key={user.userId} className="online-user">
-                            <Dropdown overlay={renderMenu(user.userName, user.userId)} trigger={['click']} arrow>
-                                <Tooltip title={user.userName} placement='top'>
-                                    <div className="text-center relative cursor-pointer" onClick={(e) => e.preventDefault()}>
+                        <div key={user.userId}>
+                            <div className="relative cursor-pointer">
+                                <div className="flex flex-row mb-2 items-center">
+                                    <div>
                                         <img
                                             src={user.avatar}
                                             alt={`${user.userName}'s avatar`}
                                             className="avatarOnline"
-                                            style={{ width: '40px', height: '40px', borderRadius: '50%', outline: '1px solid gray' }}
+                                            style={{ width: '40px', height: '40px', borderRadius: '50%', outline: '1px solid #111827' }}
                                         />
-                                        <div className="absolute w-[10px] h-[10px] bg-[#28df28] bottom-[0px] right-[1px] rounded-full border-[2px] border-white" />
+                                        <div className="absolute w-[10px] h-[10px] bg-[#28df28] top-[31px] left-[28px] rounded-full border-[2px] border-white" />
                                     </div>
-                                </Tooltip>
-                            </Dropdown>
+                                    <div className="flex justify-center items-center font-semibold ml-2">
+                                        {user.userName}
+                                        {user.userName === username && <span className="text-xs font-semibold ml-1">(me)</span>}
+                                    </div>
+                                    <Dropdown overlay={renderMenu(user.userName, user.userId)} trigger={['click']}>
+                                        <MoreOutlined
+                                            style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.4' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    </Dropdown>
+                                </div>
+                            </div>
                         </div>
                     ))
                 ) : (
-                    <p></p>
-                    // <p>No users online</p>
+                    <p>No users online</p>
                 )}
             </div>
         </div>

@@ -332,7 +332,7 @@ const ChatBox = ({ onClose }) => {
         ) : messages.length === 0 ? (
           <div className="no-messages flex flex-col">
             <Empty description={false}></Empty>
-            <h1>Empty messages</h1>
+            <h1 className="font-semibold">Empty messages</h1>
           </div>
         ) : (
           messages.map((msg, index) => {
