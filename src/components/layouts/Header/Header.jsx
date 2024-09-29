@@ -1,7 +1,7 @@
 import { UserOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useState, useEffect, useRef } from "react";
 import "./Header.scss";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Dropdown, Empty, Image, Menu, Popover, Tooltip, Tour } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
@@ -32,6 +32,7 @@ const Header = () => {
   const [currentUser, setCurrentUser] = useState("");
   const [notificationCount, setNotificationCount] = useState(0);
   const { connection } = useSignalR();
+  const location = useLocation();
 
   useEffect(() => {
     const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
@@ -154,7 +155,11 @@ const Header = () => {
 
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu">
-      <Menu.Item key="home" icon={<FontAwesomeIcon icon={faHome} />}>
+      <Menu.Item
+        key="home"
+        icon={<FontAwesomeIcon icon={faHome} />}
+        style={{ backgroundColor: location.pathname === "/home-page" ? "#f0f0f0" : "transparent" }} // Gray if on home page
+      >
         Home
       </Menu.Item>
       {!token && (
@@ -168,13 +173,28 @@ const Header = () => {
       )}
       {token && (
         <>
-          <Menu.Item key="page" icon={<FontAwesomeIcon icon={faNewspaper} />}>
+          <Menu.Item
+            key="page"
+            icon={<FontAwesomeIcon icon={faNewspaper} />}
+            style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }} // Gray if on page
+          >
             Page
           </Menu.Item>
-          <Menu.Item key="profile" icon={<FontAwesomeIcon icon={faUser} />}>
+          <Menu.Item
+            key="profile"
+            icon={<FontAwesomeIcon icon={faUser} />}
+            style={{
+              backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent",
+            }}
+          >
             Profile
           </Menu.Item>
-          <Menu.Item key="setting" icon={<FontAwesomeIcon icon={faGears} />}>
+
+          <Menu.Item
+            key="setting"
+            icon={<FontAwesomeIcon icon={faGears} />}
+            style={{ backgroundColor: location.pathname === "/setting" ? "#f0f0f0" : "transparent" }} // Gray if on setting
+          >
             Setting
           </Menu.Item>
           <Menu.Item
@@ -212,8 +232,6 @@ const Header = () => {
     }
   };
 
-
-
   const removeNotification = async (notificationId, indexToRemove) => {
     try {
       await axiosInstance.delete(`/api/Notification/${notificationId}`);
@@ -229,7 +247,6 @@ const Header = () => {
     }
   };
 
-
   const clearNotifications = async () => {
     try {
       await axiosInstance.delete(`/api/Notification/clear-by-receiver/${currentUser}`);
@@ -244,7 +261,6 @@ const Header = () => {
   const handleNotificationClick = async (notificationId) => {
     await markAsRead(notificationId);
   };
-
 
   const handleAcceptFriendRequest = async (senderId, receiverId, notificationId, index) => {
     try {

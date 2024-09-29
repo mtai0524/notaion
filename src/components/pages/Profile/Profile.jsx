@@ -506,8 +506,9 @@ const Profile = () => {
             className="profile-card"
             bordered={false}
           >
+            <Empty description={false}></Empty>
             <Meta
-              className="flex items-center justify-center h-full min-h-[150px]"
+              className="flex items-center justify-center h-full "
               title="No public pages available"
               description="This user does not have any public pages."
             />

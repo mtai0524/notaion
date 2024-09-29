@@ -6,6 +6,7 @@ import { message, Spin } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
 import { useNavigate } from "react-router-dom";
+
 const Register = () => {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -25,15 +26,15 @@ const Register = () => {
 
     const avatarUrl = setAvatarRandom();
 
+    const finalEmail = email.includes("@") ? email : `${email}@gmail.com`;
+
     const userData = {
       username,
-      email,
+      email: finalEmail,
       password,
       avatar: avatarUrl,
     };
-    // sessionStorage.setItem('username', `${username}`);
-    // sessionStorage.setItem('email', `${email}`);
-    // sessionStorage.setItem('password', `${password}`);
+
     try {
       const response = await axiosInstance.post(
         "/api/account/SignUp",
@@ -44,14 +45,13 @@ const Register = () => {
       );
       if (response.status === 200) {
         message.success("Register successful");
-        localStorage.setItem('userData', JSON.stringify(userData));
+        localStorage.setItem("userData", JSON.stringify(userData));
         message.loading("Redirecting to login...", 1).then(() => {
           setTimeout(() => {
             navigate("/login");
           }, 1000);
         });
       }
-
     } catch (error) {
       if (error.response && error.response.status === 400) {
         const errors = error.response.data.errors;
@@ -63,6 +63,11 @@ const Register = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEmailChange = (e) => {
+    const value = e.target.value;
+    setEmail(value);
   };
 
   return (
@@ -85,10 +90,10 @@ const Register = () => {
             <div className="form-group">
               <label htmlFor="email">email</label>
               <input
-                type="email"
+                type="text"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 required
               />
             </div>

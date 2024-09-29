@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
 import { Dropdown, Menu, Tooltip } from 'antd';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { MoreOutlined } from '@ant-design/icons';
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -12,9 +12,9 @@ const OnlineUsers = () => {
     const navigate = useNavigate();
     const { token, setToken } = useAuth();
     const [username, setUsername] = useState('');
-
+    const location = useLocation();
     useEffect(() => {
-        const fetchUserAndNotifications = async () => {
+        const fetchUser = async () => {
             const tokenFromCookie = Cookies.get('token');
             if (tokenFromCookie) {
                 try {
@@ -28,16 +28,17 @@ const OnlineUsers = () => {
             }
         };
 
-        fetchUserAndNotifications();
+        fetchUser();
     }, [setToken]);
 
     const renderMenu = (userName, userId) => (
         <Menu>
-            <Menu.Item key="profile" onClick={() => switchPageProfile(userName)}>
+            <Menu.Item key="profile" onClick={() => switchPageProfile(userName)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
                 <span className='font-semibold'>Profile</span>
             </Menu.Item>
+
             {userName === username && (
-                <Menu.Item key="page" onClick={() => switchPagePage(userId)}>
+                <Menu.Item key="page" onClick={() => switchPagePage(userId)} style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }}>
                     <span className='font-semibold'>Page</span>
                 </Menu.Item>
             )}
@@ -84,7 +85,7 @@ const OnlineUsers = () => {
                         </div>
                     ))
                 ) : (
-                    <p>No users online</p>
+                    <p className='text-center font-semibold text-base'>No users online</p>
                 )}
             </div>
         </div>
