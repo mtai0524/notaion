@@ -5,10 +5,10 @@ import Cookies from "js-cookie";
 import { useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
 import "./Page.scss";
-import { DashOutlined } from '@ant-design/icons';
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faCirclePlus,
+  faEllipsis,
   faFilter,
   faRefresh,
   faSearch,
@@ -415,7 +415,7 @@ const Page = () => {
                           }}
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <DashOutlined style={{ fontSize: '20px' }} />
+                          <FontAwesomeIcon icon={faEllipsis} className="text-2xl opacity-80"></FontAwesomeIcon>
                         </div>
                       </Dropdown>
                     </Tooltip>

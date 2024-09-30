@@ -464,7 +464,7 @@ const Profile = () => {
       </Card>
 
       <div className="pages-container">
-        <h2>Public Pages</h2>
+        <h2 className="text-center font-semibold mt-2">Public Pages</h2>
         {pagesLoading ? (
           <div className="card-loading-container">
             <Card

@@ -20,14 +20,37 @@ import TaskItem from "@tiptap/extension-task-item";
 import PropTypes from "prop-types";
 import OrderedList from "@tiptap/extension-ordered-list";
 import "antd/dist/reset.css";
+import { message } from "antd";
 import "ldrs/bouncy";
+import Cookies from "js-cookie";
+import jwt_decode from "jwt-decode";
 import { common, createLowlight } from "lowlight";
+import { useAuth } from "../../../contexts/AuthContext";
 const lowlight = createLowlight(common);
 const CustomEditorProvider = ({ pageId }) => {
   const [content, setContent] = useState("");
-  console.log(content);
   const [loading, setLoading] = useState(false);
   const [spinPosition, setSpinPosition] = useState({ top: "50%", left: "50%" });
+  const [userId, setUserId] = useState('');
+  const { token, setToken } = useAuth();
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const tokenFromCookie = Cookies.get('token');
+      if (tokenFromCookie) {
+        try {
+          setToken(tokenFromCookie);
+          const decodedToken = jwt_decode(tokenFromCookie);
+          const userIdToken = decodedToken['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'];
+          setUserId(userIdToken);
+        } catch {
+          console.log('Not found or invalid token');
+        }
+      }
+    };
+
+    fetchUser();
+  }, [setToken]);
 
   const editor = useEditor({
     extensions: [
@@ -62,12 +85,12 @@ const CustomEditorProvider = ({ pageId }) => {
       const paragraph = content.match(/<p[^>]*>(.*?)<\/p>/);
       const title = titleMatch ? titleMatch[1] : "";
       const finalTitle = title || (paragraph ? paragraph[1] : "");
-
       (async () => {
         try {
           await axiosInstance.put(`/api/Page/${pageId}`, {
             content,
             title: finalTitle,
+            userId,
           });
         } catch (error) {
           console.error("Failed to save content to API", error);
@@ -75,7 +98,6 @@ const CustomEditorProvider = ({ pageId }) => {
       })();
     },
   });
-
   useEffect(() => {
     if (editor && pageId) {
       (async () => {
@@ -83,7 +105,6 @@ const CustomEditorProvider = ({ pageId }) => {
       })();
     }
   }, [editor, pageId]);
-
   const fetchAndSetContent = async () => {
     try {
       const response = await axiosInstance.get(`/api/Page/${pageId}`);
@@ -98,7 +119,6 @@ const CustomEditorProvider = ({ pageId }) => {
       setContent("<h1>Title here</h1>");
     }
   };
-
   const handlePaste = useCallback(
     async (event) => {
       const items = event.clipboardData.items;
@@ -107,7 +127,6 @@ const CustomEditorProvider = ({ pageId }) => {
           const file = items[i].getAsFile();
           const formData = new FormData();
           formData.append("file", file);
-
           setLoading(true);
           try {
             const response = await axiosInstance.post(
@@ -132,7 +151,6 @@ const CustomEditorProvider = ({ pageId }) => {
     },
     [editor]
   );
-
   useEffect(() => {
     if (editor) {
       editor.view.dom.addEventListener("paste", handlePaste);
@@ -141,21 +159,17 @@ const CustomEditorProvider = ({ pageId }) => {
       };
     }
   }, [editor, handlePaste]);
-
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
-
       setSpinPosition({
         top: `${scrollTop + window.innerHeight / 2}px`,
       });
     };
-
     window.addEventListener("scroll", handleScroll);
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
   return (
     <div
       style={{
@@ -193,9 +207,7 @@ const CustomEditorProvider = ({ pageId }) => {
     </div>
   );
 };
-
 CustomEditorProvider.propTypes = {
   pageId: PropTypes.string.isRequired,
 };
-
 export default CustomEditorProvider;
