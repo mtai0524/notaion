@@ -81,7 +81,6 @@ const Profile = () => {
         const response = await axiosInstance.get(`/api/FriendShip/check-friendship/${currentUserId}/${identifier}`);
         setIsFriend(response.data.isFriend);
       } catch (error) {
-        console.error('Failed to check friendship:', error);
       }
     };
 
@@ -280,37 +279,15 @@ const Profile = () => {
       console.error("Error removing friend:", error);
     }
   };
-  const { confirm } = Modal;
 
   const showConfirm = (friendshipId) => {
-    let loading = false;
-
-    const handleOk = async () => {
-      loading = true;
-      try {
-        await handleRemoveFriend(friendshipId);
-      } catch (error) {
-        console.error('Error while unfriending:', error);
-      } finally {
-        loading = false;
-      }
-    };
-
-    confirm({
+    Modal.confirm({
       title: 'Are you sure you want to unfriend this person?',
       content: 'This action cannot be undone.',
       okText: 'Yes',
       okType: 'danger',
       cancelText: 'No',
-      okButtonProps: {
-        loading: loading,
-      },
-      onOk() {
-        handleOk();
-      },
-      onCancel() {
-        console.log('Unfriend canceled');
-      },
+      onOk: () => handleRemoveFriend(friendshipId),
     });
   };
 

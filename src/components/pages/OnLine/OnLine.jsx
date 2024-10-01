@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
-import { Dropdown, Menu, Tooltip } from 'antd';
+import { Dropdown, Empty, Menu, Tooltip } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MoreOutlined } from '@ant-design/icons';
 import Cookies from "js-cookie";
@@ -13,6 +13,7 @@ const OnlineUsers = () => {
     const { token, setToken } = useAuth();
     const [username, setUsername] = useState('');
     const location = useLocation();
+
     useEffect(() => {
         const fetchUser = async () => {
             const tokenFromCookie = Cookies.get('token');
@@ -85,7 +86,10 @@ const OnlineUsers = () => {
                         </div>
                     ))
                 ) : (
-                    <p className='text-center font-semibold text-base'>No users online</p>
+                    <div className="flex justify-center flex-col items-center">
+                        <Empty description={false}></Empty>
+                        <p className="font-semibold">No users online</p>
+                    </div>
                 )}
             </div>
         </div>

@@ -83,3 +83,41 @@
 .ant-tabs-tab-btn {
   color: black !important;
 }
+
+.page-item {
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 8px;
+  transition: background-color 0.3s;
+  position: relative;
+}
+
+.page-tabs-active {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+.page-item:hover,
+.ant-dropdown-menu-item:hover {
+  background-color: #f0f0f0 !important;
+}
+
+.ant-dropdown-menu-item-danger:hover {
+  background-color: rgb(248, 96, 96) !important;
+}
+
+.page-icon {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.page-item:hover .page-icon {
+  opacity: 0.4;
+}
+
+.page-tabs-active .page-icon {
+  opacity: 0.4;
+}

@@ -8,6 +8,7 @@ import {
   faBan,
   faClose,
   faDeleteLeft,
+  faEllipsis,
   faGears,
   faHome,
   faNewspaper,
@@ -262,6 +263,8 @@ const Header = () => {
     await markAsRead(notificationId);
   };
 
+  const [acceptedNotifications, setAcceptedNotifications] = useState(new Set());
+
   const handleAcceptFriendRequest = async (senderId, receiverId, notificationId, index) => {
     try {
       const response = await axiosInstance.post('/api/FriendShip/accept-friend-request', {
@@ -270,23 +273,33 @@ const Header = () => {
       });
 
       if (response.status === 200) {
-        message.success('accepted!');
-
-        removeNotification(notificationId, index);
+        message.success('Accepted!');
+        setAcceptedNotifications(prev => new Set(prev).add(notificationId)); // Track accepted notifications
       }
     } catch (error) {
       message.error('Failed to accept friend request.');
       console.error('Error accepting friend request:', error);
     }
+  };
+
+  const showProfile = (senderName) => {
+    navigate(`/profile/${senderName}`);
   }
+
+  const renderMenuNoti = (senderName) => {
+    return (
+      <Menu>
+        <Menu.Item key="profile" onClick={() => showProfile(senderName)}>
+          <span className='font-semibold'>Profile</span>
+        </Menu.Item>
+      </Menu>
+    );
+  };
 
   const content = (
     <div className="container-noti mr-2 !min-h-20">
       {notifications.length === 0 ? (
-        <div
-          className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col"
-          style={{ minWidth: '240px', textAlign: 'center' }}
-        >
+        <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
           <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
             <div className="flex flex-col">
               <Empty description={false}></Empty>
@@ -300,13 +313,10 @@ const Header = () => {
             key={index}
             className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
             style={{ minWidth: '200px', position: 'relative' }}
-            onClick={() => handleNotificationClick(notification.id)} //  click to set read status
+            onClick={() => handleNotificationClick(notification.id)} // Click to set read status
           >
             {!notification.isRead && (
-              <div
-                className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full"
-                style={{ zIndex: 1 }}
-              ></div>
+              <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full" style={{ zIndex: 1 }}></div>
             )}
             <Image
               className="rounded-full mr-3"
@@ -319,26 +329,35 @@ const Header = () => {
                 <span className="font-bold">{notification.senderName}</span>
               </p>
               <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-                muốn kết nghĩa với bạn
+                {acceptedNotifications.has(notification.id) ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
               </p>
               <div className="flex space-x-1 justify-end mt-2">
-                <button
-                  className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
-                >
-                  Decline
-                </button>
-                <button
-                  onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
-                  className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
-                >
-                  Agree
-                </button>
+                {!acceptedNotifications.has(notification.id) && (
+                  <>
+                    <button
+                      className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
+                    >
+                      Decline
+                    </button>
+                    <button
+                      onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
+                      className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
+                    >
+                      Agree
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={() => removeNotification(notification.id, index)}
                   className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
                 >
                   <FontAwesomeIcon icon={faClose} />
                 </button>
+                <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
+                  <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
+                    <FontAwesomeIcon icon={faEllipsis} />
+                  </button>
+                </Dropdown>
               </div>
             </div>
           </div>
