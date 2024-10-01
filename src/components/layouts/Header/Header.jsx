@@ -56,6 +56,8 @@ const Header = () => {
               ...prevNotifications,
               {
                 id: notificationId,
+                senderId,
+                receiverId,
                 senderName,
                 content: `muốn kết nghĩa với bạn`,
                 senderAvatar: user.avatar,
@@ -71,6 +73,9 @@ const Header = () => {
     });
 
     connection.start().catch((err) => console.error("SignalR Connection Error: ", err));
+    return () => {
+      connection.stop(); // Clean up connection on unmount
+    };
   }, []);
 
   useEffect(() => {
@@ -85,19 +90,33 @@ const Header = () => {
           const user = response.data;
           setCurrentUser(userId);
           setAvatar(user.avatar);
+
           const notiResponse = await axiosInstance.get(`/api/Notification/get-noti-by-recvid/${userId}`);
           const notiData = notiResponse.data;
-          setNotifications(notiData);
-          const unreadCount = notiData.filter(n => !n.isRead).length; // Set count unread notifications
+
+          const updatedNotiData = await Promise.all(notiData.map(async (notification) => {
+            const friendshipCheck = await axiosInstance.get(`/api/FriendShip/check-friendship/${userId}/${notification.senderName}`);
+            const { isFriend } = friendshipCheck.data;
+            return {
+              ...notification,
+              isFriend: isFriend,
+            };
+          }));
+
+          setNotifications(updatedNotiData);
+
+          const unreadCount = updatedNotiData.filter(n => !n.isRead).length;
           setNotificationCount(unreadCount);
-        } catch {
-          console.log('Not found or invalid token');
+
+        } catch (error) {
+          console.log('Error fetching user or notifications:', error);
         }
       }
     };
 
     fetchUserAndNotifications();
   }, [setToken]);
+
 
   const handleMenuClick = async (e) => {
     switch (e.key) {
@@ -267,6 +286,9 @@ const Header = () => {
 
   const handleAcceptFriendRequest = async (senderId, receiverId, notificationId, index) => {
     try {
+      console.log('senderId' + senderId);
+      console.log('receiverId' + receiverId);
+
       const response = await axiosInstance.post('/api/FriendShip/accept-friend-request', {
         senderId: senderId,
         receiverId: receiverId
@@ -274,13 +296,21 @@ const Header = () => {
 
       if (response.status === 200) {
         message.success('Accepted!');
-        setAcceptedNotifications(prev => new Set(prev).add(notificationId)); // Track accepted notifications
+
+        setNotifications((prevNotifications) =>
+          prevNotifications.map((notification, i) =>
+            i === index
+              ? { ...notification, isFriend: true }
+              : notification
+          )
+        );
       }
     } catch (error) {
       message.error('Failed to accept friend request.');
       console.error('Error accepting friend request:', error);
     }
   };
+
 
   const showProfile = (senderName) => {
     navigate(`/profile/${senderName}`);
@@ -329,41 +359,40 @@ const Header = () => {
                 <span className="font-bold">{notification.senderName}</span>
               </p>
               <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-                {acceptedNotifications.has(notification.id) ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
+                {notification.isFriend ? 'đã đồng ý kết bạn 👋' : 'muốn kết bạn với bạn'}
               </p>
-              <div className="flex space-x-1 justify-end mt-2">
-                {!acceptedNotifications.has(notification.id) && (
-                  <>
-                    <button
-                      className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
-                    >
-                      Decline
-                    </button>
-                    <button
-                      onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
-                      className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
-                    >
-                      Agree
-                    </button>
-                  </>
-                )}
-                <button
-                  onClick={() => removeNotification(notification.id, index)}
-                  className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
-                >
-                  <FontAwesomeIcon icon={faClose} />
-                </button>
-                <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
-                  <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
-                    <FontAwesomeIcon icon={faEllipsis} />
+              {!notification.isFriend && (
+                <div className="flex space-x-1 justify-end mt-2">
+                  <button
+                    className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
+                  >
+                    Decline
                   </button>
-                </Dropdown>
-              </div>
+                  <button
+                    onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
+                    className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
+                  >
+                    Agree
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => removeNotification(notification.id, index)}
+                className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
+              >
+                <FontAwesomeIcon icon={faClose} />
+              </button>
+              <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
+                <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
+                  <FontAwesomeIcon icon={faEllipsis} />
+                </button>
+              </Dropdown>
             </div>
           </div>
         ))
       )}
     </div>
+
   );
 
   const ref1 = useRef(null);
@@ -568,3 +597,4 @@ const Header = () => {
 };
 
 export default Header;
+
