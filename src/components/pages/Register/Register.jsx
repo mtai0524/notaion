@@ -2,7 +2,7 @@ import { useState } from "react";
 import "./Register.scss";
 import { Link } from "react-router-dom";
 import axiosInstance from "../../../axiosConfig";
-import { message, Spin } from "antd";
+import { message, Spin, AutoComplete } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
 import { useNavigate } from "react-router-dom";
@@ -12,6 +12,21 @@ const Register = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [options, setOptions] = useState([]);
+
+  const handleSearch = (value) => {
+    setOptions(() => {
+      if (!value || value.includes('@')) {
+        return [];
+      }
+      return ['gmail.com', 'outlook.com.vn', 'devpro.com.vn', 'yahoo.com'].map((domain) => ({
+        label: `${value}@${domain}`,
+        value: `${value}@${domain}`,
+      }));
+    });
+    setEmail(value);
+  };
+
   const navigate = useNavigate();
 
   const setAvatarRandom = () => {
@@ -65,11 +80,6 @@ const Register = () => {
     }
   };
 
-  const handleEmailChange = (e) => {
-    const value = e.target.value;
-    setEmail(value);
-  };
-
   return (
     <div className="login-container">
       <div>
@@ -82,6 +92,7 @@ const Register = () => {
               <input
                 type="text"
                 id="username"
+                className="text-sm pl-[10px]"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
@@ -89,17 +100,23 @@ const Register = () => {
             </div>
             <div className="form-group">
               <label htmlFor="email">email</label>
-              <input
-                type="text"
-                id="email"
-                value={email}
-                onChange={handleEmailChange}
-                required
+              <AutoComplete
+                className="text-sm "
+                style={{
+                  width: "108%",
+                  marginLeft: '-10px',
+                  outline: 'none',
+                  border: 'none',
+                }}
+                onSearch={handleSearch}
+                options={options}
               />
+
             </div>
             <div className="form-group">
               <label htmlFor="password">password</label>
               <input
+                className="text-sm pl-[10px]"
                 type="password"
                 id="password"
                 value={password}

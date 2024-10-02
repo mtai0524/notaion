@@ -1,23 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
 import { Dropdown, Empty, Menu, Modal } from 'antd';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { MoreOutlined } from '@ant-design/icons';
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { useAuth } from '../../../contexts/AuthContext';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faClose } from '@fortawesome/free-solid-svg-icons';
 
-const OnlineUsers = () => {
+const ChatBox = ({ chatUser, onClose }) => {
+    return (
+        <div className="chat-box !bottom-[-10px]">
+            <div className='flex flex-row items-center justify-between p-2'>
+                <span className="text-lg font-semibold">Chatting with {chatUser}</span>
+                <FontAwesomeIcon icon={faClose} onClick={onClose} className="btn-close mr-2 size-2" />
+            </div>
+
+            <div className="message">
+            </div>
+            <input
+                type="text"
+                className="chat-input"
+                placeholder="Type your message..."
+            />
+        </div>
+    );
+};
+
+const UserChatBoxPrivate = () => {
     const { onlineUsers } = useSignalR();
-    const navigate = useNavigate();
     const { token, setToken } = useAuth();
     const [username, setUsername] = useState('');
-    const location = useLocation();
-    const [modalChatbox, setModalChatbox] = useState(false);
-
-    const showModalChatbox = () => {
-        setModalChatbox(true);
-    };
+    const [chatUser, setChatUser] = useState(null);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -37,39 +50,17 @@ const OnlineUsers = () => {
         fetchUser();
     }, [setToken]);
 
-    const renderMenu = (userName, userId) => (
-        <Menu>
-            <Menu.Item key="chat" onClick={showModalChatbox}>
-                <span className='font-semibold'>Chat</span>
-            </Menu.Item>
-
-            <Menu.Item key="profile" onClick={() => switchPageProfile(userId)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
-                <span className='font-semibold'>Profile</span>
-            </Menu.Item>
-
-            {userName === username && (
-                <Menu.Item key="page" onClick={() => switchPagePage()} style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }}>
-                    <span className='font-semibold'>Page</span>
-                </Menu.Item>
-            )}
-        </Menu>
-    );
-
-    const switchPagePage = () => {
-        navigate(`/page/`);
+    const openChat = (userName) => {
+        setChatUser(userName);
     };
 
-    const switchPageProfile = (userId) => {
-        navigate(`/profile/${userId}`);
+    const closeChat = () => {
+        setChatUser(null);
     };
 
     return (
         <div>
-            <Modal
-                title="Choose an Avatar"
-                visible={modalChatbox}
-                onCancel={() => setModalChatbox(false)}
-            ></Modal>
+            {chatUser && <ChatBox chatUser={chatUser} onClose={closeChat} />}
             <div className="flex flex-col gap-2">
                 {onlineUsers.length > 0 ? (
                     onlineUsers.map((user) => (
@@ -77,7 +68,7 @@ const OnlineUsers = () => {
                             <div className="flex flex-row mb-2 items-center">
                                 <div
                                     className="relative cursor-pointer flex flex-row"
-                                    onClick={() => switchPageProfile(user.userName)}
+                                    onClick={() => openChat(user.userName)}
                                 >
                                     <img
                                         src={user.avatar}
@@ -91,12 +82,6 @@ const OnlineUsers = () => {
                                         {user.userName === username && <span className="text-xs font-semibold ml-1">(me)</span>}
                                     </span>
                                 </div>
-                                <Dropdown overlay={renderMenu(user.userName, user.userId)} trigger={['click']}>
-                                    <MoreOutlined
-                                        style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.4' }}
-                                        onClick={(e) => e.stopPropagation()}
-                                    />
-                                </Dropdown>
                             </div>
                         </div>
                     ))
@@ -111,4 +96,4 @@ const OnlineUsers = () => {
     );
 };
 
-export default OnlineUsers;
+export default UserChatBoxPrivate;

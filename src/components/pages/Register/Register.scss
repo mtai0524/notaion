@@ -5,3 +5,21 @@
   font-weight: bold;
   margin-top: 15px;
 }
+
+.ant-select-selection-search-input,
+.ant-select-selection-search,
+.ant-select-selector {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.ant-select-focused {
+  box-shadow: none !important;
+  background-color: white !important;
+}
+
+.ant-select-selection-search-input {
+  margin-left: 10px !important;
+  padding-left: 10px !important;
+}

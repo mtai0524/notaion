@@ -13,6 +13,7 @@ import jwt_decode from "jwt-decode";
 import { useAuth } from "../../../contexts/AuthContext";
 import axiosInstance from "../../../axiosConfig";
 import { useNavigate } from "react-router-dom";
+import UserChatBoxPrivate from "../UserChatBoxPrivate/UserChatBoxPrivate";
 
 const FloatingButton = ({ onClick, newMessagesCount }) => {
   const [placement] = useState("left");
@@ -189,7 +190,23 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
     };
   }, [open]);
 
+  //chat
+  const [chatUser, setChatUser] = useState(null);
 
+  const handleUserClick = (userName) => {
+    setChatUser(userName);
+  };
+
+  const handleBackToList = () => {
+    setChatUser(null);
+  };
+
+  const [messages, setMessages] = useState({
+    user1: ["Hello User1", "How are you?"],
+    user2: ["Hi User2", "What's up?"],
+    user3: ["Hey User3", "Let's catch up!"],
+  });
+  const [newMessage, setNewMessage] = useState("");
 
 
   return (
@@ -215,7 +232,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
       <Drawer
         title={titleDrawer}
         placement={placement}
-        closable={false}
+        closable={true}
         onClose={onClose}
         open={open}
         key={placement}
@@ -253,6 +270,12 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
                 </div>
               ),
             },
+            {
+              label: "chat",
+              key: "3",
+              children: <UserChatBoxPrivate />,
+            }
+
           ]}
         />
       </Drawer>
