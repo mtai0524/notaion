@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
-import { Dropdown, Empty, Menu, Tooltip } from 'antd';
+import { Dropdown, Empty, Menu } from 'antd';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { MoreOutlined } from '@ant-design/icons';
 import Cookies from "js-cookie";
@@ -34,20 +34,20 @@ const OnlineUsers = () => {
 
     const renderMenu = (userName, userId) => (
         <Menu>
-            <Menu.Item key="profile" onClick={() => switchPageProfile(userName)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
+            <Menu.Item key="profile" onClick={() => switchPageProfile(userId)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
                 <span className='font-semibold'>Profile</span>
             </Menu.Item>
 
             {userName === username && (
-                <Menu.Item key="page" onClick={() => switchPagePage(userId)} style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }}>
+                <Menu.Item key="page" onClick={() => switchPagePage()} style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }}>
                     <span className='font-semibold'>Page</span>
                 </Menu.Item>
             )}
         </Menu>
     );
 
-    const switchPagePage = (userId) => {
-        navigate(`/page`);
+    const switchPagePage = () => {
+        navigate(`/page/`);
     };
 
     const switchPageProfile = (userId) => {
@@ -60,28 +60,29 @@ const OnlineUsers = () => {
                 {onlineUsers.length > 0 ? (
                     onlineUsers.map((user) => (
                         <div key={user.userId}>
-                            <div className="relative cursor-pointer">
-                                <div className="flex flex-row mb-2 items-center">
-                                    <div>
-                                        <img
-                                            src={user.avatar}
-                                            alt={`${user.userName}'s avatar`}
-                                            className="avatarOnline"
-                                            style={{ width: '40px', height: '40px', borderRadius: '50%', outline: '1px solid #111827' }}
-                                        />
-                                        <div className="absolute w-[10px] h-[10px] bg-[#28df28] top-[31px] left-[28px] rounded-full border-[2px] border-white" />
-                                    </div>
-                                    <div className="flex justify-center items-center font-semibold ml-2">
+                            <div className="flex flex-row mb-2 items-center">
+                                <div
+                                    className="relative cursor-pointer flex flex-row"
+                                    onClick={() => switchPageProfile(user.userName)}
+                                >
+                                    <img
+                                        src={user.avatar}
+                                        alt={`${user.userName}'s avatar`}
+                                        className="avatarOnline"
+                                        style={{ width: '40px', height: '40px', borderRadius: '50%', outline: '1px solid #111827' }}
+                                    />
+                                    <div className="absolute w-[10px] h-[10px] bg-[#28df28] top-[31px] left-[28px] rounded-full border-[2px] border-white" />
+                                    <span className="flex justify-center items-center font-semibold ml-2">
                                         {user.userName}
                                         {user.userName === username && <span className="text-xs font-semibold ml-1">(me)</span>}
-                                    </div>
-                                    <Dropdown overlay={renderMenu(user.userName, user.userId)} trigger={['click']}>
-                                        <MoreOutlined
-                                            style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.4' }}
-                                            onClick={(e) => e.stopPropagation()}
-                                        />
-                                    </Dropdown>
+                                    </span>
                                 </div>
+                                <Dropdown overlay={renderMenu(user.userName, user.userId)} trigger={['click']}>
+                                    <MoreOutlined
+                                        style={{ fontSize: '20px', marginLeft: 'auto', cursor: 'pointer', opacity: '0.4' }}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </Dropdown>
                             </div>
                         </div>
                     ))

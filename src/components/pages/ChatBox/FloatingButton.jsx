@@ -24,6 +24,8 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
   const [avatar, setAvatar] = useState('');
   const [email, setEmail] = useState('');
   const [selectedPageId, setSelectedPageId] = useState("");
+  const [chatOpen, setChatOpen] = useState(false);
+
   const navigate = useNavigate();
 
   const bind = useDrag(({ offset: [x, y] }) => {
@@ -148,9 +150,51 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
     </div>
   )
 
+  const toggleChat = () => {
+    setChatOpen(!chatOpen);
+    onClick();
+  };
+
+  useEffect(() => {
+    const handleOpenChatbox = (event) => {
+      if (event.altKey && event.key === 'c') {
+        toggleChat();
+      }
+    };
+
+    window.addEventListener('keydown', handleOpenChatbox);
+
+    return () => {
+      window.removeEventListener('keydown', handleOpenChatbox);
+    };
+  }, [chatOpen]);
+
+
+
+  const toggleDrawer = () => {
+    setOpen(!open);
+  };
+
+  useEffect(() => {
+    const handleOpenDrawer = (event) => {
+      if (event.altKey && event.key === 'x') {
+        toggleDrawer();
+      }
+    };
+
+    window.addEventListener('keydown', handleOpenDrawer);
+
+    return () => {
+      window.removeEventListener('keydown', handleOpenDrawer);
+    };
+  }, [open]);
+
+
+
+
   return (
     <>
-      <button className="floating-button" onClick={onClick}>
+      <button className="floating-button" onClick={toggleChat}>
         <FontAwesomeIcon
           className="text-gray-800 text-[30px]"
           icon={faCommentDots}
