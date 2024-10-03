@@ -122,15 +122,11 @@
   opacity: 0.4;
 }
 
-//chat
-/* Make the chat container take full height and position the input at the bottom */
 .chat-box-private {
   display: flex;
   flex-direction: column;
   height: 100%;
-  /* Chiếm toàn bộ chiều cao của Drawer */
   padding-bottom: 60px;
-  /* Dành khoảng trống cho input */
 }
 
 .message {
@@ -140,11 +136,14 @@
   background-color: #f5f5f5;
 }
 
-.chat-input {
+.chat-input-private {
   position: absolute;
   bottom: 0px;
   width: 100%;
   padding: 10px;
-  border-radius: 4px;
   background-color: #fff;
+}
+
+.chat-input-private:focus {
+  outline: none;
 }

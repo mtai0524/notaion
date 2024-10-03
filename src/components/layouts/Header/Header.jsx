@@ -74,7 +74,7 @@ const Header = () => {
 
     connection.start().catch((err) => console.error("SignalR Connection Error: ", err));
     return () => {
-      connection.stop(); // Clean up connection on unmount
+      connection.stop();
     };
   }, []);
 
@@ -359,7 +359,7 @@ const Header = () => {
                 <span className="font-bold">{notification.senderName}</span>
               </p>
               <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-                {notification.isFriend ? 'đã đồng ý kết bạn 👋' : 'muốn kết bạn với bạn'}
+                {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết bạn với bạn'}
               </p>
               {!notification.isFriend && (
                 <div className="flex space-x-1 justify-end mt-2">
