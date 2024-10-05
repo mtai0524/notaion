@@ -1,84 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
-import { Avatar, Badge, Empty } from 'antd';
+import { Avatar, Badge, Empty, Spin } from 'antd';
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { useAuth } from '../../../contexts/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faClose } from '@fortawesome/free-solid-svg-icons';
-import axiosInstance from "../../../axiosConfig";
-const ChatBox = ({ loadingMessages, chatUser, currentUserId, chatMessages, onSendMessage, onClose }) => {
-    const [newMessage, setNewMessage] = useState('');
-    const messageEndRef = useRef(null);
-    const isInitialRender = useRef(true);
-    const inputRef = useRef(null);
-    const handleSendMessage = () => {
-        if (newMessage.trim() !== '') {
-            onSendMessage(newMessage);
-            setNewMessage('');
-            scrollToBottom();
-        }
-    };
+import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
-    useEffect(() => {
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, []);
-    const scrollToBottom = () => {
-        if (messageEndRef.current) {
-            messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-    useEffect(() => {
-        if (!loadingMessages && isInitialRender.current) {
-            isInitialRender.current = false;
-            scrollToBottom();
-        }
-    }, [loadingMessages]);
-    useEffect(() => {
-        const lastMessage = chatMessages[chatMessages.length - 1];
-        if (lastMessage && lastMessage.senderId === currentUserId) {
-            scrollToBottom();
-        }
-    }, [chatMessages, currentUserId]);
-    return (
-        <div className="chat-box !bottom-[-10px]">
-            <div className='flex flex-row items-center justify-between p-2 border-b-[#d6d6d6] border-1'>
-                <span className="text-lg font-semibold text-center">Chatting with {chatUser}</span>
-                <FontAwesomeIcon icon={faClose} onClick={onClose} className="btn-close mr-2 size-2" />
-            </div>
-            <div className="message mb-[40px]">
-                {loadingMessages ? (
-                    <div className="flex justify-center items-center h-full">
-                        <span>Loading messages...</span>
-                    </div>
-                ) : chatMessages.length > 0 ? (
-                    chatMessages.map((msg, index) => (
-                        <div key={index} className={`message-item ${msg.senderId === currentUserId ? 'sent' : 'received'}`}>
-                            {msg.content}
-                        </div>
-                    ))
-                ) : (
-                    <div className="h-full flex justify-center flex-col items-center">
-                        <Empty description={false}></Empty>
-                        <p className="font-semibold">No messages</p>
-                    </div>
-                )}
-                <div ref={messageEndRef} />
-            </div>
-            <input
-                ref={inputRef}
-                type="text"
-                className="chat-input-private border-t-[#d6d6d6] border-1"
-                placeholder="Type your message..."
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-            />
-        </div>
-    );
-};
+import axiosInstance from "../../../axiosConfig";
 const UserChatBoxPrivate = () => {
     const { connection, onlineUsers } = useSignalR();
     const { token, setToken } = useAuth();
@@ -90,6 +20,10 @@ const UserChatBoxPrivate = () => {
     const [friends, setFriends] = useState([]);
     const [receiverChatBoxId, setReceiverChatBoxId] = useState('');
     const [loadingMessages, setLoadingMessages] = useState(false);
+    const [newMessage, setNewMessage] = useState('');
+    const [scrolling, setScrolling] = useState(false);
+    const messageEndRef = useRef(null);
+    const inputRef = useRef(null);
     useEffect(() => {
         const fetchUser = async () => {
             const tokenFromCookie = Cookies.get('token');
@@ -108,6 +42,7 @@ const UserChatBoxPrivate = () => {
         };
         fetchUser();
     }, [setToken]);
+
     const fetchFriends = async () => {
         try {
             const response = await axiosInstance.get(`/api/FriendShip/get-friends/${currentUserId}`);
@@ -116,7 +51,7 @@ const UserChatBoxPrivate = () => {
                 const newMessageCountResponse = await axiosInstance.get(`/api/ChatPrivate/new-messages/${friendId}/${currentUserId}`);
                 return {
                     ...friend,
-                    newMessageCount: newMessageCountResponse.data,
+                    newMessageCount: newMessageCountResponse.data
                 };
             }));
             setFriends(friendsWithNewMessageCounts);
@@ -124,29 +59,36 @@ const UserChatBoxPrivate = () => {
             console.error('Error fetching friends', error);
         }
     };
+
     const fetchMessages = async (recvId) => {
         setLoadingMessages(true);
         try {
             const response = await axiosInstance.get(`/api/ChatPrivate/get-chats-private/${currentUserId}/${recvId}`);
-            const sortedMessages = response.data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            setChatMessages(sortedMessages);
+            setChatMessages(response.data);
+            console.log(response.data);
+
         } catch (error) {
             console.error('Error fetching messages', error);
         } finally {
             setLoadingMessages(false);
         }
     };
+
     useEffect(() => {
         if (currentUserId) {
             fetchFriends();
         }
     }, [currentUserId]);
+
     useEffect(() => {
         if (connection) {
-            connection.on('ReceiveMessagePrivate', (senderId, receiverId, message) => {
+            connection.on('ReceiveMessagePrivate', (senderId, receiverId, message, currentUsername, friendUsername) => {
                 if (senderId !== currentUserId) {
                     if (receiverId === currentUserId && chatUserId === senderId) {
-                        setChatMessages(prev => [...prev, { senderId, receiverId, content: message }]);
+                        setChatMessages(prev => [
+                            ...prev,
+                            { senderId, receiverId, content: message, currentUserName: currentUsername, sentDate: new Date().toISOString() }
+                        ]);
                     }
                     if (receiverId === currentUserId) {
                         const updatedFriends = friends.map(f => {
@@ -166,6 +108,8 @@ const UserChatBoxPrivate = () => {
             }
         };
     }, [connection, currentUserId, friends, chatUserId]);
+
+
     const toggleChat = async (recvId, friendUserName, friendId) => {
         if (chatUser === friendUserName) {
             setChatUser(null);
@@ -174,6 +118,9 @@ const UserChatBoxPrivate = () => {
             setChatUserId(friendId);
             setReceiverChatBoxId(recvId);
             await fetchMessages(recvId);
+            setScrolling(true);
+            scrollToBottom();
+            setScrolling(false);
             try {
                 await axiosInstance.post(`/api/ChatPrivate/reset-new-messages/${friendId}/${currentUserId}`);
                 setFriends(prevFriends =>
@@ -184,10 +131,11 @@ const UserChatBoxPrivate = () => {
                     )
                 );
             } catch (error) {
-                console.error('Error resetting new message count:', error);
+                console.error('Error resetting new messages:', error);
             }
         }
     };
+
     const sendMessage = async (messageContent) => {
         if (connection) {
             try {
@@ -197,53 +145,151 @@ const UserChatBoxPrivate = () => {
                     Content: messageContent,
                     SenderId: currentUserId,
                     ReceiverId: receiverId,
+                    SentDate: new Date().toISOString(),
+                    CurrentUserName: username,
                 };
                 await axiosInstance.post('/api/ChatPrivate/add-chat-private', messagePayload);
-                setChatMessages(prev => [...prev, { content: messageContent, senderId: currentUserId }]);
+                setChatMessages(prev => [...prev, { content: messageContent, senderId: currentUserId, currentUserName: username, sentDate: messagePayload.SentDate }]);
             } catch (error) {
                 console.error('Error sending message:', error);
             }
         }
     };
+
+    useEffect(() => {
+        const lastMessage = chatMessages[chatMessages.length - 1];
+        if (lastMessage && lastMessage.senderId === currentUserId) {
+            scrollToBottom();
+        }
+    }, [chatMessages, currentUserId]);
+
+
+    const scrollToBottom = () => {
+        if (messageEndRef.current) {
+            messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    };
+
+    useEffect(() => {
+        if (!loadingMessages && chatMessages.length > 0) {
+            scrollToBottom();
+        }
+    }, [loadingMessages]);
+
     const isUserOnline = (userId) => {
         return onlineUsers.some(user => user.userId === userId);
+    };
+    const adjustHeight = (element) => {
+        element.style.height = 'auto';
+        element.style.height = `${element.scrollHeight}px`;
+    };
+
+    const handleSendMessage = () => {
+        if (newMessage.trim() !== '') {
+            sendMessage(newMessage);
+            setNewMessage('');
+            scrollToBottom();
+            inputRef.current.style.height = 'auto';
+        }
     };
     return (
         <div>
             {chatUser && (
-                <ChatBox
-                    chatUser={chatUser}
-                    currentUserId={currentUserId}
-                    loadingMessages={loadingMessages}
-                    chatMessages={chatMessages}
-                    onSendMessage={sendMessage}
-                    onClose={() => setChatUser(null)}
-                />
+                <div className="chat-box !bottom-[-10px]">
+                    <div className='flex flex-row items-center justify-between p-2 border-b-[#d6d6d6] border-1'>
+                        <span className="text-lg font-semibold text-center">{chatUser}</span>
+                        <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close mr-2 size-2" />
+                    </div>
+
+                    <div className="chat-messages mb-[10px]">
+                        {loadingMessages ? (
+                            <div className="flex justify-center items-center h-full">
+                                <span>Loading messages...</span>
+                            </div>
+                        ) : chatMessages.length > 0 ? (
+                            chatMessages.map((msg, index) => (
+                                <div
+                                    key={index}
+                                    className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.currentUserName === username ? "sent-message " : "received-message"}`}
+                                >
+                                    <strong className="chat-user">
+                                        {msg.currentUserName}
+                                    </strong>
+                                    <p className="chat-text">{msg.content}</p>
+                                    <p className="chat-date">
+                                        {new Date(msg.sentDate).toLocaleString("en-GB", {
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                            day: "2-digit",
+                                            month: "long",
+                                            year: "numeric",
+                                        }).replace(",", ", ")}
+                                    </p>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="h-full flex justify-center flex-col items-center">
+                                <Empty description={false}></Empty>
+                                <p className="font-semibold">No messages</p>
+                            </div>
+                        )}
+                        <div ref={messageEndRef} />
+                    </div>
+
+                    <div className="chat-input-private" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <textarea
+                            ref={inputRef}
+                            className="textarea-private resize-none overflow-auto"
+                            placeholder="Type your message..."
+                            value={newMessage}
+                            onChange={(e) => {
+                                setNewMessage(e.target.value);
+                                adjustHeight(e.target);
+                            }}
+                            onKeyPress={(e) => {
+                                if (e.key === 'Enter') {
+                                    if (!e.shiftKey) {
+                                        e.preventDefault();
+                                        handleSendMessage();
+                                    }
+                                }
+                            }}
+                            rows={1}
+                            style={{ maxHeight: '200px', overflow: 'hidden', flex: 1, marginRight: '10px' }}
+                        />
+                        <button onClick={handleSendMessage}>
+                            <FontAwesomeIcon icon={faPaperPlane} />
+                        </button>
+                    </div>
+
+                </div>
             )}
+
             <div className="flex flex-col">
                 {friends.length > 0 ? (
                     friends.map((friend) => {
                         const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
                         const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
                         const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
+
                         return (
                             <div
                                 key={friendId}
-                                className={`relative flex flex-row  items-center cursor-pointer border-b-[1px] ${chatUser === friendUserName ? 'bg-gray-100 rounded-md' : ''}`}
+                                className={`relative flex flex-row items-center cursor-pointer border-b-[1px] ${chatUser === friendUserName ? 'bg-gray-100 rounded-md' : ''}`}
                                 onClick={() => toggleChat(friendId, friendUserName, friendId)}
                             >
                                 <div className="cursor-pointer flex flex-row p-2 ">
-                                    <img
+                                    <Avatar
                                         src={friendAvatar}
                                         alt={`${friendUserName}'s avatar`}
                                         className="avatarOnline"
-                                        style={{ width: '40px', height: '40px', borderRadius: '50%' }}
+                                        style={{ width: '50px', height: '50px', borderRadius: '50%' }}
                                     />
-                                    <div className={`absolute w-[10px] h-[10px] ${isUserOnline(friendId) ? 'bg-[#28df28]' : 'bg-[#ff0000]'} top-[40px] left-[37px] rounded-full border-[2px] border-white`} />
+                                    <div className={`absolute w-[10px] h-[10px] ${isUserOnline(friendId) ? 'bg-[#28df28]' : 'bg-[#ff0000]'} top-[50px] left-[43px] rounded-full border-[2px] border-white`} />
                                     <span className="flex justify-center items-center font-semibold ml-2">
                                         {friendUserName}
                                         {friendUserName === username && <span className="text-xs font-semibold ml-1">(me)</span>}
-                                        <Badge className='absolute top-1 right-1' count={friend.newMessageCount} style={{ backgroundColor: '#52c41a' }} />
+                                        <Badge className='absolute top-1 right-1' count={friend.newMessageCount} />
                                     </span>
                                 </div>
                             </div>
@@ -258,5 +304,8 @@ const UserChatBoxPrivate = () => {
             </div>
         </div>
     );
+
 };
+
 export default UserChatBoxPrivate;
+

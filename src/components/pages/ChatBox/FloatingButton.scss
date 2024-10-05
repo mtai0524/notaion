@@ -132,12 +132,16 @@
 .message {
   flex-grow: 1;
   overflow-y: auto;
+  word-break: break-word;
+  white-space: pre-wrap;
   padding: 10px;
   background-color: #f5f5f5;
 }
 
 .chat-input-private {
-  position: absolute;
+  border: none;
+  display: flex;
+  outline: 1px dashed gray;
   bottom: 0px;
   width: 100%;
   padding: 10px;
@@ -145,5 +149,10 @@
 }
 
 .chat-input-private:focus {
+  outline: none;
+  outline: 1px solid gray;
+}
+
+.textarea-private:focus {
   outline: none;
 }
