@@ -62,13 +62,20 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
           setAvatar(avatarToken);
           setEmail(emailToken);
         } catch {
-          console.log('Not found or invalid token');
+          console.log('Invalid token');
         }
+      } else {
+        setUserId('');
+        setUsername('mèo con ẩn danh');
+        setAvatar('https://i.kym-cdn.com/photos/images/newsfeed/002/515/832/ee7.jpg');
+        setEmail('meowmeow@outlook.com.vn');
+        setPages([]);
       }
     };
 
     fetchUserAndNotifications();
   }, [setToken]);
+
 
   const renderMenu = (pageId) => (
     <Menu>
@@ -143,7 +150,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
         style={{
           width: 40,
           height: 40,
-          borderRadius: '10px',
+          borderRadius: '50%',
           marginRight: 10,
         }}
       />
@@ -179,6 +186,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
 
   const toggleDrawer = () => {
     setOpen(!open);
+    fetchPagesUser();
   };
 
   useEffect(() => {
@@ -260,7 +268,11 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
             {
               label: "chat",
               key: "3",
-              children: <UserChatBoxPrivate />,
+              children: Cookies.get('token') ? <UserChatBoxPrivate /> :
+                <div className="flex justify-center flex-col items-center">
+                  <Empty description={false}></Empty>
+                  <p className="font-semibold">No friends found</p>
+                </div>,
             }
 
           ]}
