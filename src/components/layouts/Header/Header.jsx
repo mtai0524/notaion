@@ -359,7 +359,7 @@ const Header = () => {
                 <span className="font-bold">{notification.senderName}</span>
               </p>
               <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-                {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết bạn với bạn'}
+                {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
               </p>
               {!notification.isFriend && (
                 <div className="flex space-x-1 justify-end mt-2">

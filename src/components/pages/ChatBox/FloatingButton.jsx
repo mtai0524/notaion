@@ -35,10 +35,12 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
 
   const showDrawer = () => {
     setOpen(true);
+    fetchPagesUser();
   };
 
   const onClose = () => {
     setOpen(false);
+    fetchPagesUser();
   };
 
   const [tabPosition, setTabPosition] = useState('top');
@@ -100,26 +102,29 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
     }
   };
 
-  useEffect(() => {
-    const fetchPagesUser = async () => {
-      if (!userId) return;
+  const fetchPagesUser = async () => {
+    if (!userId) return;
 
-      try {
-        const response = await axiosInstance.get(`/api/Page/user/${userId}`);
-        if (response.status === 200) {
-          const pagesData = response.data.map((page) => ({
-            id: page.id,
-            title: page.title,
-          }));
-          setPages(pagesData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch user data:', error);
+    try {
+      const response = await axiosInstance.get(`/api/Page/user/${userId}`);
+      if (response.status === 200) {
+        const pagesData = response.data.map((page) => ({
+          id: page.id,
+          title: page.title,
+        }));
+        setPages(pagesData);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch user data:', error);
+    }
+  };
+
+
+  useEffect(() => {
 
     fetchPagesUser();
   }, [userId]);
+
 
   const handlePageClick = (pageId) => {
     setSelectedPageId(pageId);
@@ -189,24 +194,6 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
       window.removeEventListener('keydown', handleOpenDrawer);
     };
   }, [open]);
-
-  //chat
-  const [chatUser, setChatUser] = useState(null);
-
-  const handleUserClick = (userName) => {
-    setChatUser(userName);
-  };
-
-  const handleBackToList = () => {
-    setChatUser(null);
-  };
-
-  const [messages, setMessages] = useState({
-    user1: ["Hello User1", "How are you?"],
-    user2: ["Hi User2", "What's up?"],
-    user3: ["Hey User3", "Let's catch up!"],
-  });
-  const [newMessage, setNewMessage] = useState("");
 
 
   return (

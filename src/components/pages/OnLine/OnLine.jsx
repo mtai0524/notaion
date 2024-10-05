@@ -39,11 +39,7 @@ const OnlineUsers = () => {
 
     const renderMenu = (userName, userId) => (
         <Menu>
-            <Menu.Item key="chat" onClick={showModalChatbox}>
-                <span className='font-semibold'>Chat</span>
-            </Menu.Item>
-
-            <Menu.Item key="profile" onClick={() => switchPageProfile(userId)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
+            <Menu.Item key="profile" onClick={() => switchPageProfile(userName)} style={{ backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent" }} >
                 <span className='font-semibold'>Profile</span>
             </Menu.Item>
 
@@ -59,8 +55,8 @@ const OnlineUsers = () => {
         navigate(`/page/`);
     };
 
-    const switchPageProfile = (userId) => {
-        navigate(`/profile/${userId}`);
+    const switchPageProfile = (userName) => {
+        navigate(`/profile/${userName}`);
     };
 
     return (
