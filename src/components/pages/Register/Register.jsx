@@ -13,6 +13,12 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState([]);
+  const navigate = useNavigate();
+  const setAvatarRandom = () => {
+    const seed = Math.floor(Math.random() * 1000000000);
+    const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}`;
+    return avatarUrl;
+  };
 
   const handleSearch = (value) => {
     setOptions(() => {
@@ -27,29 +33,21 @@ const Register = () => {
     setEmail(value);
   };
 
-  const navigate = useNavigate();
-
-  const setAvatarRandom = () => {
-    const seed = Math.floor(Math.random() * 1000000000);
-    const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${seed}`;
-    return avatarUrl;
+  const handleSelect = (value) => {
+    setEmail(value);
   };
 
   const handleRegister = async (event) => {
     event.preventDefault();
     setLoading(true);
-
     const avatarUrl = setAvatarRandom();
-
     const finalEmail = email.includes("@") ? email : `${email}@gmail.com`;
-
     const userData = {
       username,
       email: finalEmail,
       password,
       avatar: avatarUrl,
     };
-
     try {
       const response = await axiosInstance.post(
         "/api/account/SignUp",
@@ -79,7 +77,6 @@ const Register = () => {
       setLoading(false);
     }
   };
-
   return (
     <div className="login-container">
       <div>
@@ -108,10 +105,10 @@ const Register = () => {
                   outline: 'none',
                   border: 'none',
                 }}
+                onSelect={handleSelect}
                 onSearch={handleSearch}
                 options={options}
               />
-
             </div>
             <div className="form-group">
               <label htmlFor="password">password</label>
@@ -129,7 +126,6 @@ const Register = () => {
             </button>
           </form>
         </Spin>
-
         <div className="flex justify-end w-full">
           <Link type="submit" to="/login" className="switch-btn">
             <FontAwesomeIcon icon={faCircleRight} /> Login
@@ -139,5 +135,4 @@ const Register = () => {
     </div>
   );
 };
-
 export default Register;
