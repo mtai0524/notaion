@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
 import { Avatar, Badge, Empty, Spin } from 'antd';
 import Cookies from "js-cookie";
@@ -9,7 +9,8 @@ import { faClose } from '@fortawesome/free-solid-svg-icons';
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
 import axiosInstance from "../../../axiosConfig";
-const UserChatBoxPrivate = () => {
+const UserChatBoxPrivate = forwardRef((props, ref) => {
+
     const { connection, onlineUsers } = useSignalR();
     const { token, setToken } = useAuth();
     const [username, setUsername] = useState('');
@@ -73,6 +74,16 @@ const UserChatBoxPrivate = () => {
             setLoadingMessages(false);
         }
     };
+
+
+    useImperativeHandle(ref, () => ({
+        fetchFriends,
+    }));
+
+    useEffect(() => {
+        fetchFriends();
+    }, []);
+
 
     useEffect(() => {
         if (currentUserId) {
@@ -305,7 +316,7 @@ const UserChatBoxPrivate = () => {
         </div>
     );
 
-};
+});
 
 export default UserChatBoxPrivate;
 

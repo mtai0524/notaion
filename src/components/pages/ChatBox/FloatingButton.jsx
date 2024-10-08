@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import { useDrag } from "@use-gesture/react";
 import { useSpring, animated } from "react-spring";
@@ -26,6 +26,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
   const [email, setEmail] = useState('');
   const [selectedPageId, setSelectedPageId] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const userChatBoxRef = useRef();
 
   const navigate = useNavigate();
 
@@ -36,6 +37,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
   const showDrawer = () => {
     setOpen(true);
     fetchPagesUser();
+    userChatBoxRef.current.fetchFriends();
   };
 
   const onClose = () => {
@@ -268,7 +270,7 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
             {
               label: "chat",
               key: "3",
-              children: Cookies.get('token') ? <UserChatBoxPrivate /> :
+              children: Cookies.get('token') ? <UserChatBoxPrivate ref={userChatBoxRef} /> :
                 <div className="flex justify-center flex-col items-center">
                   <Empty description={false}></Empty>
                   <p className="font-semibold">No friends found</p>
