@@ -56,6 +56,7 @@ const ChatBox = ({ onClose }) => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const { onlineUsers } = useSignalR();
+  const token = Cookies.get("token");
 
 
   const handleScroll = () => {
@@ -98,7 +99,8 @@ const ChatBox = ({ onClose }) => {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await axiosInstance.get("/api/Chat/get-chats");
+        const response = await axiosInstance.get("/api/Chat/get-chats", {
+        });
         if (response.status === 200) {
           const chatMessages = response.data;
           setMessages(chatMessages);
@@ -245,8 +247,14 @@ const ChatBox = ({ onClose }) => {
 
   const deleteAllChats = async () => {
     setIsDeleting(true);
+    console.log(token);
+
     try {
-      const response = await axiosInstance.delete("/api/Chat/delete-all-chats");
+      const response = await axiosInstance.delete("/api/Chat/delete-all-chats", {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       if (response.status === 200) {
         console.log('All chats deleted successfully');
         setMessages([]); // update messages state
