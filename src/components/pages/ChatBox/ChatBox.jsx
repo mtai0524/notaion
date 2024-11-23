@@ -13,6 +13,77 @@ import axiosInstance from "../../../axiosConfig";
 import { cardio } from 'ldrs'
 cardio.register()
 const useUsername = () => {
+  const animalNames = [
+    "Lạc đà cười",
+    "Cá sấu đeo kính",
+    "Chim cánh cụt lười",
+    "Khỉ nhí nhố",
+    "Nhím xù xì",
+    "Cú mèo thức đêm",
+    "Cá mập baby",
+    "Tê giác điệu đà",
+    "Chồn lông mượt",
+    "Vịt bầu hát hò",
+    "Dê núi hài hước",
+    "Hươu cao cổ khệnh khạng",
+    "Ốc sên tăng tốc",
+    "Cò bay lượn",
+    "Cua đỏ lém lỉnh",
+    "Ếch xanh ẩm ướt",
+    "Bướm đêm kỳ ảo",
+    "Bò cạp bí ẩn",
+    "Chuồn chuồn lướt gió",
+    "Chuột túi bật nhảy",
+    "Lợn con hồng hào",
+    "Cừu lông xù",
+    "Hải ly xây đập",
+    "Bò tót mạnh mẽ",
+    "Kiến chăm chỉ",
+    "Ruồi nhanh nhẹn",
+    "Tôm hùm đỏ rực",
+    "Cá vàng hay quên",
+    "Sáo đen líu lo",
+    "Gấu Bắc Cực lạnh lùng",
+    "Chồn hôi tinh nghịch",
+    "Dơi đêm bí ẩn",
+    "Sâu béo ngủ đông",
+    "Chuột lém lỉnh",
+    "Cá trê siêu quậy",
+    "Heo mọi đáng yêu",
+    "Gà mái siêng năng",
+    "Vịt trời phiêu lưu",
+    "Lươn vàng trơn tuột",
+    "Cua nhảy múa",
+    "Sói già thông thái",
+    "Cáo lém lỉnh",
+    "Hươu sao tinh nghịch",
+    "Lợn rừng dũng mãnh",
+    "Ngựa hoang tự do",
+    "Bò rừng khổng lồ",
+    "Sư tử hào hoa",
+    "Vượn bay siêu tốc",
+    "Rái cá tấu hài",
+    "Cóc cụ triết lý",
+    "Chuồn chuồn tia chớp",
+    "Nhện thợ dệt",
+    "Bò sát lạnh lùng",
+    "Chim sâu tò mò",
+    "Cá đuối uyển chuyển",
+    "Tép nhảy hip hop",
+    "Cá cơm nhanh nhảu",
+    "Bạch tuộc đa năng",
+    "Hải mã chững chạc",
+    "Chim ưng săn mồi",
+    "Cá voi hát opera",
+    "Cọp vằn kiêu ngạo",
+    "Lợn nái dễ thương",
+    "Chim yến du dương",
+    "Ốc biển lười biếng",
+    "Bồ câu hòa bình",
+    "Tê tê ẩn mình",
+    "Gấu Koala mê ngủ",
+  ];
+
   const tokenFromStorage = Cookies.get("token");
   if (tokenFromStorage) {
     try {
@@ -22,10 +93,20 @@ const useUsername = () => {
       ];
     } catch (error) {
       console.error("Error decoding token:", error);
-      return "mèo con ẩn danh";
     }
   }
-  return "mèo con ẩn danh";
+
+  const existingAnimalName = localStorage.getItem("anonymousName");
+  if (existingAnimalName) {
+    return existingAnimalName;
+  }
+
+  const randomAnimalName =
+    animalNames[Math.floor(Math.random() * animalNames.length)];
+
+  localStorage.setItem("anonymousName", randomAnimalName);
+
+  return randomAnimalName;
 };
 const useUserId = () => {
   const tokenFromStorage = Cookies.get("token");
@@ -139,7 +220,7 @@ const ChatBox = ({ onClose }) => {
       const tempMessageId = Date.now();
       const newMessage = {
         userId: userId || "anonymous",
-        userName: username || "mèo con ẩn danh",
+        userName: username,
         content: message,
         sentDate: new Date().toISOString(),
         id: tempMessageId,

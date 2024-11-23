@@ -48,22 +48,28 @@ const MainApp = () => {
   if (tokenFromStorage) {
     try {
       const decodedToken = jwt_decode(tokenFromStorage);
-      username = decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+      username =
+        decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
     } catch (error) {
       console.error("Error decoding token:", error);
-      username = "mèo con ẩn danh";
+      username = localStorage.getItem("anonymousName") || "mèo con";
     }
   } else {
-    username = "mèo con ẩn danh";
+    username = localStorage.getItem("anonymousName") || "mèo con";
   }
+
+
 
   useEffect(() => {
     if (!connection) return;
 
     const handleReceiveMessage = (user, receivedMessage) => {
       console.log("Message received:", user, receivedMessage);
-
+      console.log("user       " + user);
       if (user !== username) {
+        console.log("user" + user);
+        console.log("username" + username);
+
         setMessages((prevMessages) => [
           ...prevMessages,
           {

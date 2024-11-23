@@ -6,6 +6,9 @@ import { message, Spin, AutoComplete } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
 import { useNavigate } from "react-router-dom";
+import Cookies from "js-cookie";
+import { useAuth } from "../../../contexts/AuthContext";
+import * as signalR from "@microsoft/signalr";
 
 const Register = () => {
   const [email, setEmail] = useState("");
@@ -13,6 +16,7 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [options, setOptions] = useState([]);
+  const { setToken } = useAuth();
   const navigate = useNavigate();
   const setAvatarRandom = () => {
     const seed = Math.floor(Math.random() * 1000000000);
@@ -37,6 +41,59 @@ const Register = () => {
     setEmail(value);
   };
 
+  const handleLoginSuccess = async () => {
+    const signalRUrl =
+      import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+    const connection = new signalR.HubConnectionBuilder()
+      .withUrl(signalRUrl, { withCredentials: true })
+      .withAutomaticReconnect()
+      .configureLogging(signalR.LogLevel.Information)
+      .build();
+    if (!connection) {
+      console.error("SignalR connection is not initialized");
+      return;
+    }
+    try {
+      await connection.start();
+      console.log("Connected to SignalR");
+      const tokenFromStorage = Cookies.get("token");
+      if (tokenFromStorage) {
+        const decodedToken = jwt_decode(tokenFromStorage);
+        const userId =
+          decodedToken[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+          ];
+        const userNameToken =
+          decodedToken[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"
+          ];
+        const avatar =
+          decodedToken[
+          "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/country"
+          ];
+        try {
+          await connection
+            .invoke("RegisterUser", {
+              UserId: userId,
+              UserName: userNameToken,
+              Avatar: avatar,
+            })
+            .catch((err) =>
+              console.error("Error while calling RegisterUser: ", err)
+            );
+          console.log(`User ${userNameToken} registered successfully`);
+        } catch (error) {
+          console.error("Error registering user:", error);
+        }
+      } else {
+        console.warn("No token found in cookies.");
+      }
+    } catch (err) {
+      console.error("SignalR connection error: ", err);
+    }
+    navigate("/home-page");
+  };
+
   const handleRegister = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -56,14 +113,26 @@ const Register = () => {
           headers: { "Content-Type": "application/json" },
         }
       );
+
       if (response.status === 200) {
         message.success("Register successful");
-        localStorage.setItem("userData", JSON.stringify(userData));
-        message.loading("Redirecting to login...", 1).then(() => {
-          setTimeout(() => {
-            navigate("/login");
-          }, 1000);
+
+        const loginResponse = await axiosInstance.post("/api/account/SignIn", {
+          email: finalEmail,
+          password,
         });
+
+        if (loginResponse.status === 200) {
+          const { token } = loginResponse.data;
+
+          localStorage.setItem("userData", JSON.stringify(userData));
+          Cookies.set("token", token, { expires: 7 });
+          message.success("Login successful");
+
+          setToken(token);
+
+          await handleLoginSuccess();
+        }
       }
     } catch (error) {
       if (error.response && error.response.status === 400) {
@@ -77,6 +146,7 @@ const Register = () => {
       setLoading(false);
     }
   };
+
   return (
     <div className="login-container">
       <div>

@@ -215,7 +215,7 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                     <div className="chat-messages mb-[10px]">
                         {loadingMessages ? (
                             <div className="flex justify-center items-center h-full">
-                                <span>Loading messages...</span>
+                                <span className='font-bold'>Loading messages...</span>
                             </div>
                         ) : chatMessages.length > 0 ? (
                             chatMessages.map((msg, index) => (
