@@ -426,10 +426,9 @@ const ChatBox = ({ onClose }) => {
         ) : (
           messages.map((msg, index) => {
             // user online không
-            const isOnline = onlineUsers.some(
-              (user) => user.userName === msg.userName
-            );
-
+            const isOnline =
+              msg.userName === "Chatbot" ||
+              onlineUsers.some((user) => user.userName === msg.userName);
             return (
               <div
                 key={index}
