@@ -177,6 +177,7 @@ const ChatBox = ({ onClose }) => {
       }
     };
   }, []);
+
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -195,6 +196,7 @@ const ChatBox = ({ onClose }) => {
     };
     fetchMessages();
   }, [setMessages]);
+
   useEffect(() => {
     const isFirstLoad = sessionStorage.getItem("isFirstLoad");
     if (messagesLoaded && chatMessagesRef.current) {
@@ -236,17 +238,7 @@ const ChatBox = ({ onClose }) => {
           content: message,
         });
         if (response.status === 200) {
-          const savedMessage = response.data;
-          setMessages((prevMessages) =>
-            prevMessages.map((msg) =>
-              msg.id === tempMessageId
-                ? { ...savedMessage, status: "sent" }
-                : msg
-            )
-          );
-
-
-
+          await fetchMessages();
         } else {
           console.error("Failed to send message");
           setMessages((prevMessages) =>
@@ -268,6 +260,7 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [message, userId, username, setMessages, connection]);
+
   const handleChange = (e) => {
     setMessage(e.target.value);
     const textarea = textareaRef.current;

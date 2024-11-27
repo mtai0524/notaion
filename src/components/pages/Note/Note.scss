@@ -1,0 +1,100 @@
+.note {
+    border: 2px #111827 solid;
+    position: absolute;
+    cursor: move;
+    /* Mặc định là move, có thể thay đổi khi drag */
+    background-color: #fef6e4;
+    /* Màu nền sáng */
+    box-sizing: border-box;
+    box-shadow: var(--box-shadow-container);
+    /* Đổ bóng mềm mại */
+    z-index: 1;
+    transition: all 0.3s ease-out;
+    border-radius: 6px;
+    /* Bo góc mượt mà */
+    overflow: hidden;
+}
+
+
+.note-pin {
+    position: absolute;
+    top: -5px;
+    left: -5px;
+    z-index: 10;
+    color: rgb(122, 122, 118);
+}
+
+.dropdown-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+}
+
+.note-container {
+    height: 100vh;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.resizable-box {
+    padding: 10px;
+    overflow: auto;
+}
+
+.hidden-button {
+    margin-left: 5px;
+    width: 0;
+    height: 0;
+    visibility: hidden;
+}
+
+.button-note-dropdown {
+    position: absolute;
+    background-color: transparent;
+    outline: none;
+    border: none;
+    top: -15px;
+    right: -5px;
+    cursor: pointer;
+    padding: 10px;
+}
+
+/* Các màu nền cho note */
+.light-yellow {
+    background-color: lightyellow !important;
+}
+
+.light-green {
+    background-color: lightgreen !important;
+}
+
+.light-blue {
+    background-color: lightblue !important;
+}
+
+.light-pink {
+    background-color: lightpink !important;
+}
+
+.light-coral {
+    background-color: lightcoral !important;
+}
+
+.note-content-edit {
+    width: 100%;
+    height: 100%;
+    padding: 8px;
+    border: none;
+    outline: none;
+    resize: none;
+    background-color: #fef6e4;
+    /* Giữ cùng màu nền với note */
+}
+
+.note p {
+    padding: 10px;
+    margin: 0;
+    word-wrap: break-word;
+}
