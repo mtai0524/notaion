@@ -94,8 +94,13 @@ const MainApp = () => {
     };
   }, [connection, setMessages, username]);
 
+  const clearChatList = () => {
+    setMessages([]); // clear chat when close
+  };
+
   const handleFloatingButtonClick = () => {
     if (showChatBox) {
+      clearChatList();
       setNewMessagesCount(0);
       localStorage.setItem("newMessagesCount", 0);
     }

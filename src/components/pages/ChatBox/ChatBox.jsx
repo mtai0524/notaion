@@ -138,64 +138,11 @@ const ChatBox = ({ onClose }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const { onlineUsers } = useSignalR();
   const token = Cookies.get("token");
+  const [loading, setLoading] = useState(false);
+  const [pageNumber, setPageNumber] = useState(1);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [isMessageSent, setIsMessageSent] = useState(false);
 
-
-  const handleScroll = () => {
-    if (chatMessagesRef.current) {
-      sessionStorage.setItem(
-        "chatScrollPosition",
-        chatMessagesRef.current.scrollTop
-      );
-    }
-  };
-
-  useLayoutEffect(() => {
-    const storedScrollPosition = sessionStorage.getItem("chatScrollPosition");
-    if (chatMessagesRef.current && storedScrollPosition) {
-      chatMessagesRef.current.scrollTop = parseInt(storedScrollPosition, 10);
-    }
-  }, [messagesLoaded]);
-
-  useEffect(() => {
-    const storedScrollPosition = sessionStorage.getItem("chatScrollPosition");
-    if (chatMessagesRef.current && storedScrollPosition) {
-      chatMessagesRef.current.scrollTop = parseInt(storedScrollPosition, 10);
-    }
-    const chatMessagesCurrent = chatMessagesRef.current;
-    if (chatMessagesCurrent) {
-      chatMessagesCurrent.addEventListener("scroll", handleScroll);
-    }
-    return () => {
-      if (chatMessagesCurrent) {
-        chatMessagesCurrent.removeEventListener("scroll", handleScroll);
-      }
-      if (chatMessagesRef.current) {
-        sessionStorage.setItem(
-          "chatScrollPosition",
-          chatMessagesRef.current.scrollTop
-        );
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await axiosInstance.get("/api/Chat/get-chats", {
-        });
-        if (response.status === 200) {
-          const chatMessages = response.data;
-          setMessages(chatMessages);
-          setMessagesLoaded(true);
-        } else {
-          console.error("Failed to fetch messages");
-        }
-      } catch (error) {
-        console.error("Error fetching messages: ", error);
-      }
-    };
-    fetchMessages();
-  }, [setMessages]);
 
   useEffect(() => {
     const isFirstLoad = sessionStorage.getItem("isFirstLoad");
@@ -217,12 +164,71 @@ const ChatBox = ({ onClose }) => {
     }
   }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
 
+  useLayoutEffect(() => {
+    if (chatMessagesRef.current) {
+      if (isMessageSent) {
+        // cuộn xuống cuối khi gửi tin
+        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+        setIsMessageSent(false);
+      } else if (pageNumber === 1 && messagesLoaded) {
+        //  cuộn xuống cuối nếu tải lần đầu 
+        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+      } else if (!isMessageSent && pageNumber > 1) {
+        // thêm pd 10 khi kéo phân trang
+        chatMessagesRef.current.scrollTop += 5;
+      }
+    }
+  }, [isMessageSent, pageNumber, messagesLoaded, messages]);
+
+
+  const handleScrollInfinite = () => {
+    if (chatMessagesRef.current.scrollTop === 0 && !loading && hasMoreMessages) {
+      setPageNumber(prevPage => prevPage + 1);
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      const response = await axiosInstance.get("/api/Chat/get-chats", {
+        params: { decrypt: true, pageNumber, pageSize: 10 },
+      });
+      if (response.status === 200) {
+        const reversedMessages = response.data.items.reverse();
+
+        if (reversedMessages.length === 0) {
+          setHasMoreMessages(false); // Nếu không còn tin nhắn, ngừng tải thêm
+        } else {
+          setMessages(prevMessages => [...reversedMessages, ...prevMessages]);
+          setMessagesLoaded(true);
+        }
+      } else {
+        console.error("Failed to fetch messages");
+      }
+    } catch (error) {
+      console.error("Error fetching messages: ", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const fetchData = async () => {
+      await fetchMessages();
+    };
+
+    fetchData();
+  }, [pageNumber]);
+
+
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
       const tempMessageId = Date.now();
       const newMessage = {
         userId: userId || "anonymous",
-        userName: username,
+        userName: username || "mèo con ẩn danh",
         content: message,
         sentDate: new Date().toISOString(),
         id: tempMessageId,
@@ -231,6 +237,7 @@ const ChatBox = ({ onClose }) => {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setMessage("");
       setLatestMessageFromUser(true);
+
       try {
         const response = await axiosInstance.post("/api/Chat/add-chat", {
           userId: userId,
@@ -238,7 +245,15 @@ const ChatBox = ({ onClose }) => {
           content: message,
         });
         if (response.status === 200) {
-          await fetchMessages();
+          const savedMessage = response.data;
+          setMessages((prevMessages) =>
+            prevMessages.map((msg) =>
+              msg.id === tempMessageId
+                ? { ...savedMessage, status: "sent" }
+                : msg
+            )
+          );
+          setIsMessageSent(true); //  gửi thành công
         } else {
           console.error("Failed to send message");
           setMessages((prevMessages) =>
@@ -260,6 +275,7 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [message, userId, username, setMessages, connection]);
+
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -382,7 +398,6 @@ const ChatBox = ({ onClose }) => {
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat</h3>
         <div className="section">
-
           <Dropdown
             placement="bottomLeft"
             overlay={menuProfile}
@@ -404,24 +419,32 @@ const ChatBox = ({ onClose }) => {
             <FontAwesomeIcon icon={faXmark} />
           </button>
         </div>
-
       </div>
-      <div className="chat-messages" ref={chatMessagesRef}>
+
+      <div
+        className="chat-messages"
+        ref={chatMessagesRef}
+        onScroll={handleScrollInfinite}
+      >
         {isDeleting ? (
           <div className="no-messages">
-            <l-cardio size="50" stroke="4" speed="0.5" color="black"></l-cardio>
+            <l-cardio size="50" stroke="4" speed="0.5" color="black" />
+          </div>
+        ) : loading ? (
+          <div className="no-messages  flex flex-col">
+            <l-cardio size="30" stroke="2" speed="0.5" color="black" />
           </div>
         ) : messages.length === 0 ? (
           <div className="no-messages flex flex-col">
-            <Empty description={false}></Empty>
+            <Empty description={false} />
             <h1 className="font-semibold">Empty messages</h1>
           </div>
         ) : (
           messages.map((msg, index) => {
-            // user online không
             const isOnline =
               msg.userName === "Chatbot" ||
               onlineUsers.some((user) => user.userName === msg.userName);
+
             return (
               <div
                 key={index}
@@ -431,7 +454,7 @@ const ChatBox = ({ onClose }) => {
                   {msg.userName}
                   <span
                     className={`status-dot ${isOnline ? "online" : "offline"}`}
-                  ></span>
+                  />
                 </strong>
                 <p className="chat-text">{msg.content}</p>
                 <p className="chat-date">
@@ -451,7 +474,6 @@ const ChatBox = ({ onClose }) => {
         )}
       </div>
 
-
       <div className="chat-input">
         <textarea
           className="chatbox-input"
@@ -467,7 +489,7 @@ const ChatBox = ({ onClose }) => {
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
       </div>
-    </div >
+    </div>
   );
 };
 ChatBox.propTypes = {
