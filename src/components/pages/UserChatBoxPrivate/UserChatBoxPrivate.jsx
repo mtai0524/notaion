@@ -209,7 +209,7 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                 <div className="chat-box !bottom-[-10px]">
                     <div className='flex flex-row items-center justify-between p-2 border-b-[#d6d6d6] border-1'>
                         <span className="text-lg font-semibold text-center">{chatUser}</span>
-                        <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close mr-2 size-2" />
+                        <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close cursor-pointer mr-2 size-2" />
                     </div>
 
                     <div className="chat-messages mb-[10px]">

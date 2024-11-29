@@ -174,3 +174,13 @@
 .offline {
   background-color: #f32a2a;
 }
+
+.embed-container {
+  max-width: 100%;
+  margin: 20px 0;
+}
+
+iframe {
+  width: 100%;
+  height: 315px;
+}

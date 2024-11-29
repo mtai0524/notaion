@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import PropTypes from "prop-types";
-import { Dropdown, Empty, Menu, Modal } from "antd";
+import { Dropdown, Empty, Menu, Modal, notification } from "antd";
 import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan, faEraser, faGear, faRecycle, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faEraser, faGear, faRecycle, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -142,7 +142,7 @@ const ChatBox = ({ onClose }) => {
   const [pageNumber, setPageNumber] = useState(1);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isMessageSent, setIsMessageSent] = useState(false);
-
+  const [aiMode, setAiMode] = useState(false);
 
   useEffect(() => {
     const isFirstLoad = sessionStorage.getItem("isFirstLoad");
@@ -178,7 +178,7 @@ const ChatBox = ({ onClose }) => {
         chatMessagesRef.current.scrollTop += 5;
       }
     }
-  }, [isMessageSent, pageNumber, messagesLoaded, messages]);
+  }, [isMessageSent, pageNumber, messagesLoaded]); // messages bỏ thì không thể cách một đoạn top 
 
 
   const handleScrollInfinite = () => {
@@ -191,15 +191,17 @@ const ChatBox = ({ onClose }) => {
     if (loading) return;
     setLoading(true);
 
+    const pageSize = pageNumber === 1 ? 10 : 3;
+
     try {
       const response = await axiosInstance.get("/api/Chat/get-chats", {
-        params: { decrypt: true, pageNumber, pageSize: 10 },
+        params: { decrypt: true, pageNumber, pageSize },
       });
       if (response.status === 200) {
         const reversedMessages = response.data.items.reverse();
 
         if (reversedMessages.length === 0) {
-          setHasMoreMessages(false); // Nếu không còn tin nhắn, ngừng tải thêm
+          setHasMoreMessages(false);
         } else {
           setMessages(prevMessages => [...reversedMessages, ...prevMessages]);
           setMessagesLoaded(true);
@@ -223,17 +225,39 @@ const ChatBox = ({ onClose }) => {
   }, [pageNumber]);
 
 
+  const handleAiModeToggle = () => {
+    setAiMode((prev) => {
+      const newAiMode = !prev;
+
+      // Show notification when AI mode is toggled
+      notification.info({
+        message: newAiMode ? "AI Mode Activated" : "AI Mode Deactivated",
+        description: newAiMode
+          ? "You can now interact with the bot."
+          : "You are now chatting with a human.",
+        placement: "topRight", // Notification will appear in the top-right corner
+        duration: 2, // The notification will auto-dismiss after 2 seconds
+      });
+
+      return newAiMode;
+    });
+  };
+
+
   const handleSendMessage = useCallback(async () => {
     if (message.trim() && connection) {
+      const messageContent = aiMode ? `/bot ${message}` : message;
+
       const tempMessageId = Date.now();
       const newMessage = {
         userId: userId || "anonymous",
         userName: username || "mèo con ẩn danh",
-        content: message,
+        content: messageContent,
         sentDate: new Date().toISOString(),
         id: tempMessageId,
         status: "sending",
       };
+
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setMessage("");
       setLatestMessageFromUser(true);
@@ -242,8 +266,9 @@ const ChatBox = ({ onClose }) => {
         const response = await axiosInstance.post("/api/Chat/add-chat", {
           userId: userId,
           userName: username,
-          content: message,
+          content: messageContent,
         });
+
         if (response.status === 200) {
           const savedMessage = response.data;
           setMessages((prevMessages) =>
@@ -253,7 +278,7 @@ const ChatBox = ({ onClose }) => {
                 : msg
             )
           );
-          setIsMessageSent(true); //  gửi thành công
+          setIsMessageSent(true);
         } else {
           console.error("Failed to send message");
           setMessages((prevMessages) =>
@@ -262,6 +287,7 @@ const ChatBox = ({ onClose }) => {
             )
           );
         }
+
         if (textareaRef.current) {
           textareaRef.current.style.height = "auto";
         }
@@ -274,8 +300,7 @@ const ChatBox = ({ onClose }) => {
         );
       }
     }
-  }, [message, userId, username, setMessages, connection]);
-
+  }, [message, userId, username, setMessages, connection, aiMode]);
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -285,11 +310,6 @@ const ChatBox = ({ onClose }) => {
       textarea.style.height = `${textarea.scrollHeight}px`;
     }
   };
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
-    }
-  }, []);
   const handleKeyPress = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -393,6 +413,139 @@ const ChatBox = ({ onClose }) => {
     </Menu>
   );
 
+  const convertLinksToEmbedTags = (text) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g; // Nhúng YouTube
+    const spotifyRegex = /(https?:\/\/(?:www\.)?spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+)/g; // Nhúng Spotify
+    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i; // Regex to detect image links
+
+    let segments = [];
+    let lastIndex = 0;
+
+    text.split(" ").forEach((word, index) => {
+      // Check if the word is a YouTube URL
+      if (embedRegex.test(word)) {
+        // Add the text before the YouTube link
+        if (lastIndex < index) {
+          segments.push(text.slice(lastIndex, text.indexOf(word)));
+        }
+
+        // Embed the YouTube iframe with a smaller height
+        segments.push(
+          <div key={index} className="embed-container">
+            <iframe
+              width="560"
+              src={word.replace("watch?v=", "embed/")}
+              frameBorder="0"
+              allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              style={{ maxHeight: '200px' }}
+            />
+          </div>
+        );
+
+        // Add the YouTube URL below the iframe
+        segments.push(
+          <div key={`link-${index}`} className="embed-url">
+            <a href={word} target="_blank" rel="noopener noreferrer">
+              {word}
+            </a>
+          </div>
+        );
+
+        lastIndex = text.indexOf(word) + word.length; // Update last index
+      }
+      // Check if the word is a Spotify URL
+      else if (spotifyRegex.test(word)) {
+        // Add the text before the Spotify link
+        if (lastIndex < index) {
+          segments.push(text.slice(lastIndex, text.indexOf(word)));
+        }
+
+        // Convert Spotify URL to embed URL
+        let embedUrl = word.replace("open.spotify.com", "open.spotify.com/embed");
+
+        if (word.includes("album")) {
+          embedUrl = embedUrl.replace("open.spotify.com/album", "open.spotify.com/embed/album");
+        } else if (word.includes("track")) {
+          embedUrl = embedUrl.replace("open.spotify.com/track", "open.spotify.com/embed/track");
+        } else if (word.includes("playlist")) {
+          embedUrl = embedUrl.replace("open.spotify.com/playlist", "open.spotify.com/embed/playlist");
+        }
+
+        // Embed the Spotify iframe
+        segments.push(
+          <div key={index} className="embed-container">
+            <iframe
+              width="300"
+              height="80"
+              src={embedUrl}
+              frameBorder="0"
+              allow="encrypted-media"
+              style={{ border: "none", borderRadius: "8px" }}
+            />
+          </div>
+        );
+
+        // Add the Spotify URL below the iframe
+        segments.push(
+          <div key={`link-${index}`} className="embed-url">
+            <a href={word} target="_blank" rel="noopener noreferrer">
+              {word}
+            </a>
+          </div>
+        );
+
+        lastIndex = text.indexOf(word) + word.length; // Update last index
+      }
+      // Check if the word is an image URL
+      else if (imageRegex.test(word)) {
+        // Add the text before the image link
+        if (lastIndex < index) {
+          segments.push(text.slice(lastIndex, text.indexOf(word)));
+        }
+
+        // Embed the image and hide the URL
+        segments.push(
+          <div key={index} className="image-container">
+            <img
+              src={word}
+              alt="Embedded"
+              style={{ maxWidth: '100%', maxHeight: '500px' }}
+            />
+          </div>
+        );
+        lastIndex = text.indexOf(word) + word.length; // Update last index
+      }
+      // Check if the word is a regular URL
+      else if (urlRegex.test(word)) {
+        // Add the text before the URL link
+        if (lastIndex < index) {
+          segments.push(text.slice(lastIndex, text.indexOf(word)));
+        }
+
+        // Embed the URL as a clickable link
+        segments.push(
+          <a key={index} className="italic text-blue-600" href={word} target="_blank" rel="noopener noreferrer">
+            {word}
+          </a>
+        );
+        lastIndex = text.indexOf(word) + word.length; // Update last index
+      }
+    });
+
+    // Add any remaining text after the last link
+    if (lastIndex < text.length) {
+      segments.push(text.slice(lastIndex));
+    }
+
+    return <>{segments}</>;
+  };
+
+
+
+
+
   return (
     <div className="chat-box">
       <div className="chat-header">
@@ -406,10 +559,7 @@ const ChatBox = ({ onClose }) => {
             onOpenChange={(visible) => setDropdownVisible(visible)}
             className="mr-3"
           >
-            <a
-              className="ant-dropdown-link"
-              onClick={(e) => e.preventDefault()}
-            >
+            <a className="ant-dropdown-link" onClick={(e) => e.preventDefault()}>
               <button className="p-1">
                 <FontAwesomeIcon icon={faGear} />
               </button>
@@ -421,17 +571,13 @@ const ChatBox = ({ onClose }) => {
         </div>
       </div>
 
-      <div
-        className="chat-messages"
-        ref={chatMessagesRef}
-        onScroll={handleScrollInfinite}
-      >
+      <div className="chat-messages" ref={chatMessagesRef} onScroll={handleScrollInfinite}>
         {isDeleting ? (
           <div className="no-messages">
             <l-cardio size="50" stroke="4" speed="0.5" color="black" />
           </div>
         ) : loading ? (
-          <div className="no-messages  flex flex-col">
+          <div className="no-messages flex flex-col">
             <l-cardio size="30" stroke="2" speed="0.5" color="black" />
           </div>
         ) : messages.length === 0 ? (
@@ -448,15 +594,14 @@ const ChatBox = ({ onClose }) => {
             return (
               <div
                 key={index}
-                className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"}`}
+                className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"
+                  }`}
               >
                 <strong className="chat-user">
                   {msg.userName}
-                  <span
-                    className={`status-dot ${isOnline ? "online" : "offline"}`}
-                  />
+                  <span className={`status-dot ${isOnline ? "online" : "offline"}`} />
                 </strong>
-                <p className="chat-text">{msg.content}</p>
+                <p className="chat-text">{convertLinksToEmbedTags(msg.content)}</p>
                 <p className="chat-date">
                   {new Date(msg.sentDate)
                     .toLocaleString("en-GB", {
@@ -485,6 +630,12 @@ const ChatBox = ({ onClose }) => {
           rows={1}
           style={{ overflow: "hidden", resize: "none" }}
         />
+        <button onClick={handleAiModeToggle}>
+          <FontAwesomeIcon
+            icon={faRobot}
+            style={{ color: aiMode ? "#504cd6" : "#4c4c4c" }}
+          />
+        </button>
         <button onClick={handleSendMessage}>
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
