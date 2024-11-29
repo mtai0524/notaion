@@ -5,7 +5,7 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan, faEraser, faGear, faRecycle, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faEraser, faFile, faGear, faRecycle, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -144,6 +144,7 @@ const ChatBox = ({ onClose }) => {
   const [isMessageSent, setIsMessageSent] = useState(false);
   const [aiMode, setAiMode] = useState(false);
 
+
   useEffect(() => {
     const isFirstLoad = sessionStorage.getItem("isFirstLoad");
     if (messagesLoaded && chatMessagesRef.current) {
@@ -167,18 +168,23 @@ const ChatBox = ({ onClose }) => {
   useLayoutEffect(() => {
     if (chatMessagesRef.current) {
       if (isMessageSent) {
-        // cuộn xuống cuối khi gửi tin
         chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
         setIsMessageSent(false);
-      } else if (pageNumber === 1 && messagesLoaded) {
-        //  cuộn xuống cuối nếu tải lần đầu 
-        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-      } else if (!isMessageSent && pageNumber > 1) {
-        // thêm pd 10 khi kéo phân trang
-        chatMessagesRef.current.scrollTop += 5;
+        console.log(pageNumber);
       }
     }
-  }, [isMessageSent, pageNumber, messagesLoaded]); // messages bỏ thì không thể cách một đoạn top 
+  }, [isMessageSent]);
+
+  useLayoutEffect(() => {
+    if (chatMessagesRef.current) {
+      if (pageNumber === 1) {
+        chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
+      }
+      else {
+        chatMessagesRef.current.scrollTop = 10;
+      }
+    }
+  }, [pageNumber, messagesLoaded]);
 
 
   const handleScrollInfinite = () => {
@@ -191,17 +197,15 @@ const ChatBox = ({ onClose }) => {
     if (loading) return;
     setLoading(true);
 
-    const pageSize = pageNumber === 1 ? 10 : 3;
-
     try {
       const response = await axiosInstance.get("/api/Chat/get-chats", {
-        params: { decrypt: true, pageNumber, pageSize },
+        params: { decrypt: true, pageNumber, pageSize: 4 },
       });
       if (response.status === 200) {
         const reversedMessages = response.data.items.reverse();
 
         if (reversedMessages.length === 0) {
-          setHasMoreMessages(false);
+          setHasMoreMessages(false); // Nếu không còn tin nhắn, ngừng tải thêm
         } else {
           setMessages(prevMessages => [...reversedMessages, ...prevMessages]);
           setMessagesLoaded(true);
@@ -228,15 +232,13 @@ const ChatBox = ({ onClose }) => {
   const handleAiModeToggle = () => {
     setAiMode((prev) => {
       const newAiMode = !prev;
-
-      // Show notification when AI mode is toggled
       notification.info({
         message: newAiMode ? "AI Mode Activated" : "AI Mode Deactivated",
         description: newAiMode
           ? "You can now interact with the bot."
           : "You are now chatting with a human.",
-        placement: "topRight", // Notification will appear in the top-right corner
-        duration: 2, // The notification will auto-dismiss after 2 seconds
+        placement: "topRight",
+        duration: 2,
       });
 
       return newAiMode;
@@ -415,36 +417,31 @@ const ChatBox = ({ onClose }) => {
 
   const convertLinksToEmbedTags = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g; // Nhúng YouTube
-    const spotifyRegex = /(https?:\/\/(?:www\.)?spotify\.com\/(track|album|playlist)\/[a-zA-Z0-9]+)/g; // Nhúng Spotify
-    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i; // Regex to detect image links
+    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
 
     let segments = [];
     let lastIndex = 0;
 
     text.split(" ").forEach((word, index) => {
-      // Check if the word is a YouTube URL
       if (embedRegex.test(word)) {
-        // Add the text before the YouTube link
         if (lastIndex < index) {
           segments.push(text.slice(lastIndex, text.indexOf(word)));
         }
 
-        // Embed the YouTube iframe with a smaller height
         segments.push(
           <div key={index} className="embed-container">
             <iframe
               width="560"
+              height="315"
               src={word.replace("watch?v=", "embed/")}
               frameBorder="0"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
-              style={{ maxHeight: '200px' }}
             />
           </div>
         );
 
-        // Add the YouTube URL below the iframe
         segments.push(
           <div key={`link-${index}`} className="embed-url">
             <a href={word} target="_blank" rel="noopener noreferrer">
@@ -453,59 +450,13 @@ const ChatBox = ({ onClose }) => {
           </div>
         );
 
-        lastIndex = text.indexOf(word) + word.length; // Update last index
+        lastIndex = text.indexOf(word) + word.length;
       }
-      // Check if the word is a Spotify URL
-      else if (spotifyRegex.test(word)) {
-        // Add the text before the Spotify link
-        if (lastIndex < index) {
-          segments.push(text.slice(lastIndex, text.indexOf(word)));
-        }
-
-        // Convert Spotify URL to embed URL
-        let embedUrl = word.replace("open.spotify.com", "open.spotify.com/embed");
-
-        if (word.includes("album")) {
-          embedUrl = embedUrl.replace("open.spotify.com/album", "open.spotify.com/embed/album");
-        } else if (word.includes("track")) {
-          embedUrl = embedUrl.replace("open.spotify.com/track", "open.spotify.com/embed/track");
-        } else if (word.includes("playlist")) {
-          embedUrl = embedUrl.replace("open.spotify.com/playlist", "open.spotify.com/embed/playlist");
-        }
-
-        // Embed the Spotify iframe
-        segments.push(
-          <div key={index} className="embed-container">
-            <iframe
-              width="300"
-              height="80"
-              src={embedUrl}
-              frameBorder="0"
-              allow="encrypted-media"
-              style={{ border: "none", borderRadius: "8px" }}
-            />
-          </div>
-        );
-
-        // Add the Spotify URL below the iframe
-        segments.push(
-          <div key={`link-${index}`} className="embed-url">
-            <a href={word} target="_blank" rel="noopener noreferrer">
-              {word}
-            </a>
-          </div>
-        );
-
-        lastIndex = text.indexOf(word) + word.length; // Update last index
-      }
-      // Check if the word is an image URL
       else if (imageRegex.test(word)) {
-        // Add the text before the image link
         if (lastIndex < index) {
           segments.push(text.slice(lastIndex, text.indexOf(word)));
         }
 
-        // Embed the image and hide the URL
         segments.push(
           <div key={index} className="image-container">
             <img
@@ -515,26 +466,22 @@ const ChatBox = ({ onClose }) => {
             />
           </div>
         );
-        lastIndex = text.indexOf(word) + word.length; // Update last index
+        lastIndex = text.indexOf(word) + word.length;
       }
-      // Check if the word is a regular URL
       else if (urlRegex.test(word)) {
-        // Add the text before the URL link
         if (lastIndex < index) {
           segments.push(text.slice(lastIndex, text.indexOf(word)));
         }
 
-        // Embed the URL as a clickable link
         segments.push(
           <a key={index} className="italic text-blue-600" href={word} target="_blank" rel="noopener noreferrer">
             {word}
           </a>
         );
-        lastIndex = text.indexOf(word) + word.length; // Update last index
+        lastIndex = text.indexOf(word) + word.length;
       }
     });
 
-    // Add any remaining text after the last link
     if (lastIndex < text.length) {
       segments.push(text.slice(lastIndex));
     }
@@ -542,14 +489,10 @@ const ChatBox = ({ onClose }) => {
     return <>{segments}</>;
   };
 
-
-
-
-
   return (
     <div className="chat-box">
       <div className="chat-header">
-        <h3 className="m-0 p-1 font-extrabold">Chat</h3>
+        <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
           <Dropdown
             placement="bottomLeft"
@@ -598,6 +541,9 @@ const ChatBox = ({ onClose }) => {
                   }`}
               >
                 <strong className="chat-user">
+                  {msg.userName === "Chatbot" && (
+                    <FontAwesomeIcon icon={faRobot} style={{ marginRight: "5px", color: "#504cd6" }} />
+                  )}
                   {msg.userName}
                   <span className={`status-dot ${isOnline ? "online" : "offline"}`} />
                 </strong>
