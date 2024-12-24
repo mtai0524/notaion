@@ -418,6 +418,7 @@ const ChatBox = ({ onClose }) => {
   const convertLinksToEmbedTags = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
     const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
 
     let segments = [];
@@ -439,20 +440,53 @@ const ChatBox = ({ onClose }) => {
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-          </div>
-        );
-
-        segments.push(
-          <div key={`link-${index}`} className="embed-url">
-            <a href={word} target="_blank" rel="noopener noreferrer">
-              {word}
-            </a>
+            <p className="italic text-blue-600 mt-2">
+              <a href={word} target="_blank" rel="noopener noreferrer">
+                {word}
+              </a>
+            </p>
           </div>
         );
 
         lastIndex = text.indexOf(word) + word.length;
-      }
-      else if (imageRegex.test(word)) {
+      } else if (spotifyRegex.test(word)) {
+        if (lastIndex < index) {
+          segments.push(text.slice(lastIndex, text.indexOf(word)));
+        }
+
+        const spotifyType = word.includes("track")
+          ? "Spotify Track"
+          : word.includes("album")
+            ? "Spotify Album"
+            : "Spotify Playlist";
+
+        const spotifyEmbedUrl = word.replace(
+          /(https:\/\/open\.spotify\.com\/)/,
+          "https://open.spotify.com/embed/"
+        );
+        segments.push(
+          <div key={index} className="spotify-container">
+            <p className="spotify-label text-sm text-gray-500">{spotifyType}</p>
+            <iframe
+              style={{ borderRadius: "12px" }}
+              src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
+              width="560"
+              height="315"
+              frameBorder="0"
+              allowFullScreen
+              allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+              loading="lazy"
+            />
+            <p className="italic text-blue-600 mt-2">
+              <a href={word} target="_blank" rel="noopener noreferrer">
+                {word}
+              </a>
+            </p>
+          </div>
+        );
+
+        lastIndex = text.indexOf(word) + word.length;
+      } else if (imageRegex.test(word)) {
         if (lastIndex < index) {
           segments.push(text.slice(lastIndex, text.indexOf(word)));
         }
@@ -462,19 +496,29 @@ const ChatBox = ({ onClose }) => {
             <img
               src={word}
               alt="Embedded"
-              style={{ maxWidth: '100%', maxHeight: '500px' }}
+              style={{ maxWidth: "100%", maxHeight: "500px" }}
             />
+            <p className="italic text-blue-600 mt-2">
+              <a href={word} target="_blank" rel="noopener noreferrer">
+                {word}
+              </a>
+            </p>
           </div>
         );
         lastIndex = text.indexOf(word) + word.length;
-      }
-      else if (urlRegex.test(word)) {
+      } else if (urlRegex.test(word)) {
         if (lastIndex < index) {
           segments.push(text.slice(lastIndex, text.indexOf(word)));
         }
 
         segments.push(
-          <a key={index} className="italic text-blue-600" href={word} target="_blank" rel="noopener noreferrer">
+          <a
+            key={index}
+            className="italic text-blue-600"
+            href={word}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             {word}
           </a>
         );
@@ -488,6 +532,8 @@ const ChatBox = ({ onClose }) => {
 
     return <>{segments}</>;
   };
+
+
 
   return (
     <div className="chat-box">
