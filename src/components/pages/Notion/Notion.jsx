@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
+import { v4 as uuidv4 } from 'uuid';
+
 import {
   Dropdown,
   Menu,
@@ -30,11 +32,13 @@ const reorder = (list, startIndex, endIndex) => {
   return result.map((item, index) => ({ ...item, order: index }));
 };
 
+
 const generateRandomId = () => {
-  return Array.from({ length: 24 }, () =>
-    Math.floor(Math.random() * 16).toString(16)
-  ).join("");
+  return uuidv4();
 };
+
+console.log(generateRandomId());
+
 
 const Notion = () => {
   const [blockId, setBlockId] = useState();

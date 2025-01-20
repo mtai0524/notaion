@@ -72,6 +72,7 @@
     "react-spring": "^9.7.4",
     "safe-buffer": "^5.2.1",
     "sass": "^1.77.8",
+    "uuid": "^11.0.5",
     "web-vitals": "^2.1.0",
     "y-webrtc": "^10.3.0",
     "yjs": "^13.6.18"
