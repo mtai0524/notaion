@@ -155,6 +155,12 @@
   align-items: center;
 }
 
+.container-block iframe {
+  max-width: 100%; 
+  width: 1000px;  
+  height: 450px; 
+}
+
 .ant-spin-dot {
   color: #4265ac !important;
 }

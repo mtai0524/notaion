@@ -5,7 +5,7 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan, faEraser, faFile, faGear, faRecycle, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faBan, faEraser, faGear, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";

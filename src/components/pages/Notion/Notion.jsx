@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { v4 as uuidv4 } from 'uuid';
-
 import {
   Dropdown,
   Menu,
@@ -22,6 +20,7 @@ import {
   ZoomOutOutlined,
 } from "@ant-design/icons";
 import "./Notion.scss";
+import { v4 as uuidv4 } from 'uuid';
 import axiosInstance from "../../../axiosConfig";
 import debounce from "lodash.debounce";
 const reorder = (list, startIndex, endIndex) => {
@@ -32,13 +31,9 @@ const reorder = (list, startIndex, endIndex) => {
   return result.map((item, index) => ({ ...item, order: index }));
 };
 
-
 const generateRandomId = () => {
   return uuidv4();
 };
-
-console.log(generateRandomId());
-
 
 const Notion = () => {
   const [blockId, setBlockId] = useState();
@@ -537,6 +532,7 @@ const Notion = () => {
         link.remove();
       });
   };
+  
   const renderItemContent = (item) => {
     if (
       item.content &&
@@ -583,8 +579,75 @@ const Notion = () => {
         />
       );
     }
+    if (typeof item.content === 'string' && item.content.match(/\bhttps?:\/\/\S+/)) {
+      return convertLinksToEmbedTags(item.content);
+    }
   };
 
+  const convertLinksToEmbedTags = (text) => {
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
+    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
+  
+    return (
+      <div>
+        {text.split(urlRegex).map((segment, index) => {
+          if (embedRegex.test(segment)) {
+            return (
+              <div key={index} className="embed-container">
+                <iframe
+                  width="560"
+                  height="315"
+                  src={segment.replace("watch?v=", "embed/")}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            );
+          }
+  
+          if (spotifyRegex.test(segment)) {
+            const spotifyEmbedUrl = segment.replace(
+              /(https:\/\/open\.spotify\.com\/)/,
+              "https://open.spotify.com/embed/"
+            );
+            return (
+              <div key={index} className="spotify-container">
+                <iframe
+                  style={{ borderRadius: "12px" }}
+                  src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
+                  width="1060"
+                  height="315"
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                />
+              </div>
+            );
+          }
+  
+          if (imageRegex.test(segment)) {
+            return (
+              <div key={index} className="image-container">
+                <img
+                  src={segment}
+                  alt="Embedded"
+                  style={{ maxWidth: "100%", maxHeight: "500px" }}
+                />
+              </div>
+            );
+          }
+  
+          return null;
+        })}
+      </div>
+    );
+  };
+  
+  
   return (
     <>
       <input
@@ -627,23 +690,18 @@ const Notion = () => {
                         {...provided.draggableProps}
                         className="draggable-item flex"
                       >
-                        <div className="container-block">
+                       <div className="container-block">
                           {renderItemContent(item) ? (
                             renderItemContent(item)
-                          ) : (
+                          )  : (
                             <textarea
                               placeholder={item.placeholder}
-                              value={newContent[item.id] || item.content}
-                              onChange={(e) =>
-                                handleChangeContent(item.id, e.target.value)
-                              }
+                              value={newContent[item.id] || item.content || ""}
+                              onChange={(e) => handleChangeContent(item.id, e.target.value)}
                               onKeyDown={(e) => handleKeyDown(e, item.id)}
                               onPaste={(e) => handlePaste(e, item.id)}
-                              ref={(el) =>
-                                (editTextareaRefs.current[item.id] = el)
-                              }
-                              className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""
-                                }`}
+                              ref={(el) => (editTextareaRefs.current[item.id] = el)}
+                              className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""}`}
                             />
                           )}
                           {loadingImage === item.id && (
