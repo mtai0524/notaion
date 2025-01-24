@@ -585,67 +585,84 @@ const Notion = () => {
   };
 
   const convertLinksToEmbedTags = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
-    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
-    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
-  
-    return (
-      <div>
-        {text.split(urlRegex).map((segment, index) => {
-          if (embedRegex.test(segment)) {
-            return (
-              <div key={index} className="embed-container">
-                <iframe
-                  width="560"
-                  height="315"
-                  src={segment.replace("watch?v=", "embed/")}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            );
-          }
-  
-          if (spotifyRegex.test(segment)) {
-            const spotifyEmbedUrl = segment.replace(
-              /(https:\/\/open\.spotify\.com\/)/,
-              "https://open.spotify.com/embed/"
-            );
-            return (
-              <div key={index} className="spotify-container">
-                <iframe
-                  style={{ borderRadius: "12px" }}
-                  src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
-                  width="1060"
-                  height="315"
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                />
-              </div>
-            );
-          }
-  
-          if (imageRegex.test(segment)) {
-            return (
-              <div key={index} className="image-container">
-                <img
-                  src={segment}
-                  alt="Embedded"
-                  style={{ maxWidth: "100%", maxHeight: "500px" }}
-                />
-              </div>
-            );
-          }
-  
-          return null;
-        })}
-      </div>
-    );
-  };
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+  const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
+  const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
+
+  return (
+    <div>
+      {text.split(urlRegex).map((segment, index) => {
+        if (embedRegex.test(segment)) {
+          return (
+            <div key={index} className="embed-container">
+              <iframe
+                width="560"
+                height="315"
+                src={segment.replace("watch?v=", "embed/")}
+                frameBorder="0"
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          );
+        }
+
+        if (spotifyRegex.test(segment)) {
+          const spotifyEmbedUrl = segment.replace(
+            /(https:\/\/open\.spotify\.com\/)/,
+            "https://open.spotify.com/embed/"
+          );
+          return (
+            <div key={index} className="spotify-container">
+              <iframe
+                style={{ borderRadius: "12px" }}
+                src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
+                width="1060"
+                height="315"
+                frameBorder="0"
+                allowFullScreen
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                loading="lazy"
+              />
+            </div>
+          );
+        }
+
+        if (imageRegex.test(segment)) {
+          return (
+            <div key={index} className="image-container">
+              <img
+                src={segment}
+                alt="Embedded"
+                style={{ maxWidth: "100%", maxHeight: "500px" }}
+              />
+            </div>
+          );
+        }
+
+        // Embed generic web pages
+        if (urlRegex.test(segment)) {
+          return (
+            <div key={index} className="webpage-container">
+              <iframe
+                src={segment}
+                width="100%"
+                height="500px"
+                frameBorder="0"
+                style={{ border: "1px solid #ccc", borderRadius: "8px" }}
+                title={`Webpage-${index}`}
+              />
+            </div>
+          );
+        }
+
+        return <span key={index}>{segment}</span>;
+      })}
+    </div>
+  );
+};
+
   
   
   return (
