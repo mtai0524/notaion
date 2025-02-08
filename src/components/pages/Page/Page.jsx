@@ -90,6 +90,7 @@ const Page = () => {
     }
     setCards(sortedCards);
   };
+
   const addNewCard = async () => {
     setAddLoading(true);
     try {
@@ -108,7 +109,7 @@ const Page = () => {
       const response = await axiosInstance.post("/api/Page", newPage);
       if (response.status === 201) {
         const createdPage = response.data;
-        setCards([
+        const updatedCards = [
           ...cards,
           {
             id: createdPage.id,
@@ -117,7 +118,10 @@ const Page = () => {
             createDate: createdPage.createdAt,
             updateDate: createdPage.updatedAt,
           },
-        ]);
+        ];
+
+        // sort cards after add new page
+        sortCards(updatedCards, filter)
         message.success("Page created!");
       }
     } catch (error) {
@@ -126,6 +130,7 @@ const Page = () => {
       setAddLoading(false);
     }
   };
+
   const publicPage = async (cardId) => {
     try {
       const response = await axiosInstance.post(
