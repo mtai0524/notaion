@@ -11,6 +11,7 @@ import {
   faEllipsis,
   faGears,
   faHome,
+  faKeyboard,
   faNewspaper,
   faSignInAlt,
   faUser,
@@ -146,6 +147,12 @@ const Header = () => {
       case "logout":
         await handleLogout();
         break;
+      case "shortcut":
+        navigate("/shortcut");
+        break;
+      case "guide":
+        navigate("/guide");
+        break;
       default:
         break;
     }
@@ -216,6 +223,20 @@ const Header = () => {
             style={{ backgroundColor: location.pathname === "/setting" ? "#f0f0f0" : "transparent" }} // Gray if on setting
           >
             Setting
+          </Menu.Item>
+          <Menu.Item
+            key="guide"
+            icon={<QuestionCircleOutlined />}
+            style={{ backgroundColor: location.pathname === "/guide" ? "#f0f0f0" : "transparent" }}
+          >
+            Guide
+          </Menu.Item>
+          <Menu.Item
+            key="shortcut"
+            icon={<FontAwesomeIcon icon={faKeyboard} />}
+            style={{ backgroundColor: location.pathname === "/shortcut" ? "#f0f0f0" : "transparent" }}
+          >
+            Shortcut
           </Menu.Item>
           <Menu.Item
             key="logout"
