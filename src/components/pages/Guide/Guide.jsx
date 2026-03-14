@@ -2,8 +2,10 @@ import React from 'react';
 import './Guide.scss';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLightbulb, faComments, faBook, faMagic, faPenNib, faGhost, faStar, faRocket, faKeyboard } from '@fortawesome/free-solid-svg-icons';
+import { useNavigate } from 'react-router-dom';
 
 const Guide = () => {
+    const navigate = useNavigate();
     return (
         <div className="guide-container">
             <div className="sketch-bg-decorative"></div>
