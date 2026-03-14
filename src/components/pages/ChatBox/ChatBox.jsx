@@ -143,6 +143,7 @@ const ChatBox = ({ onClose }) => {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isMessageSent, setIsMessageSent] = useState(false);
   const [aiMode, setAiMode] = useState(false);
+  const scrollHeightBeforeUpdateRef = useRef(0);
 
 
   useEffect(() => {
@@ -179,16 +180,19 @@ const ChatBox = ({ onClose }) => {
     if (chatMessagesRef.current) {
       if (pageNumber === 1) {
         chatMessagesRef.current.scrollTop = chatMessagesRef.current.scrollHeight;
-      }
-      else {
-        chatMessagesRef.current.scrollTop = 10;
+      } else if (scrollHeightBeforeUpdateRef.current > 0) {
+        const newHeight = chatMessagesRef.current.scrollHeight;
+        const diff = newHeight - scrollHeightBeforeUpdateRef.current;
+        chatMessagesRef.current.scrollTop = diff;
+        scrollHeightBeforeUpdateRef.current = 0;
       }
     }
-  }, [pageNumber, messagesLoaded]);
+  }, [messages, messagesLoaded]);
 
 
   const handleScrollInfinite = () => {
-    if (chatMessagesRef.current.scrollTop === 0 && !loading && hasMoreMessages) {
+    if (chatMessagesRef.current.scrollTop <= 10 && !loading && hasMoreMessages) {
+      scrollHeightBeforeUpdateRef.current = chatMessagesRef.current.scrollHeight;
       setPageNumber(prevPage => prevPage + 1);
     }
   };
@@ -199,7 +203,7 @@ const ChatBox = ({ onClose }) => {
 
     try {
       const response = await axiosInstance.get("/api/Chat/get-chats", {
-        params: { decrypt: true, pageNumber, pageSize: 4 },
+        params: { decrypt: true, pageNumber, pageSize: 15 },
       });
       if (response.status === 200) {
         const reversedMessages = response.data.items.reverse();
@@ -565,7 +569,7 @@ const ChatBox = ({ onClose }) => {
           <div className="no-messages">
             <l-cardio size="50" stroke="4" speed="0.5" color="black" />
           </div>
-        ) : loading ? (
+        ) : (loading && messages.length === 0) ? (
           <div className="no-messages flex flex-col">
             <l-cardio size="30" stroke="2" speed="0.5" color="black" />
           </div>
