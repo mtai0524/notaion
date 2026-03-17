@@ -18,6 +18,10 @@ import {
   UndoOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
+  PlusOutlined,
+  FileImageOutlined,
+  FileTextOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import "./Notion.scss";
 import { v4 as uuidv4 } from 'uuid';
@@ -151,9 +155,12 @@ const Notion = () => {
 
   const addItem = (id) => {
     const newBlockId = generateRandomId();
-    const index = id
-      ? items.findIndex((item) => item.id === id) + 1
-      : items.length;
+    let index;
+    if (id) {
+      index = items.findIndex((item) => item.id === id) + 1;
+    } else {
+      index = 0; // Thêm vào đầu danh sách
+    }
     const newItem = {
       id: newBlockId,
       heading: "",
@@ -242,11 +249,28 @@ const Notion = () => {
 
     try {
       const response = await axiosInstance.post("/api/Items/upload", formData);
-      responseDataImage(response, e, id);
+      if (id) {
+        responseDataImage(response, e, id);
+      } else {
+        // Create new item with uploaded image
+        const newBlockId = generateRandomId();
+        const data = response.data;
+        const newItem = {
+          id: newBlockId,
+          heading: "",
+          code: "",
+          order: items.length,
+          content: data.url
+        };
+        const updatedItems = [...items, newItem];
+        setItems(updatedItems);
+        saveItems(updatedItems, false);
+      }
       setLoadingImage(null);
     } catch (error) {
       console.error("Error uploading image:", error);
       setLoadingImage(null);
+      message.error("Failed to upload image");
     }
   };
 
@@ -258,6 +282,45 @@ const Notion = () => {
     const beforeCursor = currentContent.substring(0, cursorPosition);
     const newContentWithImage = `${beforeCursor}${data.url}`;
     handleChangeContent(id, newContentWithImage);
+  };
+
+  const handleGlobalDrop = async (e) => {
+    e.preventDefault();
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith("image/")) {
+          const file = files[i];
+          const formData = new FormData();
+          formData.append("file", file);
+          const newBlockId = generateRandomId();
+
+          // Show loading state
+          setItems(prev => [...prev, { id: newBlockId, heading: "", code: "", order: prev.length, content: "" }]);
+          setLoadingImage(newBlockId);
+
+          try {
+            const response = await axiosInstance.post("/api/Items/upload", formData);
+            const data = response.data;
+            setItems(prevItems => {
+              const updated = prevItems.map(item => item.id === newBlockId ? { ...item, content: data.url } : item);
+              saveItems(updated, false);
+              return updated;
+            });
+          } catch (error) {
+            console.error("Error uploading dropped image:", error);
+            setItems(prev => prev.filter(item => item.id !== newBlockId));
+            message.error("Failed to upload dropped image");
+          } finally {
+            setLoadingImage(null);
+          }
+        }
+      }
+    }
+  };
+
+  const handleGlobalDragOver = (e) => {
+    e.preventDefault();
   };
 
   const fileInputRef = useRef(null);
@@ -539,44 +602,51 @@ const Notion = () => {
       item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/) != null
     ) {
       return (
-        <Image
-          width={200}
-          src={item.content}
-          style={{
-            maxWidth: "100%",
-            maxHeight: "200px",
-            border: "2px solid black",
-          }}
-          preview={{
-            toolbarRender: (
-              _,
-              {
-                image: { url },
-                transform: { scale },
-                actions: {
-                  onFlipY,
-                  onFlipX,
-                  onRotateLeft,
-                  onRotateRight,
-                  onZoomOut,
-                  onZoomIn,
-                  onReset,
-                },
-              }
-            ) => (
-              <Space size={12} className="toolbar-wrapper">
-                <DownloadOutlined onClick={() => onDownload(url)} />
-                <SwapOutlined rotate={90} onClick={onFlipY} />
-                <SwapOutlined onClick={onFlipX} />
-                <RotateLeftOutlined onClick={onRotateLeft} />
-                <RotateRightOutlined onClick={onRotateRight} />
-                <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
-                <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
-                <UndoOutlined onClick={onReset} />
-              </Space>
-            ),
-          }}
-        />
+        <div
+          className="image-wrapper"
+          onKeyDown={(e) => handleKeyDown(e, item.id)}
+          tabIndex={0}
+          style={{ outline: 'none' }}
+        >
+          <Image
+            width={200}
+            src={item.content}
+            style={{
+              maxWidth: "100%",
+              maxHeight: "200px",
+              border: "2px solid black",
+            }}
+            preview={{
+              toolbarRender: (
+                _,
+                {
+                  image: { url },
+                  transform: { scale },
+                  actions: {
+                    onFlipY,
+                    onFlipX,
+                    onRotateLeft,
+                    onRotateRight,
+                    onZoomOut,
+                    onZoomIn,
+                    onReset,
+                  },
+                }
+              ) => (
+                <Space size={12} className="toolbar-wrapper">
+                  <DownloadOutlined onClick={() => onDownload(url)} />
+                  <SwapOutlined rotate={90} onClick={onFlipY} />
+                  <SwapOutlined onClick={onFlipX} />
+                  <RotateLeftOutlined onClick={onRotateLeft} />
+                  <RotateRightOutlined onClick={onRotateRight} />
+                  <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
+                  <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
+                  <UndoOutlined onClick={onReset} />
+                </Space>
+              ),
+            }}
+          />
+        </div>
       );
     }
     if (typeof item.content === 'string' && item.content.match(/\bhttps?:\/\/\S+/)) {
@@ -674,23 +744,11 @@ const Notion = () => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
-      <div className="w-full flex justify-end pr-10 font-bold">
-        <Popconfirm
-          placement="topRight"
-          title="Delete all"
-          description="Delete all records"
-          okText="Yes"
-          cancelText="No"
-          onConfirm={handleDeleteAll}
-        >
-
-          {/* <button style={{ borderColor: "#21242b" }} className="main-button ">
-            <span>Delete all</span>
-          </button> */}
-
-        </Popconfirm>
-      </div>
-      <div style={{ overflow: "hidden" }}>
+      <div
+        style={{ minHeight: '100vh', overflow: "hidden" }}
+        onDrop={handleGlobalDrop}
+        onDragOver={handleGlobalDragOver}
+      >
         <DragDropContext onDragEnd={onDragEnd}>
           <Droppable droppableId="droppable">
             {(provided) => (
@@ -699,6 +757,18 @@ const Notion = () => {
                 ref={provided.innerRef}
                 className="droppable-list"
               >
+                <li className="draggable-item flex ghost-add-item" style={{ marginBottom: '20px' }}>
+                  <div className="container-block">
+                    <div
+                      className="edit-textarea flex items-center justify-center py-6 cursor-pointer"
+                      style={{ border: '2px dashed #ccc', opacity: 0.6 }}
+                      onClick={() => addItem()}
+                    >
+                      <PlusOutlined className="mr-2" />
+                      <span>Click here or press Enter in a note to add more...</span>
+                    </div>
+                  </div>
+                </li>
                 {items.map((item, index) => (
                   <Draggable key={item.id} draggableId={item.id} index={index}>
                     {(provided) => (
@@ -707,10 +777,10 @@ const Notion = () => {
                         {...provided.draggableProps}
                         className="draggable-item flex"
                       >
-                       <div className="container-block">
+                        <div className="container-block">
                           {renderItemContent(item) ? (
                             renderItemContent(item)
-                          )  : (
+                          ) : (
                             <textarea
                               placeholder={item.placeholder}
                               value={newContent[item.id] || item.content || ""}
