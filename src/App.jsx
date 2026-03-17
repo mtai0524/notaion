@@ -63,6 +63,21 @@ const MainApp = () => {
 
 
   useEffect(() => {
+    const globalBorderColor = localStorage.getItem("globalBorderColor") || "#111827";
+    const globalBorderStyle = localStorage.getItem("globalBorderStyle") || "solid";
+
+    document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
+    document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
+
+    const globalBgTheme = localStorage.getItem("globalBgTheme") || "theme-none";
+    const globalBgScope = localStorage.getItem("globalBgScope") || "all";
+    if (globalBgTheme !== "theme-none") {
+      document.body.classList.add(globalBgTheme);
+      document.body.classList.add(`bg-scope-${globalBgScope}`);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!connection) return;
 
     const handleReceiveMessage = (user, receivedMessage) => {

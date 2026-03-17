@@ -19,6 +19,47 @@ hr {
   border: 1px solid black !important;
 }
 
+* {
+  border-color: var(--global-border-color, var(--border-color, #111827)) !important;
+  border-style: var(--global-border-style, inherit) !important;
+}
+
+/* Global Background Themes */
+body.theme-dots {
+  --bg-dots: rgba(17, 24, 39, 0.1);
+  background-color: #fafafa !important;
+  background-image: radial-gradient(var(--bg-dots) 1.5px, transparent 1.5px) !important;
+  background-size: 20px 20px !important;
+}
+
+body.theme-grid {
+  --bg-grid: rgba(17, 24, 39, 0.05);
+  background-color: #ffffff !important;
+  background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+
+body.theme-paper {
+  background-color: #fdfcf8 !important;
+  background-image: linear-gradient(transparent 95%, rgba(17, 24, 39, 0.1) 5%) !important;
+  background-size: 100% 30px !important;
+}
+
+body.theme-blueprint {
+  background-color: #1a365d !important;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px) !important;
+  background-size: 20px 20px !important;
+}
+
+body.bg-scope-all .setting-page-wrapper,
+body.bg-scope-all .guide-container,
+body.bg-scope-all .home-container,
+body.bg-scope-all .profile-container {
+    background-color: transparent !important;
+}
+
 :root {
   --purple-light: #c8a2c8;
   --black: #000000;

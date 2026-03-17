@@ -2,7 +2,7 @@ import { Switch } from "antd";
 import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage } from "@fortawesome/free-solid-svg-icons";
 
 const Setting = () => {
   const [bubble, setBubble] = useState(localStorage.getItem("isBubbleMenuVisible") === "true");
@@ -14,6 +14,11 @@ const Setting = () => {
   const [partyMode, setPartyMode] = useState(localStorage.getItem("partyMode") === "true");
   const [hackerMode, setHackerMode] = useState(localStorage.getItem("hackerMode") === "true");
   const [horrorMode, setHorrorMode] = useState(localStorage.getItem("horrorMode") === "true");
+
+  const [globalBorderColor, setGlobalBorderColor] = useState(localStorage.getItem("globalBorderColor") || "#111827");
+  const [globalBorderStyle, setGlobalBorderStyle] = useState(localStorage.getItem("globalBorderStyle") || "solid");
+  const [globalBgTheme, setGlobalBgTheme] = useState(localStorage.getItem("globalBgTheme") || "theme-none");
+  const [globalBgScope, setGlobalBgScope] = useState(localStorage.getItem("globalBgScope") || "all");
 
   useEffect(() => {
     // Eye Protection
@@ -57,7 +62,16 @@ const Setting = () => {
       document.body.classList.remove("horror-mode-active");
     }
 
-  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode]);
+    document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
+    document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
+
+    document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-none", "bg-scope-all", "bg-scope-base");
+    if (globalBgTheme && globalBgTheme !== "theme-none") {
+      document.body.classList.add(globalBgTheme);
+      document.body.classList.add(`bg-scope-${globalBgScope}`);
+    }
+
+  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBgTheme, globalBgScope]);
 
   const handleSwitchChange = (key, value) => {
     switch (key) {
@@ -102,6 +116,22 @@ const Setting = () => {
     }
   };
 
+  const handleStyleChange = (key, value) => {
+    if (key === 'borderColor') {
+      setGlobalBorderColor(value);
+      localStorage.setItem("globalBorderColor", value);
+    } else if (key === 'borderStyle') {
+      setGlobalBorderStyle(value);
+      localStorage.setItem("globalBorderStyle", value);
+    } else if (key === 'bgTheme') {
+      setGlobalBgTheme(value);
+      localStorage.setItem("globalBgTheme", value);
+    } else if (key === 'bgScope') {
+      setGlobalBgScope(value);
+      localStorage.setItem("globalBgScope", value);
+    }
+  };
+
   const categories = [
     {
       title: "Interface Settings",
@@ -121,6 +151,15 @@ const Setting = () => {
         { label: "Horror Mode", key: "horrorMode", value: horrorMode, icon: faGhost, desc: "Something is watching you... 👻" },
         { label: "Force Delete", key: "force", value: force, icon: faGear, desc: "Skip confirmation for deletions" },
       ]
+    },
+    {
+      title: "Global Styles",
+      items: [
+        { label: "Background Theme", key: "bgTheme", type: "select", options: ["theme-none", "theme-dots", "theme-grid", "theme-paper", "theme-blueprint"], value: globalBgTheme, icon: faImage, desc: "Change generic background pattern" },
+        { label: "Apply Background", key: "bgScope", type: "select", options: ["all", "base"], value: globalBgScope, icon: faEye, desc: "Apply to all wrappers or base body only" },
+        { label: "Border Color", key: "borderColor", type: "color", value: globalBorderColor, icon: faFillDrip, desc: "Change color of all borders" },
+        { label: "Border Style", key: "borderStyle", type: "select", options: ["solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset", "none"], value: globalBorderStyle, icon: faMagic, desc: "Change style of all borders" },
+      ]
     }
   ];
 
@@ -138,7 +177,7 @@ const Setting = () => {
               <h2 className="section-title">{cat.title}</h2>
               <div className="setting-list">
                 {cat.items.map((item) => (
-                  <div key={item.key} className={`setting-item-card ${item.value ? 'active' : ''}`}>
+                  <div key={item.key} className={`setting-item-card ${(item.value === true) ? 'active' : ''}`}>
                     <div className="item-icon">
                       <FontAwesomeIcon icon={item.icon} />
                     </div>
@@ -147,10 +186,27 @@ const Setting = () => {
                       <span className="item-desc">{item.desc}</span>
                     </div>
                     <div className="item-action">
-                      <Switch
-                        checked={item.value}
-                        onChange={(checked) => handleSwitchChange(item.key, checked)}
-                      />
+                      {item.type === 'color' ? (
+                        <input
+                          type="color"
+                          value={item.value}
+                          onChange={(e) => handleStyleChange(item.key, e.target.value)}
+                          style={{ width: '50px', height: '30px', cursor: 'pointer', border: 'none', padding: 0 }}
+                        />
+                      ) : item.type === 'select' ? (
+                        <select
+                          value={item.value}
+                          onChange={(e) => handleStyleChange(item.key, e.target.value)}
+                          style={{ padding: '5px', borderRadius: '5px', border: '1px solid #111827', fontFamily: 'inherit', outline: 'none', cursor: 'pointer' }}
+                        >
+                          {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                        </select>
+                      ) : (
+                        <Switch
+                          checked={item.value}
+                          onChange={(checked) => handleSwitchChange(item.key, checked)}
+                        />
+                      )}
                     </div>
                   </div>
                 ))}
