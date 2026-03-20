@@ -25,14 +25,14 @@ hr {
 }
 
 /* Global Background Themes */
-body.theme-dots {
+body.theme-dots, .theme-preview-box.theme-dots {
   --bg-dots: rgba(17, 24, 39, 0.1);
   background-color: #fafafa !important;
   background-image: radial-gradient(var(--bg-dots) 1.5px, transparent 1.5px) !important;
   background-size: 20px 20px !important;
 }
 
-body.theme-grid {
+body.theme-grid, .theme-preview-box.theme-grid {
   --bg-grid: rgba(17, 24, 39, 0.05);
   background-color: #ffffff !important;
   background-image: linear-gradient(var(--bg-grid) 1px, transparent 1px),
@@ -40,17 +40,37 @@ body.theme-grid {
   background-size: 20px 20px !important;
 }
 
-body.theme-paper {
+body.theme-paper, .theme-preview-box.theme-paper {
   background-color: #fdfcf8 !important;
   background-image: linear-gradient(transparent 95%, rgba(17, 24, 39, 0.1) 5%) !important;
   background-size: 100% 30px !important;
 }
 
-body.theme-blueprint {
+body.theme-blueprint, .theme-preview-box.theme-blueprint {
   background-color: #1a365d !important;
   background-image: linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px) !important;
   background-size: 20px 20px !important;
+}
+
+body.theme-cross, .theme-preview-box.theme-cross {
+  --bg-cross: rgba(17, 24, 39, 0.15);
+  background-color: #fdfdfd !important;
+  background-image: radial-gradient(var(--bg-cross) 1px, transparent 1px), radial-gradient(var(--bg-cross) 1px, transparent 1px) !important;
+  background-size: 30px 30px !important;
+  background-position: 0 0, 15px 15px !important;
+}
+
+body.theme-waves, .theme-preview-box.theme-waves {
+  background-color: #e5e5f7 !important;
+  background-image: radial-gradient(circle at center center, #c7c7f7, #e5e5f7), repeating-radial-gradient(circle at center center, #c7c7f7, #c7c7f7, 40px, transparent 80px, transparent 40px) !important;
+  background-blend-mode: multiply !important;
+}
+
+body.theme-notebook, .theme-preview-box.theme-notebook {
+  background-color: #fff !important;
+  background-image: linear-gradient(90deg, transparent 40px, #abced4 40px, #abced4 42px, transparent 42px), linear-gradient(#e1e1e1 1px, transparent 1px) !important;
+  background-size: 100% 100%, 100% 30px !important;
 }
 
 body.bg-scope-all .setting-page-wrapper,

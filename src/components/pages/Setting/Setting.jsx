@@ -1,4 +1,4 @@
-import { Switch } from "antd";
+import { Switch, Tooltip } from "antd";
 import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -65,7 +65,7 @@ const Setting = () => {
     document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
     document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
 
-    document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-none", "bg-scope-all", "bg-scope-base");
+    document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-cross", "theme-waves", "theme-notebook", "theme-none", "bg-scope-all", "bg-scope-base");
     if (globalBgTheme && globalBgTheme !== "theme-none") {
       document.body.classList.add(globalBgTheme);
       document.body.classList.add(`bg-scope-${globalBgScope}`);
@@ -155,7 +155,7 @@ const Setting = () => {
     {
       title: "Global Styles",
       items: [
-        { label: "Background Theme", key: "bgTheme", type: "select", options: ["theme-none", "theme-dots", "theme-grid", "theme-paper", "theme-blueprint"], value: globalBgTheme, icon: faImage, desc: "Change generic background pattern" },
+        { label: "Background Theme", key: "bgTheme", type: "theme-picker", options: ["theme-none", "theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-cross", "theme-waves", "theme-notebook"], value: globalBgTheme, icon: faImage, desc: "Change generic background pattern" },
         { label: "Apply Background", key: "bgScope", type: "select", options: ["all", "base"], value: globalBgScope, icon: faEye, desc: "Apply to all wrappers or base body only" },
         { label: "Border Color", key: "borderColor", type: "color", value: globalBorderColor, icon: faFillDrip, desc: "Change color of all borders" },
         { label: "Border Style", key: "borderStyle", type: "select", options: ["solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset", "none"], value: globalBorderStyle, icon: faMagic, desc: "Change style of all borders" },
@@ -201,6 +201,17 @@ const Setting = () => {
                         >
                           {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                         </select>
+                      ) : item.type === 'theme-picker' ? (
+                        <div className="theme-picker-container">
+                          {item.options.map(theme => (
+                            <Tooltip key={theme} placement="top" title={theme.replace('theme-', '')}>
+                              <div
+                                className={`theme-preview-box ${theme} ${item.value === theme ? 'selected' : ''}`}
+                                onClick={() => handleStyleChange(item.key, theme)}
+                              ></div>
+                            </Tooltip>
+                          ))}
+                        </div>
                       ) : (
                         <Switch
                           checked={item.value}
