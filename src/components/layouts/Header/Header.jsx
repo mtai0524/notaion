@@ -15,7 +15,9 @@ import {
   faNewspaper,
   faSignInAlt,
   faUser,
+  faFolderOpen,
 } from "@fortawesome/free-solid-svg-icons";
+
 import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
 import { message } from "antd";
@@ -153,6 +155,10 @@ const Header = () => {
       case "guide":
         navigate("/guide");
         break;
+      case "files":
+        navigate("/files");
+        break;
+
       default:
         break;
     }
@@ -216,6 +222,16 @@ const Header = () => {
           >
             Profile
           </Menu.Item>
+          <Menu.Item
+            key="files"
+            icon={<FontAwesomeIcon icon={faFolderOpen} />}
+            style={{
+              backgroundColor: location.pathname === "/files" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Files
+          </Menu.Item>
+
 
           <Menu.Item
             key="setting"

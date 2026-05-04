@@ -22,6 +22,8 @@ import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import NotFound from "./components/pages/NotFound/NotFound";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
+import FilesPage from "./pages/FilesPage";
+
 
 const App = () => {
   return (
@@ -140,6 +142,8 @@ const MainApp = () => {
         <Route path="/guide" element={<Guide />} />
         <Route path="/shortcut" element={<Shortcut />} />
         <Route path="/note" element={<Note />} />
+        <Route path="/files" element={<FilesPage />} />
+
         <Route path="*" element={<NotFound />}></Route>
       </Routes>
       <FloatingButton
