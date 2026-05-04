@@ -1,12 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { uploadFiles } from '../../services/fileService';
+import { message as antdMessage } from 'antd';
 
 const FileUpload = ({ onUploadSuccess }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState({ type: '', text: '' });
   const fileInputRef = useRef(null);
 
   const handleDrag = (e) => {
@@ -37,7 +37,6 @@ const FileUpload = ({ onUploadSuccess }) => {
 
   const handleFiles = (files) => {
     setSelectedFiles(prev => [...prev, ...files]);
-    setMessage({ type: '', text: '' });
   };
 
   const formatFileSize = (bytes) => {
@@ -57,33 +56,32 @@ const FileUpload = ({ onUploadSuccess }) => {
 
     setUploading(true);
     setProgress(0);
-    setMessage({ type: '', text: '' });
 
     try {
       const uploadedMetadata = await uploadFiles(selectedFiles, (percent) => {
         setProgress(percent);
       });
       
-      setMessage({ type: 'success', text: 'Files uploaded successfully!' });
+      antdMessage.success('Files uploaded successfully!');
       setSelectedFiles([]);
       if (onUploadSuccess) {
         onUploadSuccess(uploadedMetadata);
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      setMessage({ type: 'error', text: 'Upload failed. Please try again.' });
+      antdMessage.error('Upload failed. Please try again.');
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
+    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-none border-2 border-black shadow-[-4px_4px_0px_0px_#111827] font-['Mali']">
       <div 
-        className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+        className={`relative border-2 border-dashed border-black p-8 text-center transition-all duration-200 ${
           dragActive 
-            ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 scale-[1.02]" 
-            : "border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500"
+            ? "bg-yellow-50 translate-x-1 -translate-y-1 shadow-[-4px_4px_0px_0px_#111827]" 
+            : "bg-transparent"
         }`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -99,62 +97,62 @@ const FileUpload = ({ onUploadSuccess }) => {
         />
         
         <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="p-4 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="p-3 border-2 border-black bg-yellow-100 shadow-[-2px_2px_0px_0px_#111827]">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
           </div>
           
           <div>
-            <p className="text-lg font-medium text-gray-700 dark:text-gray-200">
-              Drag & drop files here
+            <p className="text-lg font-bold text-black uppercase tracking-tight">
+              Drag & Drop Files
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              or click to browse from your computer
+            <p className="text-sm text-gray-600 mt-1">
+              or click the button below
             </p>
           </div>
           
           <button
             type="button"
             onClick={() => fileInputRef.current.click()}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium shadow-sm"
+            className="px-6 py-2 bg-white border-2 border-black font-bold uppercase tracking-widest hover:bg-yellow-100 hover:shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5"
           >
-            Choose Files
+            Browse
           </button>
         </div>
       </div>
 
       {selectedFiles.length > 0 && (
-        <div className="mt-6 space-y-3">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
-              Ready to upload ({selectedFiles.length})
+        <div className="mt-8 space-y-4">
+          <div className="flex justify-between items-center border-b-2 border-black pb-2">
+            <h3 className="text-sm font-bold uppercase tracking-wider">
+              Selected ({selectedFiles.length})
             </h3>
             <button 
               onClick={() => setSelectedFiles([])}
-              className="text-xs text-gray-500 hover:text-red-500"
+              className="text-xs font-bold text-red-600 uppercase hover:underline"
               disabled={uploading}
             >
-              Clear all
+              Clear All
             </button>
           </div>
-          <ul className="divide-y divide-gray-100 dark:divide-gray-700 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+          <ul className="divide-y-2 divide-gray-100 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
             {selectedFiles.map((file, index) => (
               <li key={index} className="py-3 flex items-center justify-between group">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                  <div className="flex-shrink-0 text-gray-400 group-hover:text-blue-500 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border-2 border-black bg-gray-50 shadow-[-2px_2px_0px_0px_#111827]">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                     </svg>
                   </div>
                   <div className="truncate">
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{file.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{formatFileSize(file.size)}</p>
+                    <p className="text-sm font-bold text-black truncate">{file.name}</p>
+                    <p className="text-xs text-gray-500 font-medium italic">{formatFileSize(file.size)}</p>
                   </div>
                 </div>
                 <button
                   onClick={() => removeFile(index)}
-                  className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                  className="p-1 border-2 border-transparent hover:border-black hover:bg-red-50 text-gray-400 hover:text-red-600 transition-all"
                   disabled={uploading}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -165,16 +163,16 @@ const FileUpload = ({ onUploadSuccess }) => {
             ))}
           </ul>
 
-          <div className="pt-4 border-t border-gray-100 dark:border-gray-700">
+          <div className="pt-4 border-t-2 border-black">
             {uploading && (
-              <div className="mb-4">
-                <div className="flex justify-between mb-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+              <div className="mb-6">
+                <div className="flex justify-between mb-2 text-xs font-bold uppercase">
                   <span>Uploading...</span>
                   <span>{progress}%</span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-gray-100 border-2 border-black h-4 overflow-hidden shadow-[-2px_2px_0px_0px_#111827]">
                   <div 
-                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    className="bg-green-400 h-full transition-all duration-300" 
                     style={{ width: `${progress}%` }}
                   ></div>
                 </div>
@@ -184,34 +182,15 @@ const FileUpload = ({ onUploadSuccess }) => {
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className={`w-full py-2.5 rounded-lg font-semibold text-white shadow-md transition-all ${
+              className={`w-full py-3 border-2 border-black font-black uppercase tracking-[0.2em] shadow-[-4px_4px_0px_0px_#111827] transition-all ${
                 uploading 
-                  ? "bg-gray-400 cursor-not-allowed" 
-                  : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:transform active:scale-[0.98]"
+                  ? "bg-gray-200 cursor-not-allowed opacity-50" 
+                  : "bg-blue-400 hover:bg-blue-500 active:translate-x-0.5 active:-translate-y-0.5 active:shadow-[-2px_2px_0px_0px_#111827]"
               }`}
             >
-              {uploading ? "Uploading..." : `Upload ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'}`}
+              {uploading ? "Wait..." : `Push ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'}`}
             </button>
           </div>
-        </div>
-      )}
-
-      {message.text && (
-        <div className={`mt-4 p-3 rounded-lg text-sm flex items-center space-x-2 animate-in fade-in slide-in-from-top-2 duration-300 ${
-          message.type === 'success' 
-            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800' 
-            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200 dark:border-red-800'
-        }`}>
-          {message.type === 'success' ? (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-            </svg>
-          )}
-          <span>{message.text}</span>
         </div>
       )}
     </div>

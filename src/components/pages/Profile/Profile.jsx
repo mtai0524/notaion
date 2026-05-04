@@ -14,7 +14,9 @@ import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
 import { cardio } from 'ldrs';
 cardio.register();
 import { MoreOutlined } from '@ant-design/icons';
+
 const { Meta } = Card;
+
 const Profile = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -35,7 +37,6 @@ const Profile = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [modalListFriend, setModalListFriend] = useState(false);
   const [friends, setFriends] = useState([]);
-
 
   const generateAvatars = (avatarType) => {
     return Array.from({ length: 10 }, (_, index) => {
@@ -557,4 +558,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

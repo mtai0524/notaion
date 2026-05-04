@@ -14,9 +14,7 @@ const FileList = ({ files, onDelete }) => {
     return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
       month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+      day: 'numeric'
     });
   };
 
@@ -35,67 +33,67 @@ const FileList = ({ files, onDelete }) => {
   };
 
   const handleDelete = (savedName, originalName) => {
-    if (window.confirm(`Are you sure you want to delete "${originalName}"?`)) {
+    if (window.confirm(`Delete "${originalName}"?`)) {
       onDelete(savedName);
     }
   };
 
   if (files.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/20 rounded-xl border border-dashed border-gray-300 dark:border-gray-700">
-        <div className="text-4xl mb-4">📭</div>
-        <p className="text-gray-500 dark:text-gray-400">No files uploaded yet.</p>
+      <div className="text-center py-16 bg-[#fafafa] border-2 border-dashed border-black shadow-[-4px_4px_0px_0px_#111827] font-['Mali']">
+        <div className="text-5xl mb-4 grayscale opacity-50">📤</div>
+        <p className="text-gray-600 font-bold uppercase tracking-widest">Storage is empty</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-md border border-gray-200 dark:border-gray-700">
+    <div className="bg-white border-2 border-black shadow-[-4px_4px_0px_0px_#111827] overflow-hidden font-['Mali']">
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-xs uppercase font-semibold tracking-wider">
-              <th className="px-6 py-4">File Name</th>
+            <tr className="bg-gray-50 border-b-2 border-black text-black text-xs uppercase font-black tracking-widest">
+              <th className="px-6 py-4">Name</th>
               <th className="px-6 py-4">Size</th>
-              <th className="px-6 py-4">Upload Date</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+              <th className="px-6 py-4">Date</th>
+              <th className="px-6 py-4 text-right">Action</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+          <tbody className="divide-y-2 divide-gray-100">
             {files.map((file) => (
-              <tr key={file.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors group">
+              <tr key={file.id} className="hover:bg-yellow-50 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center space-x-3">
-                    <span className="text-2xl" role="img" aria-label="file icon">
+                    <span className="text-2xl drop-shadow-[-1px_1px_0px_rgba(0,0,0,1)]" role="img" aria-label="file icon">
                       {getFileIcon(file.contentType, file.originalName)}
                     </span>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[200px]" title={file.originalName}>
+                    <span className="text-sm font-bold text-black truncate max-w-[150px] sm:max-w-[250px]" title={file.originalName}>
                       {file.originalName}
                     </span>
                   </div>
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                <td className="px-6 py-4 text-xs font-bold text-gray-500 italic">
                   {formatFileSize(file.sizeInBytes)}
                 </td>
-                <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                <td className="px-6 py-4 text-xs font-bold text-gray-500">
                   {formatDate(file.uploadedAt)}
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
                   <button
                     onClick={() => downloadFile(file.savedName, file.originalName)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors"
+                    className="p-2 border-2 border-black bg-white hover:bg-blue-100 shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
                     title="Download"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                   </button>
                   <button
                     onClick={() => handleDelete(file.savedName, file.originalName)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-full transition-colors"
+                    className="p-2 border-2 border-black bg-white hover:bg-red-100 shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
                     title="Delete"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>

@@ -13,7 +13,9 @@ import {
   faBroom,
   faRotateLeft,
   faRotateRight,
+  faFile,
 } from "@fortawesome/free-solid-svg-icons";
+
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import PropTypes from "prop-types";
 import "./MenuBar.scss";
@@ -61,8 +63,17 @@ const MenuBar = ({ editor }) => {
   }, []);
 
   const addImage = useCallback(() => {
-    document.getElementById("fileInput").click();
+    const input = document.getElementById("fileInput");
+    input.accept = "image/*";
+    input.click();
   }, [editor]);
+
+  const addFile = useCallback(() => {
+    const input = document.getElementById("fileInput");
+    input.accept = "*/*";
+    input.click();
+  }, [editor]);
+
 
   const handleFileChange = useCallback(
     async (event) => {
@@ -70,13 +81,13 @@ const MenuBar = ({ editor }) => {
       if (!file) return;
 
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("files", file);
 
       setIsLoading(true);
 
       try {
         const response = await axiosInstance.post(
-          "/api/items/upload",
+          "/api/files/upload",
           formData,
           {
             headers: {
@@ -84,17 +95,24 @@ const MenuBar = ({ editor }) => {
             },
           }
         );
-        const imageUrl = response.data.url;
-        console.log(imageUrl);
-        editor.chain().focus().setImage({ src: imageUrl }).run();
+        const fileData = response.data[0];
+        const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+
+        if (file.type.startsWith("image/")) {
+          editor.chain().focus().setImage({ src: fileUrl }).run();
+        } else {
+          editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+        }
       } catch (error) {
-        console.error("Failed to upload image", error);
+        console.error("Failed to upload file", error);
       } finally {
         setIsLoading(false);
       }
     },
     [editor]
   );
+
+
 
   const handleMouseMove = (event) => {
     if (skeletonRef.current) {
@@ -165,6 +183,12 @@ const MenuBar = ({ editor }) => {
               <FontAwesomeIcon icon={faImage} />
             </button>
           </Tooltip>
+          <Tooltip title="File">
+            <button onClick={addFile}>
+              <FontAwesomeIcon icon={faFile} />
+            </button>
+          </Tooltip>
+
           <input
             type="file"
             id="fileInput"
@@ -377,6 +401,12 @@ const MenuBar = ({ editor }) => {
               <FontAwesomeIcon icon={faImage} />
             </button>
           </Tooltip>
+          <Tooltip title="File">
+            <button onClick={addFile}>
+              <FontAwesomeIcon icon={faFile} />
+            </button>
+          </Tooltip>
+
           <input
             type="file"
             id="fileInput"

@@ -48,6 +48,7 @@ const Notion = () => {
   const editTextareaRefs = useRef({});
   const [apiAvailable, setApiAvailable] = useState(true);
   const [loadingImage, setLoadingImage] = useState(null);
+
   const checkApiConnection = async () => {
     try {
       await axiosInstance.get("/api/HealthCheck/health-check"); // health check
@@ -94,6 +95,11 @@ const Notion = () => {
       <Menu.Item key="choose-image">
         <Tooltip placement="left" title="Choose image">
           <span>Image</span>
+        </Tooltip>
+      </Menu.Item>
+      <Menu.Item key="choose-file">
+        <Tooltip placement="left" title="Choose file">
+          <span>File</span>
         </Tooltip>
       </Menu.Item>
       <Menu.Divider />
@@ -152,6 +158,7 @@ const Notion = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
 
   const addItem = (id) => {
     const newBlockId = generateRandomId();
@@ -245,22 +252,35 @@ const Notion = () => {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append("files", file);
 
     try {
-      const response = await axiosInstance.post("/api/Items/upload", formData);
+      // Use the new files/upload API for better metadata handling if desired, 
+      // but for consistency with existing images we use Items/upload or just handle generic files.
+      // Actually, let's use the new /api/files/upload to get metadata.
+      const response = await axiosInstance.post("/api/files/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      
+      const fileData = response.data[0]; // Returns array of metadata
+      const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+      
       if (id) {
-        responseDataImage(response, e, id);
+        // If it's an image, we might want to keep using responseDataImage logic
+        // but for general files we just set the content to the download URL
+        if (file.type.startsWith("image/")) {
+           responseDataImage({ data: { url: fileUrl } }, e, id);
+        } else {
+           handleChangeContent(id, fileUrl);
+        }
       } else {
-        // Create new item with uploaded image
         const newBlockId = generateRandomId();
-        const data = response.data;
         const newItem = {
           id: newBlockId,
           heading: "",
           code: "",
           order: items.length,
-          content: data.url
+          content: fileUrl
         };
         const updatedItems = [...items, newItem];
         setItems(updatedItems);
@@ -268,9 +288,9 @@ const Notion = () => {
       }
       setLoadingImage(null);
     } catch (error) {
-      console.error("Error uploading image:", error);
+      console.error("Error uploading file:", error);
       setLoadingImage(null);
-      message.error("Failed to upload image");
+      message.error("Failed to upload file");
     }
   };
 
@@ -289,31 +309,31 @@ const Notion = () => {
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
-        if (files[i].type.startsWith("image/")) {
-          const file = files[i];
-          const formData = new FormData();
-          formData.append("file", file);
-          const newBlockId = generateRandomId();
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("files", file); // Note: using "files" for multi-upload API
+        const newBlockId = generateRandomId();
 
-          // Show loading state
-          setItems(prev => [...prev, { id: newBlockId, heading: "", code: "", order: prev.length, content: "" }]);
-          setLoadingImage(newBlockId);
+        // Show loading state
+        setItems(prev => [...prev, { id: newBlockId, heading: "", code: "", order: prev.length, content: "" }]);
+        setLoadingImage(newBlockId);
 
-          try {
-            const response = await axiosInstance.post("/api/Items/upload", formData);
-            const data = response.data;
-            setItems(prevItems => {
-              const updated = prevItems.map(item => item.id === newBlockId ? { ...item, content: data.url } : item);
-              saveItems(updated, false);
-              return updated;
-            });
-          } catch (error) {
-            console.error("Error uploading dropped image:", error);
-            setItems(prev => prev.filter(item => item.id !== newBlockId));
-            message.error("Failed to upload dropped image");
-          } finally {
-            setLoadingImage(null);
-          }
+        try {
+          const response = await axiosInstance.post("/api/files/upload", formData);
+          const fileData = response.data[0];
+          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+          
+          setItems(prevItems => {
+            const updated = prevItems.map(item => item.id === newBlockId ? { ...item, content: fileUrl } : item);
+            saveItems(updated, false);
+            return updated;
+          });
+        } catch (error) {
+          console.error("Error uploading dropped file:", error);
+          setItems(prev => prev.filter(item => item.id !== newBlockId));
+          message.error("Failed to upload dropped file");
+        } finally {
+          setLoadingImage(null);
         }
       }
     }
@@ -328,7 +348,12 @@ const Notion = () => {
     editingItemIdRef.current = id;
     const scrollY = window.scrollY;
     if (e.key === "choose-image") {
-      fileInputRef.current.click(); //  dialog chọn file
+      fileInputRef.current.accept = "image/*";
+      fileInputRef.current.click(); 
+    }
+    if (e.key === "choose-file") {
+      fileInputRef.current.accept = "*/*";
+      fileInputRef.current.click();
     }
     if (e.key === "delete") {
       setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
@@ -550,25 +575,31 @@ const Notion = () => {
     let imageFound = false;
 
     for (let i = 0; i < clipboardItems.length; i++) {
-      if (clipboardItems[i].type.indexOf("image") !== -1) {
-        imageFound = true; //  find image from clipboard
-        const blob = clipboardItems[i].getAsFile();
+      if (clipboardItems[i].type.indexOf("image") !== -1 || clipboardItems[i].kind === 'file') {
+        const file = clipboardItems[i].getAsFile();
+        if (!file) continue;
+        
+        imageFound = true; 
         const formData = new FormData();
-        formData.append("file", blob);
+        formData.append("files", file);
         setLoadingImage(id);
 
         try {
           const response = await axiosInstance.post(
-            "/api/Items/upload",
+            "/api/files/upload",
             formData
           );
 
-          if (response.status !== 200) {
-            throw new Error("Failed to upload image");
+          const fileData = response.data[0];
+          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+          
+          if (file.type.startsWith("image/")) {
+            responseDataImage({ data: { url: fileUrl } }, e, id);
+          } else {
+            handleChangeContent(id, fileUrl);
           }
-          responseDataImage(response, e, id);
         } catch (error) {
-          console.error("Error uploading image:", error);
+          console.error("Error uploading pasted file:", error);
         } finally {
           setLoadingImage(null);
         }
@@ -650,6 +681,31 @@ const Notion = () => {
       );
     }
     if (typeof item.content === 'string' && item.content.match(/\bhttps?:\/\/\S+/)) {
+      // Check if it's our uploaded file link
+      if (item.content.includes('/api/files/download/')) {
+         let fileName = "File";
+         try {
+            const url = new URL(item.content);
+            fileName = url.searchParams.get('name') || item.content.split('/').pop();
+         } catch(e) {
+            fileName = item.content.split('/').pop();
+         }
+         return (
+           <div className="file-block border-2 border-black p-4 bg-white shadow-[-4px_4px_0px_0px_#111827] flex items-center justify-between font-['Mali'] mb-4">
+              <div className="flex items-center space-x-3 overflow-hidden">
+                <span className="text-2xl">📄</span>
+                <span className="font-bold truncate">{fileName}</span>
+              </div>
+              <a 
+                href={item.content} 
+                download 
+                className="px-4 py-1 border-2 border-black bg-blue-400 font-bold text-xs uppercase shadow-[-2px_2px_0px_0px_#111827] active:shadow-none active:translate-x-0.5 active:-translate-y-0.5 transition-all"
+              >
+                Download
+              </a>
+           </div>
+         );
+      }
       return convertLinksToEmbedTags(item.content);
     }
   };

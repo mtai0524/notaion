@@ -121,16 +121,18 @@ const CustomEditorProvider = ({ pageId }) => {
   };
   const handlePaste = useCallback(
     async (event) => {
-      const items = event.clipboardData.items;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith("image/")) {
-          const file = items[i].getAsFile();
+      const clipboardItems = event.clipboardData.items;
+      for (let i = 0; i < clipboardItems.length; i++) {
+        if (clipboardItems[i].type.startsWith("image/") || clipboardItems[i].kind === 'file') {
+          const file = clipboardItems[i].getAsFile();
+          if (!file) continue;
+
           const formData = new FormData();
-          formData.append("file", file);
+          formData.append("files", file);
           setLoading(true);
           try {
             const response = await axiosInstance.post(
-              "/api/items/upload",
+              "/api/files/upload",
               formData,
               {
                 headers: {
@@ -138,10 +140,16 @@ const CustomEditorProvider = ({ pageId }) => {
                 },
               }
             );
-            const imageUrl = response.data.url;
-            editor.chain().focus().setImage({ src: imageUrl }).run();
+            const fileData = response.data[0];
+            const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+            
+            if (file.type.startsWith("image/")) {
+              editor.chain().focus().setImage({ src: fileUrl }).run();
+            } else {
+              editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+            }
           } catch (error) {
-            console.error("Failed to upload image", error);
+            console.error("Failed to upload file", error);
           } finally {
             setLoading(false);
           }
@@ -151,14 +159,57 @@ const CustomEditorProvider = ({ pageId }) => {
     },
     [editor]
   );
+
+  const handleDrop = useCallback(
+    async (event) => {
+      event.preventDefault();
+      const files = event.dataTransfer.files;
+      if (files && files.length > 0) {
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const formData = new FormData();
+          formData.append("files", file);
+          setLoading(true);
+          try {
+            const response = await axiosInstance.post(
+              "/api/files/upload",
+              formData,
+              {
+                headers: {
+                  "Content-Type": "multipart/form-data",
+                },
+              }
+            );
+            const fileData = response.data[0];
+            const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+            
+            if (file.type.startsWith("image/")) {
+              editor.chain().focus().setImage({ src: fileUrl }).run();
+            } else {
+              editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+            }
+          } catch (error) {
+            console.error("Failed to upload file", error);
+          } finally {
+            setLoading(false);
+          }
+        }
+      }
+    },
+    [editor]
+  );
+
   useEffect(() => {
     if (editor) {
       editor.view.dom.addEventListener("paste", handlePaste);
+      editor.view.dom.addEventListener("drop", handleDrop);
       return () => {
         editor.view.dom.removeEventListener("paste", handlePaste);
+        editor.view.dom.removeEventListener("drop", handleDrop);
       };
     }
-  }, [editor, handlePaste]);
+  }, [editor, handlePaste, handleDrop]);
+
   useEffect(() => {
     const handleScroll = () => {
       const scrollTop = window.scrollY || document.documentElement.scrollTop;
