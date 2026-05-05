@@ -67,9 +67,11 @@ const MainApp = () => {
   useEffect(() => {
     const globalBorderColor = localStorage.getItem("globalBorderColor") || "#111827";
     const globalBorderStyle = localStorage.getItem("globalBorderStyle") || "solid";
+    const globalBorderWidth = localStorage.getItem("globalBorderWidth") || "2px";
 
     document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
     document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
+    document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
 
     const globalBgTheme = localStorage.getItem("globalBgTheme") || "theme-none";
     const globalBgScope = localStorage.getItem("globalBgScope") || "all";

@@ -17,6 +17,7 @@ const Setting = () => {
 
   const [globalBorderColor, setGlobalBorderColor] = useState(localStorage.getItem("globalBorderColor") || "#111827");
   const [globalBorderStyle, setGlobalBorderStyle] = useState(localStorage.getItem("globalBorderStyle") || "solid");
+  const [globalBorderWidth, setGlobalBorderWidth] = useState(localStorage.getItem("globalBorderWidth") || "2px");
   const [globalBgTheme, setGlobalBgTheme] = useState(localStorage.getItem("globalBgTheme") || "theme-none");
   const [globalBgScope, setGlobalBgScope] = useState(localStorage.getItem("globalBgScope") || "all");
 
@@ -64,6 +65,7 @@ const Setting = () => {
 
     document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
     document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
+    document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
 
     document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-cross", "theme-waves", "theme-notebook", "theme-none", "bg-scope-all", "bg-scope-base");
     if (globalBgTheme && globalBgTheme !== "theme-none") {
@@ -71,7 +73,7 @@ const Setting = () => {
       document.body.classList.add(`bg-scope-${globalBgScope}`);
     }
 
-  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBgTheme, globalBgScope]);
+  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBgTheme, globalBgScope]);
 
   const handleSwitchChange = (key, value) => {
     switch (key) {
@@ -123,6 +125,9 @@ const Setting = () => {
     } else if (key === 'borderStyle') {
       setGlobalBorderStyle(value);
       localStorage.setItem("globalBorderStyle", value);
+    } else if (key === 'borderWidth') {
+      setGlobalBorderWidth(value);
+      localStorage.setItem("globalBorderWidth", value);
     } else if (key === 'bgTheme') {
       setGlobalBgTheme(value);
       localStorage.setItem("globalBgTheme", value);
@@ -159,6 +164,7 @@ const Setting = () => {
         { label: "Apply Background", key: "bgScope", type: "select", options: ["all", "base"], value: globalBgScope, icon: faEye, desc: "Apply to all wrappers or base body only" },
         { label: "Border Color", key: "borderColor", type: "color", value: globalBorderColor, icon: faFillDrip, desc: "Change color of all borders" },
         { label: "Border Style", key: "borderStyle", type: "select", options: ["solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset", "none"], value: globalBorderStyle, icon: faMagic, desc: "Change style of all borders" },
+        { label: "Border Width", key: "borderWidth", type: "select", options: ["1px", "2px", "3px", "4px", "5px", "6px", "8px"], value: globalBorderWidth, icon: faFeatherPointed, desc: "Change thickness of all borders" },
       ]
     }
   ];

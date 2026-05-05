@@ -19,9 +19,19 @@ hr {
   border: 1px solid black !important;
 }
 
-* {
-  border-color: var(--global-border-color, var(--border-color, #111827)) !important;
-  border-style: var(--global-border-style, inherit) !important;
+
+/* Sketchy Borders for Page Containers */
+.files-page-container,
+.guide-container,
+.setting-page-wrapper,
+.shortcut-page {
+  box-shadow: -2px 2px 0 0 var(--global-border-color, #111827) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  background-color: white !important;
+  padding: 40px !important;
+  margin-top: 20px !important;
+  margin-bottom: 20px !important;
+  border-radius: 6px !important;
 }
 
 /* Global Background Themes */
