@@ -719,6 +719,51 @@
       }
     }
 
+    .link-scroll {
+      max-height: 120px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      padding: 5px;
+
+      &::-webkit-scrollbar { width: 3px; }
+      &::-webkit-scrollbar-thumb { background: var(--accent-color); }
+
+      .link-item {
+        padding: 6px 10px;
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s;
+        border-bottom: 1px solid rgba(255,255,255,0.02);
+
+        .dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #334155;
+          transition: all 0.3s;
+        }
+
+        &:hover {
+          background: rgba(var(--accent-rgb), 0.05);
+          color: #fff;
+        }
+
+        &.linked {
+          color: var(--accent-color);
+          .dot {
+            background: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-color);
+          }
+        }
+      }
+    }
+
     .prop-input-wrap {
       position: relative;
       display: flex;

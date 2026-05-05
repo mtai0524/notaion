@@ -9,7 +9,8 @@ import {
   FaSearch, FaWindowMinimize, FaWindowMaximize, FaListUl, FaCode, FaFileAlt,
   FaCopy, FaCheck, FaLayerGroup, FaClone, FaTh, FaTrashAlt, FaTag,
   FaTextHeight, FaGhost, FaBorderNone, FaCheckCircle, FaLongArrowAltDown, FaLongArrowAltUp,
-  FaSun as FaGlow, FaCloud as FaBlur, FaAlignLeft, FaAlignCenter, FaAlignRight, FaCog
+  FaSun as FaGlow, FaCloud as FaBlur, FaAlignLeft, FaAlignCenter, FaAlignRight, FaCog,
+  FaLink, FaUnlink
 } from 'react-icons/fa';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
@@ -57,6 +58,18 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
     onFocus(note.id);
   };
 
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setShowProps(false);
+      }
+    };
+    if (showProps) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showProps]);
+
   const toggleMinimize = (e) => {
     e.stopPropagation();
     onUpdate(note.id, { isMinimized: !note.isMinimized });
@@ -73,6 +86,30 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
     e.stopPropagation();
     setIsEditing(true);
     onFocus(note.id);
+  };
+
+  const toggleLink = (targetId) => {
+    const currentLinks = note.linkedNoteIds ? note.linkedNoteIds.split(',') : [];
+    let newLinks;
+    if (currentLinks.includes(targetId)) {
+      newLinks = currentLinks.filter(id => id !== targetId);
+    } else {
+      newLinks = [...currentLinks, targetId];
+    }
+    onUpdate(note.id, { linkedNoteIds: newLinks.join(',') });
+  };
+
+  const getTitleAlign = (val) => {
+    if (val === 0 || val === 'Left') return 'left';
+    if (val === 1 || val === 'Center') return 'center';
+    if (val === 2 || val === 'Right') return 'right';
+    return val || 'left';
+  };
+
+  const getBorderStyle = (val) => {
+    if (val === 0 || val === 'Solid') return 'solid';
+    if (val === 1 || val === 'Dashed') return 'dashed';
+    return val || 'solid';
   };
 
   return (
@@ -108,7 +145,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div 
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${note.borderStyle === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} bg-pattern-${note.pattern || 'none'}`}
+        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : 'none'}`}
         data-category={note.customCategory || note.category}
         style={{ 
           '--accent-color': accentColor,
@@ -168,9 +205,9 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                     <div className="ins-field">
                       <label>ALIGN</label>
                       <div className="ins-toggle-group">
-                        <button className={`ins-toggle ${note.titleAlign === 'left' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'left' })}><FaAlignLeft /></button>
-                        <button className={`ins-toggle ${note.titleAlign === 'center' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'center' })}><FaAlignCenter /></button>
-                        <button className={`ins-toggle ${note.titleAlign === 'right' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'right' })}><FaAlignRight /></button>
+                        <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'left' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 0 })}><FaAlignLeft /></button>
+                        <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'center' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 1 })}><FaAlignCenter /></button>
+                        <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'right' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 2 })}><FaAlignRight /></button>
                       </div>
                     </div>
                   </div>
@@ -187,8 +224,8 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                       <FaBlur className={note.blur ? 'active-icon' : ''} />
                       <span>GLASS</span>
                     </div>
-                    <div className="ins-control" onClick={() => onUpdate(note.id, { borderStyle: note.borderStyle === 'dashed' ? 'solid' : 'dashed' })}>
-                      <FaBorderNone className={note.borderStyle === 'dashed' ? 'active-icon' : ''} />
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { borderStyle: getBorderStyle(note.borderStyle) === 'dashed' ? 0 : 1 })}>
+                      <FaBorderNone className={getBorderStyle(note.borderStyle) === 'dashed' ? 'active-icon' : ''} />
                       <span>DASHED</span>
                     </div>
                     <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
@@ -200,10 +237,28 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                   <div className="ins-field mt-2">
                     <label>PATTERN</label>
                     <div className="ins-toggle-group full-width">
-                      {['none', 'dots', 'stripes'].map(p => (
-                        <button key={p} className={`ins-toggle ${note.pattern === p ? 'active' : ''}`} onClick={() => onUpdate(note.id, { pattern: p })}>
-                          {p.toUpperCase()}
+                      {[
+                        { label: 'NONE', val: 0 },
+                        { label: 'DOTS', val: 1 },
+                        { label: 'STRIPES', val: 2 }
+                      ].map(p => (
+                        <button key={p.val} className={`ins-toggle ${note.pattern === p.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { pattern: p.val })}>
+                          {p.label}
                         </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="ins-section">
+                  <div className="ins-label">CONNECTIVITY</div>
+                  <div className="ins-field">
+                    <label><FaLink /> LINK_TO_NOTE</label>
+                    <div className="link-scroll">
+                      {window.allCurrentNotesGlobal?.filter(n => n.id !== note.id).map(n => (
+                        <div key={n.id} className={`link-item ${(note.linkedNoteIds || '').split(',').includes(n.id) ? 'linked' : ''}`} onClick={() => toggleLink(n.id)}>
+                          <span className="dot" /> {n.title || 'Untitled Entry'}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -248,7 +303,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
               onChange={(e) => onUpdate(note.id, { title: e.target.value })}
               onClick={(e) => e.stopPropagation()}
               placeholder=":: ENTRY_TITLE"
-              style={{ textAlign: note.titleAlign || 'left' }}
+              style={{ textAlign: getTitleAlign(note.titleAlign) }}
             />
             
             <div className="content-container" onClick={startEditing}>
@@ -584,6 +639,46 @@ const DailyNoteApp = () => {
     // No global context menu listener needed anymore for note props
   }, []);
 
+  window.allCurrentNotesGlobal = allCurrentNotes;
+
+  const renderNoteLinks = () => {
+    return (
+      <svg className="note-links-svg" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
+        {allCurrentNotes.map(note => {
+          const linkedIds = note.linkedNoteIds ? note.linkedNoteIds.split(',') : [];
+          return linkedIds.map(targetId => {
+            const targetNote = allCurrentNotes.find(n => n.id === targetId);
+            if (!targetNote) return null;
+            
+            // Calculate center points
+            const x1 = note.x + note.width / 2;
+            const y1 = note.y + (note.isMinimized ? 20 : note.height / 2);
+            const x2 = targetNote.x + targetNote.width / 2;
+            const y2 = targetNote.y + (targetNote.isMinimized ? 20 : targetNote.height / 2);
+            
+            const noteColor = COLORS.find(c => c.id === note.color)?.color || '#89ddff';
+
+            return (
+              <g key={`${note.id}-${targetId}`}>
+                <line 
+                  x1={x1} y1={y1} x2={x2} y2={y2} 
+                  stroke={noteColor} 
+                  strokeWidth="2" 
+                  strokeDasharray="5,5"
+                  opacity="0.3"
+                >
+                  <animate attributeName="stroke-dashoffset" from="0" to="20" dur="2s" repeatCount="indefinite" />
+                </line>
+                <circle cx={x1} cy={y1} r="3" fill={noteColor} />
+                <circle cx={x2} cy={y2} r="3" fill={noteColor} />
+              </g>
+            );
+          });
+        })}
+      </svg>
+    );
+  };
+
   return (
     <div className={`daily-note-app-container-cyber theme-${theme} ${showGrid ? 'show-grid' : ''}`}>
       <header className="app-toolbar-cyber">
@@ -641,6 +736,7 @@ const DailyNoteApp = () => {
       </header>
 
       <main className="note-canvas-cyber" onContextMenu={handleContextMenu}>
+        {renderNoteLinks()}
         {currentNotes.length === 0 && !loading ? (
           <div className="empty-state-cyber">
             <div className="empty-icon"><FaTerminal /></div>
