@@ -7,7 +7,9 @@ import {
   FaPlus, FaChevronLeft, FaChevronRight, FaTimes, 
   FaPalette, FaClock, FaTerminal, FaSun, FaMoon,
   FaSearch, FaWindowMinimize, FaWindowMaximize, FaListUl, FaCode, FaFileAlt,
-  FaCopy, FaCheck
+  FaCopy, FaCheck, FaLayerGroup, FaClone, FaTh, FaTrashAlt, FaTag,
+  FaTextHeight, FaGhost, FaBorderNone, FaCheckCircle, FaLongArrowAltDown, FaLongArrowAltUp,
+  FaSun as FaGlow, FaCloud as FaBlur, FaAlignLeft, FaAlignCenter, FaAlignRight, FaCog
 } from 'react-icons/fa';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
@@ -30,14 +32,29 @@ const CATEGORIES = ['SYSTEM', 'TASK', 'IDEA', 'LOG', 'MEMO'];
 
 const Note = ({ note, onUpdate, onDelete, onFocus }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showProps, setShowProps] = useState(false);
   const [copied, setCopied] = useState(false);
+  
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
+  const accentColor = note.customColor || theme.color;
+  const accentRgb = note.customRgb || theme.rgb;
 
   const cycleColor = (e) => {
     e.stopPropagation();
     const currentIndex = COLORS.findIndex(c => c.id === note.color);
     const nextIndex = (currentIndex + 1) % COLORS.length;
-    onUpdate(note.id, { color: COLORS[nextIndex].id });
+    onUpdate(note.id, { 
+      color: COLORS[nextIndex].id, 
+      customColor: null, 
+      customRgb: null 
+    });
+  };
+
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowProps(!showProps);
+    onFocus(note.id);
   };
 
   const toggleMinimize = (e) => {
@@ -82,24 +99,35 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
       bounds=".note-canvas-cyber"
       minWidth={200}
       minHeight={note.isMinimized ? 40 : 150}
-      style={{ zIndex: note.zIndex, position: 'absolute' }}
+      style={{ 
+        zIndex: note.zIndex, 
+        position: 'absolute',
+        opacity: note.opacity || 1
+      }}
       onDragStart={() => onFocus(note.id)}
       onResizeStart={() => onFocus(note.id)}
     >
       <div 
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''}`}
-        data-category={note.category}
+        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${note.borderStyle === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} bg-pattern-${note.pattern || 'none'}`}
+        data-category={note.customCategory || note.category}
         style={{ 
-          '--accent-color': theme.color,
-          '--accent-rgb': theme.rgb
+          '--accent-color': accentColor,
+          '--accent-rgb': accentRgb,
+          '--note-font-size': note.fontSize || '0.85rem',
+          '--note-opacity': note.opacity || 1,
+          '--note-blur': `${(note.blur || 0) * 10}px`
         }}
         onClick={() => onFocus(note.id)}
+        onContextMenu={handleContextMenu}
       >
         <div className="note-header">
           <div className="header-left">
-             <span className="timestamp">[ {note.timestamp} ]</span>
+             {!note.hideHeader && <span className="timestamp">[ {note.timestamp} ]</span>}
           </div>
           <div className="header-actions">
+            <button className="action-btn config-btn" onClick={() => setShowProps(!showProps)}>
+              <FaCog />
+            </button>
             <button className={`action-btn copy-btn ${copied ? 'active' : ''}`} onClick={handleCopy} title="Copy Content">
               {copied ? <FaCheck /> : <FaCopy />}
             </button>
@@ -115,6 +143,103 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
           </div>
         </div>
 
+        {showProps && (
+          <div className="cyber-inspector-popup" onClick={(e) => e.stopPropagation()}>
+             <div className="inspector-header">
+               <FaTerminal className="term-icon" />
+               <span>PROPERTY_INSPECTOR v1.0</span>
+               <FaTimes className="close-icon" onClick={() => setShowProps(false)} />
+             </div>
+             
+             <div className="inspector-content">
+                <section className="ins-section">
+                  <div className="ins-label">GEOMETRY_&_LAYOUT</div>
+                  <div className="ins-row">
+                    <div className="ins-field">
+                      <label><FaTextHeight /> FONT</label>
+                      <div className="ins-toggle-group">
+                        {['0.7rem', '0.85rem', '1.1rem'].map(sz => (
+                          <button key={sz} className={`ins-toggle ${note.fontSize === sz ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontSize: sz })}>
+                            {sz === '0.7rem' ? 'S' : sz === '0.85rem' ? 'M' : 'L'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="ins-field">
+                      <label>ALIGN</label>
+                      <div className="ins-toggle-group">
+                        <button className={`ins-toggle ${note.titleAlign === 'left' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'left' })}><FaAlignLeft /></button>
+                        <button className={`ins-toggle ${note.titleAlign === 'center' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'center' })}><FaAlignCenter /></button>
+                        <button className={`ins-toggle ${note.titleAlign === 'right' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 'right' })}><FaAlignRight /></button>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="ins-section">
+                  <div className="ins-label">AESTHETICS</div>
+                  <div className="ins-grid">
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { glow: !note.glow })}>
+                      <FaGlow className={note.glow ? 'active-icon' : ''} />
+                      <span>GLOW</span>
+                    </div>
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { blur: note.blur ? 0 : 1 })}>
+                      <FaBlur className={note.blur ? 'active-icon' : ''} />
+                      <span>GLASS</span>
+                    </div>
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { borderStyle: note.borderStyle === 'dashed' ? 'solid' : 'dashed' })}>
+                      <FaBorderNone className={note.borderStyle === 'dashed' ? 'active-icon' : ''} />
+                      <span>DASHED</span>
+                    </div>
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
+                      <FaCheckCircle className={note.isCompleted ? 'active-icon' : ''} />
+                      <span>DONE</span>
+                    </div>
+                  </div>
+                  
+                  <div className="ins-field mt-2">
+                    <label>PATTERN</label>
+                    <div className="ins-toggle-group full-width">
+                      {['none', 'dots', 'stripes'].map(p => (
+                        <button key={p} className={`ins-toggle ${note.pattern === p ? 'active' : ''}`} onClick={() => onUpdate(note.id, { pattern: p })}>
+                          {p.toUpperCase()}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+
+                <section className="ins-section">
+                  <div className="ins-label">IDENTITY</div>
+                  <div className="prop-input-wrap">
+                    <FaTag className="input-icon" />
+                    <input 
+                      className="ins-input"
+                      value={note.customCategory || ''}
+                      onChange={(e) => onUpdate(note.id, { customCategory: e.target.value.toUpperCase() })}
+                      placeholder="CUSTOM_LABEL..."
+                    />
+                  </div>
+                  <div className="prop-input-wrap mt-1">
+                    <FaPalette className="input-icon" />
+                    <input 
+                      className="ins-input"
+                      value={note.customColor || ''}
+                      onChange={(e) => onUpdate(note.id, { customColor: e.target.value, customRgb: '137, 221, 255' })}
+                      placeholder="#HEX_COLOR"
+                    />
+                  </div>
+                </section>
+
+                <div className="ins-actions-footer">
+                  <button className="ins-footer-btn danger" onClick={() => onDelete(note.id)}>
+                    <FaTrashAlt /> DESTROY_DATA
+                  </button>
+                </div>
+             </div>
+          </div>
+        )}
+
         {!note.isMinimized && (
           <div className="note-body">
             <input 
@@ -123,6 +248,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
               onChange={(e) => onUpdate(note.id, { title: e.target.value })}
               onClick={(e) => e.stopPropagation()}
               placeholder=":: ENTRY_TITLE"
+              style={{ textAlign: note.titleAlign || 'left' }}
             />
             
             <div className="content-container" onClick={startEditing}>
@@ -161,6 +287,7 @@ const DailyNoteApp = () => {
   const [syncStatus, setSyncStatus] = useState('saved');
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showGrid, setShowGrid] = useState(true);
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
   
@@ -296,7 +423,7 @@ const DailyNoteApp = () => {
     []
   );
 
-  const addNote = async (template = 'blank') => {
+  const addNote = async (template = 'blank', x = null, y = null) => {
     let content = '';
     let title = '';
     let category = 'MEMO';
@@ -323,13 +450,17 @@ const DailyNoteApp = () => {
       category,
       timestamp: format(new Date(), 'HH:mm:ss'),
       date: dateKey,
-      x: 50 + (allCurrentNotes.length * 30) % 400,
-      y: 100 + (allCurrentNotes.length * 30) % 300,
+      x: x !== null ? x : (50 + (allCurrentNotes.length * 30) % 400),
+      y: y !== null ? y : (100 + (allCurrentNotes.length * 30) % 300),
       width: 280,
       height: template === 'blank' ? 200 : 300,
       zIndex: topZIndex + 1,
       isFocused: true,
-      isMinimized: false
+      isMinimized: false,
+      opacity: 1,
+      fontSize: '0.85rem',
+      borderStyle: 'solid',
+      isCompleted: false
     };
     
     setTopZIndex(prev => prev + 1);
@@ -404,8 +535,57 @@ const DailyNoteApp = () => {
     setCurrentDate(prev => days > 0 ? addDays(prev, days) : subDays(prev, Math.abs(days)));
   };
 
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+  };
+
+  const duplicateNote = (note) => {
+    const { id, x, y, zIndex, isFocused, isDeleting, ...rest } = note;
+    const newId = uuidv4();
+    const duplicated = { 
+      ...rest, 
+      id: newId, 
+      x: x + 20, 
+      y: y + 20, 
+      zIndex: topZIndex + 1,
+      timestamp: format(new Date(), 'HH:mm:ss') 
+    };
+    
+    setTopZIndex(prev => prev + 1);
+    setNotesByDate(prev => ({
+      ...prev,
+      [dateKey]: [...(prev[dateKey] || []), { ...duplicated, isFocused: true, isDeleting: false }]
+    }));
+    
+    axiosInstance.post('/api/DailyNote', duplicated);
+  };
+
+  const sendToBack = (id) => {
+    setNotesByDate(prev => {
+      const updated = (prev[dateKey] || []).map(n => ({
+        ...n,
+        zIndex: n.id === id ? 1 : n.zIndex + 1
+      }));
+      saveNotesToBackend(updated.map(n => ({ ...n, date: dateKey })));
+      return { ...prev, [dateKey]: updated };
+    });
+  };
+
+  const clearAllNotes = async () => {
+    if (window.confirm("ERASE ALL DATA FOR THIS DATE?")) {
+      for (const note of allCurrentNotes) {
+        await axiosInstance.delete(`/api/DailyNote/${note.id}`);
+      }
+      setNotesByDate(prev => ({ ...prev, [dateKey]: [] }));
+    }
+  };
+
+  useEffect(() => {
+    // No global context menu listener needed anymore for note props
+  }, []);
+
   return (
-    <div className={`daily-note-app-container-cyber theme-${theme}`}>
+    <div className={`daily-note-app-container-cyber theme-${theme} ${showGrid ? 'show-grid' : ''}`}>
       <header className="app-toolbar-cyber">
         <div className="date-navigator">
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
@@ -460,7 +640,7 @@ const DailyNoteApp = () => {
         </div>
       </header>
 
-      <main className="note-canvas-cyber">
+      <main className="note-canvas-cyber" onContextMenu={handleContextMenu}>
         {currentNotes.length === 0 && !loading ? (
           <div className="empty-state-cyber">
             <div className="empty-icon"><FaTerminal /></div>
