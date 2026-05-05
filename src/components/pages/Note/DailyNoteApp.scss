@@ -1,286 +1,244 @@
-.daily-note-app-container {
+.daily-note-app-container-basic {
+  width: 100%;
+  height: 100vh;
+  background-color: #f8fafc;
   display: flex;
+  flex-col: column;
   flex-direction: column;
-  height: calc(100vh - 100px);
-  background-color: var(--bg-color);
-  font-family: var(--font-main);
-  position: relative;
   overflow: hidden;
-  padding: 20px;
-}
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 
-.app-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 30px;
-  background: var(--container-bg);
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--box-shadow);
-  margin-bottom: 20px;
-  z-index: 100;
-
-  .date-navigator {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-
-    .current-date-display {
-      text-align: center;
-      h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: 900;
-        color: var(--text-color);
-      }
-      span {
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-    }
-
-    .nav-btn {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 2px solid var(--border-color);
-      background: var(--container-bg);
-      color: var(--text-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.2s;
-      
-      &:hover {
-        transform: scale(1.1);
-        background: var(--accent-color);
-        color: white;
-        border-color: var(--accent-color);
-      }
-    }
-  }
-
-  .toolbar-actions {
-    display: flex;
-    align-items: center;
-    gap: 25px;
-
-    .color-dots {
-      display: flex;
-      gap: 10px;
-
-      .color-dot {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        border: 2px solid transparent;
-        cursor: pointer;
-        transition: transform 0.2s;
-
-        &.active {
-          transform: scale(1.3);
-          box-shadow: 0 0 0 2px var(--border-color);
-        }
-        
-        &:hover {
-          transform: scale(1.2);
-        }
-      }
-    }
-
-    .add-note-btn {
-      padding: 10px 20px;
-      background: var(--accent-color);
-      color: white;
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-md);
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-      box-shadow: var(--box-shadow-sm);
-      transition: all 0.2s;
-
-      &:hover {
-        transform: translate(-2px, -2px);
-        box-shadow: var(--box-shadow);
-      }
-      
-      &:active {
-        transform: translate(0, 0);
-        box-shadow: none;
-      }
-    }
-  }
-}
-
-.note-canvas {
-  flex-grow: 1;
-  background-color: rgba(0, 0, 0, 0.03);
-  background-image: 
-    linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px);
-  background-size: 20px 20px;
-  border-radius: var(--radius-lg);
-  position: relative;
-  border: 2px dashed var(--border-color);
-  overflow: auto;
-
-  .empty-state {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-    color: var(--text-muted);
-
-    .empty-icon {
-      font-size: 4rem;
-      margin-bottom: 20px;
-    }
-    h3 { font-weight: 800; color: var(--text-color); }
-  }
-}
-
-.daily-note-card {
-  position: absolute;
-  border: 2px solid;
-  border-radius: var(--radius-md);
-  padding: 15px;
-  display: flex;
-  flex-direction: column;
-  transition: box-shadow 0.2s, transform 0.1s, opacity 0.3s;
-  animation: noteAppear 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
-  &.deleting {
-    animation: noteDisappear 0.3s forwards;
-  }
-
-  .note-header {
+  .app-toolbar-basic {
+    padding: 1rem 2rem;
+    background: white;
+    border-bottom: 1px solid #e2e8f0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 10px;
-    margin-bottom: 10px;
-    border-bottom: 1px solid;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    z-index: 100;
+
+    .date-navigator {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+
+      .nav-btn {
+        background: #f1f5f9;
+        border: none;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #64748b;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #e2e8f0;
+          color: #1e293b;
+        }
+      }
+
+      .current-date-display {
+        text-align: center;
+        h2 {
+          margin: 0;
+          font-size: 1.25rem;
+          font-weight: 600;
+          color: #1e293b;
+        }
+        .note-count {
+          font-size: 0.8rem;
+          color: #94a3b8;
+        }
+      }
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+
+      .color-selector {
+        display: flex;
+        gap: 0.5rem;
+
+        .color-option {
+          width: 24px;
+          height: 24px;
+          border-radius: 4px;
+          border: 1px solid rgba(0,0,0,0.05);
+          cursor: pointer;
+          transition: transform 0.2s;
+
+          &.active {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 2px white, 0 0 0 4px #3b82f6;
+          }
+        }
+      }
+
+      .create-note-btn {
+        background: #0f172a;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 6px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+        transition: background 0.2s;
+
+        &:hover {
+          background: #1e293b;
+        }
+      }
+    }
+  }
+
+  .note-canvas-basic {
+    flex: 1;
+    position: relative;
+    padding: 2rem;
+    overflow: auto;
+    background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+    background-size: 24px 24px;
+
+    .empty-state-basic {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: #94a3b8;
+
+      .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.5;
+      }
+      h3 { color: #475569; margin-bottom: 0.5rem; }
+    }
+  }
+}
+
+.daily-note-card-basic {
+  width: 100%;
+  height: 100%;
+  border-radius: 8px;
+  border: 1px solid;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+
+  &.deleting {
+    transform: scale(0.9);
+    opacity: 0;
+    transition: all 0.3s;
+  }
+
+  .note-header {
+    padding: 0.6rem 0.8rem;
     cursor: grab;
-    
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid transparent;
+
     &:active { cursor: grabbing; }
 
     .header-left {
       .timestamp {
         font-size: 0.7rem;
-        font-weight: 800;
         display: flex;
         align-items: center;
-        gap: 5px;
-        opacity: 0.7;
+        gap: 0.3rem;
+        opacity: 0.6;
       }
     }
 
     .header-actions {
       display: flex;
-      gap: 8px;
+      gap: 0.4rem;
+      opacity: 0;
+      transition: opacity 0.2s;
 
       .action-btn {
-        background: transparent;
+        background: none;
         border: none;
-        color: inherit;
-        cursor: pointer;
-        opacity: 0.5;
-        transition: opacity 0.2s;
-        padding: 4px;
+        width: 24px;
+        height: 24px;
+        border-radius: 4px;
         display: flex;
-        
-        &:hover { opacity: 1; }
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.6;
+        transition: all 0.2s;
+
+        &:hover {
+          background: rgba(0,0,0,0.05);
+          opacity: 1;
+        }
       }
     }
   }
 
+  &:hover .header-actions {
+    opacity: 1;
+  }
+
   .note-body {
-    flex-grow: 1;
+    flex: 1;
+    padding: 0.8rem;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
 
     .note-title-input {
       background: transparent;
       border: none;
-      font-weight: 900;
-      font-size: 1.1rem;
-      width: 100%;
+      font-weight: 600;
+      font-size: 1rem;
       outline: none;
-      
-      &::placeholder { opacity: 0.5; }
+      width: 100%;
+
+      &::placeholder { opacity: 0.4; }
     }
 
-    .category-tag {
+    .category-tag-basic {
       font-size: 0.65rem;
-      font-weight: 800;
       text-transform: uppercase;
-      background: rgba(0,0,0,0.05);
-      padding: 2px 8px;
-      border-radius: 10px;
-      width: fit-content;
+      letter-spacing: 0.05em;
+      opacity: 0.5;
       display: flex;
       align-items: center;
-      gap: 4px;
+      gap: 0.3rem;
     }
 
     .note-content-area {
+      flex: 1;
       background: transparent;
       border: none;
-      flex-grow: 1;
-      width: 100%;
       resize: none;
-      font-family: inherit;
-      font-weight: 600;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
+      line-height: 1.5;
       outline: none;
-      
-      &::placeholder { opacity: 0.4; }
+      width: 100%;
+
+      &::placeholder { opacity: 0.3; }
     }
   }
-
-  .resize-handle {
-    position: absolute;
-    bottom: 5px;
-    right: 5px;
-    width: 15px;
-    height: 15px;
-    cursor: se-resize;
-    background-image: radial-gradient(circle, currentColor 1.5px, transparent 1.5px);
-    background-size: 4px 4px;
-    opacity: 0.3;
-    
-    &:hover { opacity: 0.6; }
-  }
 }
 
-@keyframes noteAppear {
-  from { transform: scale(0.5); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-@keyframes noteDisappear {
-  to { transform: scale(0.5); opacity: 0; }
-}
-
-body.dark-mode-active {
-  .note-canvas {
-    background-color: rgba(255, 255, 255, 0.02);
-    background-image: 
-      linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-  }
-  
-  .daily-note-card {
-    filter: brightness(0.9);
-    color: white !important;
-    .note-title-input, .note-content-area { color: white !important; }
-  }
+// Rnd styles
+.react-draggable-transparent-selection {
+  user-select: none;
 }
