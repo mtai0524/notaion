@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Rnd } from 'react-rnd';
+import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
 import { format, addDays, subDays } from 'date-fns';
 import { 
   FaPlus, FaChevronLeft, FaChevronRight, FaTimes, 
-  FaPalette, FaClock, FaTerminal, FaSun, FaMoon 
+  FaPalette, FaClock, FaTerminal, FaSun, FaMoon,
+  FaSearch, FaWindowMinimize, FaWindowMaximize, FaListUl, FaCode, FaFileAlt,
+  FaCopy, FaCheck
 } from 'react-icons/fa';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
@@ -26,6 +29,8 @@ const COLORS = [
 const CATEGORIES = ['SYSTEM', 'TASK', 'IDEA', 'LOG', 'MEMO'];
 
 const Note = ({ note, onUpdate, onDelete, onFocus }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
 
   const cycleColor = (e) => {
@@ -35,28 +40,54 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
     onUpdate(note.id, { color: COLORS[nextIndex].id });
   };
 
+  const toggleMinimize = (e) => {
+    e.stopPropagation();
+    onUpdate(note.id, { isMinimized: !note.isMinimized });
+  };
+
+  const handleCopy = (e) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(note.content || '');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const startEditing = (e) => {
+    e.stopPropagation();
+    setIsEditing(true);
+    onFocus(note.id);
+  };
+
   return (
     <Rnd
-      size={{ width: note.width, height: note.height }}
-      position={{ x: note.x, y: note.y }}
-      onDragStop={(e, d) => onUpdate(note.id, { x: d.x, y: d.y })}
-      onResizeStop={(e, direction, ref, delta, position) => {
-        onUpdate(note.id, {
-          width: ref.offsetWidth,
-          height: ref.offsetHeight,
-          ...position,
-        });
+      size={{ 
+        width: note.width, 
+        height: note.isMinimized ? 40 : note.height 
       }}
+      position={{ x: note.x, y: note.y }}
+      onDragStop={(e, d) => {
+        onUpdate(note.id, { x: d.x, y: d.y });
+      }}
+      onResizeStop={(e, direction, ref, delta, position) => {
+        if (!note.isMinimized) {
+          onUpdate(note.id, {
+            width: parseInt(ref.style.width),
+            height: parseInt(ref.style.height),
+            ...position,
+          });
+        }
+      }}
+      disableResizing={note.isMinimized}
       dragHandleClassName="note-header"
-      bounds="parent"
+      bounds=".note-canvas-cyber"
       minWidth={200}
-      minHeight={150}
-      style={{ zIndex: note.zIndex }}
+      minHeight={note.isMinimized ? 40 : 150}
+      style={{ zIndex: note.zIndex, position: 'absolute' }}
       onDragStart={() => onFocus(note.id)}
       onResizeStart={() => onFocus(note.id)}
     >
       <div 
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''}`}
+        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''}`}
         data-category={note.category}
         style={{ 
           '--accent-color': theme.color,
@@ -69,6 +100,12 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
              <span className="timestamp">[ {note.timestamp} ]</span>
           </div>
           <div className="header-actions">
+            <button className={`action-btn copy-btn ${copied ? 'active' : ''}`} onClick={handleCopy} title="Copy Content">
+              {copied ? <FaCheck /> : <FaCopy />}
+            </button>
+            <button className="action-btn minimize-btn" onClick={toggleMinimize} title="Minimize/Maximize">
+              {note.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
+            </button>
             <button className="action-btn color-btn" onClick={cycleColor}>
               <FaPalette />
             </button>
@@ -78,21 +115,38 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
           </div>
         </div>
 
-        <div className="note-body">
-          <input 
-            className="note-title-input"
-            value={note.title || ''}
-            onChange={(e) => onUpdate(note.id, { title: e.target.value })}
-            placeholder=":: ENTRY_TITLE"
-          />
-          
-          <textarea 
-            className="note-content-area"
-            value={note.content || ''}
-            onChange={(e) => onUpdate(note.id, { content: e.target.value })}
-            placeholder="> waiting for input..."
-          />
-        </div>
+        {!note.isMinimized && (
+          <div className="note-body">
+            <input 
+              className="note-title-input"
+              value={note.title || ''}
+              onChange={(e) => onUpdate(note.id, { title: e.target.value })}
+              onClick={(e) => e.stopPropagation()}
+              placeholder=":: ENTRY_TITLE"
+            />
+            
+            <div className="content-container" onClick={startEditing}>
+              {isEditing ? (
+                <textarea 
+                  className="note-content-area"
+                  value={note.content || ''}
+                  onChange={(e) => onUpdate(note.id, { content: e.target.value })}
+                  placeholder="> waiting for input..."
+                  autoFocus
+                  onBlur={() => setIsEditing(false)}
+                />
+              ) : (
+                <div className="markdown-preview">
+                  {note.content ? (
+                    <ReactMarkdown>{note.content}</ReactMarkdown>
+                  ) : (
+                    <span className="placeholder-text">{'> waiting for input...'}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Rnd>
   );
@@ -104,12 +158,18 @@ const DailyNoteApp = () => {
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState('cyan');
   const [loading, setLoading] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('saved');
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
+  const [searchQuery, setSearchQuery] = useState('');
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
   
   const dateKey = format(currentDate, 'yyyy-MM-dd');
-  const currentNotes = notesByDate[dateKey] || [];
+  const allCurrentNotes = notesByDate[dateKey] || [];
+  const currentNotes = allCurrentNotes.filter(n => 
+    n.title?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    n.content?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Initialize Connection and Auth
   useEffect(() => {
@@ -222,32 +282,54 @@ const DailyNoteApp = () => {
 
   const saveNotesToBackend = useCallback(
     debounce(async (notes) => {
+      setSyncStatus('saving');
       console.log("[SYSTEM] Auto-saving changes...");
       try {
         const cleanNotes = notes.map(({ isFocused, isDeleting, ...rest }) => rest);
         await axiosInstance.post('/api/DailyNote/bulk', cleanNotes);
+        setSyncStatus('saved');
       } catch (error) {
         console.error("[ERROR] Auto-save failed:", error);
+        setSyncStatus('error');
       }
     }, 1000),
     []
   );
 
-  const addNote = async () => {
+  const addNote = async (template = 'blank') => {
+    let content = '';
+    let title = '';
+    let category = 'MEMO';
+
+    if (template === 'todo') {
+      title = 'TODO LIST';
+      content = '- [ ] Task 1\n- [ ] Task 2\n- [ ] Task 3';
+      category = 'TASK';
+    } else if (template === 'meeting') {
+      title = 'MEETING NOTES';
+      content = 'Date: ' + format(new Date(), 'yyyy-MM-dd') + '\nParticipants:\nTopics:\n- \nAction Items:';
+      category = 'LOG';
+    } else if (template === 'code') {
+      title = 'SNIPPET';
+      content = '```javascript\n\n```';
+      category = 'SYSTEM';
+    }
+
     const newNote = {
       id: uuidv4(),
-      title: '',
-      content: '',
+      title,
+      content,
       color: selectedColor,
-      category: CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)],
+      category,
       timestamp: format(new Date(), 'HH:mm:ss'),
       date: dateKey,
-      x: 50 + (currentNotes.length * 30) % 400,
-      y: 100 + (currentNotes.length * 30) % 300,
-      width: 250,
-      height: 200,
+      x: 50 + (allCurrentNotes.length * 30) % 400,
+      y: 100 + (allCurrentNotes.length * 30) % 300,
+      width: 280,
+      height: template === 'blank' ? 200 : 300,
       zIndex: topZIndex + 1,
-      isFocused: true
+      isFocused: true,
+      isMinimized: false
     };
     
     setTopZIndex(prev => prev + 1);
@@ -258,9 +340,12 @@ const DailyNoteApp = () => {
 
     try {
       const { isFocused, isDeleting, ...cleanNote } = newNote;
+      setSyncStatus('saving');
       await axiosInstance.post('/api/DailyNote', cleanNote);
+      setSyncStatus('saved');
     } catch (error) {
       console.error("[ERROR] Entry creation failed:", error);
+      setSyncStatus('error');
     }
   };
 
@@ -292,6 +377,14 @@ const DailyNoteApp = () => {
   };
 
   const focusNote = (id) => {
+    if (id === null) {
+      setNotesByDate(prev => ({
+        ...prev,
+        [dateKey]: (prev[dateKey] || []).map(n => ({ ...n, isFocused: false }))
+      }));
+      return;
+    }
+
     setTopZIndex(prev => prev + 1);
     setNotesByDate(prev => {
       const updated = (prev[dateKey] || []).map(n => ({
@@ -318,15 +411,39 @@ const DailyNoteApp = () => {
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
           <div className="current-date-display">
             <h2>{format(currentDate, 'yyyy_MM_dd')}</h2>
-            <span className="note-count">ACTIVE_ENTRIES: {currentNotes.length}</span>
+            <div className="status-indicator-container">
+               <span className="note-count">ACTIVE_ENTRIES: {currentNotes.length}</span>
+               <span className={`sync-status ${syncStatus}`}>
+                 {syncStatus === 'saving' && ' [ SYNCING... ]'}
+                 {syncStatus === 'saved' && ' [ SYNC_COMPLETE ]'}
+                 {syncStatus === 'error' && ' [ SYNC_ERROR ]'}
+               </span>
+            </div>
           </div>
           <button className="nav-btn" onClick={() => navigateDate(1)}><FaChevronRight /></button>
         </div>
 
         <div className="toolbar-actions">
+          <div className="search-box-cyber">
+            <FaSearch className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="SEARCH_NOTES..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
           <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
             {theme === 'dark' ? <FaSun /> : <FaMoon />}
           </button>
+          
+          <div className="template-actions">
+             <button className="tpl-btn" onClick={() => addNote('todo')} title="Add To-do List"><FaListUl /></button>
+             <button className="tpl-btn" onClick={() => addNote('meeting')} title="Add Meeting Notes"><FaFileAlt /></button>
+             <button className="tpl-btn" onClick={() => addNote('code')} title="Add Code Snippet"><FaCode /></button>
+          </div>
+
           <div className="color-selector">
             {COLORS.map(c => (
               <button 
@@ -337,7 +454,7 @@ const DailyNoteApp = () => {
               />
             ))}
           </div>
-          <button className="create-note-btn" onClick={addNote}>
+          <button className="create-note-btn" onClick={() => addNote('blank')}>
             <FaPlus /> NEW_ENTRY
           </button>
         </div>
