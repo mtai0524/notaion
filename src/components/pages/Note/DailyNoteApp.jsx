@@ -6,6 +6,10 @@ import {
   FaPlus, FaChevronLeft, FaChevronRight, FaTimes, 
   FaPalette, FaClock, FaTerminal, FaSun, FaMoon 
 } from 'react-icons/fa';
+import * as signalR from '@microsoft/signalr';
+import Cookies from 'js-cookie';
+import jwt_decode from 'jwt-decode';
+import config from '../../../config';
 import axiosInstance from '../../../axiosConfig';
 import debounce from 'lodash.debounce';
 import './DailyNoteApp.scss';
@@ -101,15 +105,95 @@ const DailyNoteApp = () => {
   const [selectedColor, setSelectedColor] = useState('cyan');
   const [loading, setLoading] = useState(false);
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
+  const [connection, setConnection] = useState(null);
+  const [userId, setUserId] = useState(null);
   
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const currentNotes = notesByDate[dateKey] || [];
+
+  // Initialize Connection and Auth
+  useEffect(() => {
+    const token = Cookies.get('token');
+    let uId = 'anonymous';
+    if (token) {
+      try {
+        const decoded = jwt_decode(token);
+        uId = decoded["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+      } catch (err) {
+        console.error("Token decode error:", err);
+      }
+    }
+    setUserId(uId);
+
+    const hubUrl = `${config.API_LOCAL}/dailyNoteHub`;
+    const newConnection = new signalR.HubConnectionBuilder()
+      .withUrl(hubUrl, { withCredentials: true })
+      .withAutomaticReconnect()
+      .build();
+
+    setConnection(newConnection);
+  }, []);
 
   const toggleTheme = () => {
     const newTheme = theme === 'dark' ? 'light' : 'dark';
     setTheme(newTheme);
     localStorage.setItem('daily-note-theme', newTheme);
   };
+
+  // Handle SignalR listeners
+  useEffect(() => {
+    if (connection && userId) {
+      connection.start()
+        .then(() => {
+          console.log("[SIGNALR] Connected to DailyNoteHub");
+          connection.invoke("JoinGroup", userId);
+
+          connection.on("NoteCreated", (newNote) => {
+            if (newNote.date === dateKey) {
+              setNotesByDate(prev => {
+                const existing = prev[dateKey] || [];
+                if (existing.some(n => n.id === newNote.id)) return prev;
+                return { ...prev, [dateKey]: [...existing, { ...newNote, isFocused: false, isDeleting: false }] };
+              });
+            }
+          });
+
+          connection.on("NoteUpdated", (updatedNote) => {
+            if (updatedNote.date === dateKey) {
+              setNotesByDate(prev => {
+                const updated = (prev[dateKey] || []).map(n => n.id === updatedNote.id ? { ...n, ...updatedNote } : n);
+                return { ...prev, [dateKey]: updated };
+              });
+            }
+          });
+
+          connection.on("NoteDeleted", (noteId) => {
+            setNotesByDate(prev => ({
+              ...prev,
+              [dateKey]: (prev[dateKey] || []).filter(n => n.id !== noteId)
+            }));
+          });
+
+          connection.on("NotesBulkUpdated", (notes) => {
+            if (notes.length > 0 && notes[0].date === dateKey) {
+              setNotesByDate(prev => {
+                const current = prev[dateKey] || [];
+                const updated = current.map(cn => {
+                  const match = notes.find(n => n.id === cn.id);
+                  return match ? { ...cn, ...match } : cn;
+                });
+                return { ...prev, [dateKey]: updated };
+              });
+            }
+          });
+        })
+        .catch(err => console.error("[SIGNALR] Connection failed:", err));
+
+      return () => {
+        connection.stop();
+      };
+    }
+  }, [connection, userId, dateKey]);
 
   const fetchNotes = async (date) => {
     console.log(`[SYSTEM] Syncing notes for ${date}...`);
