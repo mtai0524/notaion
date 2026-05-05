@@ -197,9 +197,10 @@
     position: relative;
     padding: 2rem;
     overflow: auto;
-    min-height: 800px;
+    min-height: calc(100vh - 100px);
     background-color: var(--canvas-bg);
     transition: background-image 0.3s;
+    scroll-behavior: smooth;
 
     // Default hidden grid
     background-image: none;
@@ -256,6 +257,42 @@
     background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(var(--accent-rgb), 0.05) 10px, rgba(var(--accent-rgb), 0.05) 20px);
   }
 
+  &.note-theme-light {
+    background: rgba(255, 255, 255, 0.9);
+    border-color: var(--accent-color);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    
+    .note-header {
+      background: rgba(var(--accent-rgb), 0.1);
+      border-bottom-color: rgba(var(--accent-rgb), 0.2);
+      
+      .timestamp { 
+        color: #000000 !important; // Absolute black for contrast
+        text-shadow: none;
+        background: rgba(var(--accent-rgb), 0.25);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-weight: 900;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+      }
+      .action-btn { 
+        color: #1a1a1a; 
+        &:hover { color: var(--accent-color); }
+      }
+    }
+
+    .note-title-input {
+      color: #1a1a1a;
+      border-bottom-color: rgba(0, 0, 0, 0.1);
+      &::placeholder { color: rgba(0, 0, 0, 0.2); }
+    }
+
+    .note-content-area, .markdown-preview {
+      color: #2d3748;
+      &::placeholder { color: rgba(0, 0, 0, 0.2); }
+    }
+  }
+
   &.minimized {
     height: 40px !important;
     overflow: hidden;
@@ -280,18 +317,21 @@
   }
 
   .note-header {
-    height: 30px;
+    height: 35px;
     cursor: move;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 10px;
-    border-bottom: 1px solid var(--border-color);
+    padding: 0 12px;
+    border-bottom: 1px solid var(--accent-color);
+    background: rgba(var(--accent-rgb), 0.15);
 
     .header-left {
       .timestamp {
         font-size: 0.65rem;
-        color: var(--text-muted);
+        color: #fff;
+        font-weight: bold;
+        text-shadow: 0 0 5px var(--accent-color);
       }
     }
 
@@ -335,36 +375,37 @@
     .note-title-input {
       background: transparent;
       border: none;
-      border-bottom: 1px solid var(--border-color);
-      color: #ffcb6b;
-      font-size: 0.9rem;
-      padding-bottom: 5px;
+      border-bottom: 1px solid rgba(var(--accent-rgb), 0.2);
+      color: var(--custom-text-color);
+      font-size: 1rem;
+      padding-bottom: 8px;
       outline: none;
-      font-weight: bold;
+      font-weight: 800;
       text-transform: uppercase;
+      letter-spacing: 0.5px;
 
-      &::placeholder { color: var(--input-placeholder); }
+      &::placeholder { color: rgba(255, 255, 255, 0.2); }
     }
 
     .note-content-area {
       flex: 1;
       background: transparent;
       border: none;
-      color: #89ddff;
+      color: var(--custom-text-color);
       font-size: var(--note-font-size, 0.85rem);
       line-height: 1.6;
       resize: none;
       outline: none;
       font-family: inherit;
 
-      &::placeholder { color: var(--input-placeholder); }
+      &::placeholder { color: rgba(255, 255, 255, 0.2); }
     }
 
     .markdown-preview {
       flex: 1;
       font-size: var(--note-font-size, 0.85rem);
       line-height: 1.6;
-      color: #89ddff;
+      color: var(--custom-text-color);
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
@@ -607,6 +648,41 @@
     border-left: 1px solid var(--accent-color);
     border-bottom: 1px solid var(--accent-color);
     transform: rotate(45deg);
+  }
+
+  // Light Theme Inspector
+  .note-theme-light & {
+    background: rgba(245, 245, 250, 0.98);
+    border-color: var(--accent-color);
+    color: #1a1a1a;
+
+    .inspector-header {
+      background: rgba(var(--accent-rgb), 0.15);
+      color: #000;
+      border-bottom-color: var(--accent-color);
+    }
+
+    .ins-label { color: #666; border-bottom-color: rgba(0,0,0,0.1); }
+    .ins-field label { color: #555; }
+    .ins-toggle-group {
+      border-color: rgba(0,0,0,0.1);
+      .ins-toggle {
+        color: #777;
+        border-right-color: rgba(0,0,0,0.1);
+        &.active { background: var(--accent-color); color: #fff; }
+      }
+    }
+    .ins-control span { color: #666; }
+    .prop-input-wrap {
+      background: #fff;
+      border-color: rgba(0,0,0,0.1);
+      .ins-input { color: #000; }
+    }
+    .link-scroll {
+      background: #fff;
+      border-color: rgba(0,0,0,0.05);
+      .link-item { color: #555; &:hover { background: rgba(var(--accent-rgb), 0.05); } }
+    }
   }
 
   .inspector-header {

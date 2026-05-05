@@ -133,9 +133,9 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
       }}
       disableResizing={note.isMinimized}
       dragHandleClassName="note-header"
-      bounds=".note-canvas-cyber"
       minWidth={200}
       minHeight={note.isMinimized ? 40 : 150}
+      bounds={false}
       style={{ 
         zIndex: note.zIndex, 
         position: 'absolute',
@@ -145,14 +145,15 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div 
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : 'none'}`}
+        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : 'dark'}`}
         data-category={note.customCategory || note.category}
         style={{ 
           '--accent-color': accentColor,
           '--accent-rgb': accentRgb,
           '--note-font-size': note.fontSize || '0.85rem',
           '--note-opacity': note.opacity || 1,
-          '--note-blur': `${(note.blur || 0) * 10}px`
+          '--note-blur': `${(note.blur || 0) * 10}px`,
+          '--custom-text-color': note.customTextColor === 'accent' ? accentColor : (note.customTextColor || (note.noteTheme === 1 ? '#000000' : '#ffffff'))
         }}
         onClick={() => onFocus(note.id)}
         onContextMenu={handleContextMenu}
@@ -216,6 +217,10 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                 <section className="ins-section">
                   <div className="ins-label">AESTHETICS</div>
                   <div className="ins-grid">
+                    <div className="ins-control" onClick={() => onUpdate(note.id, { noteTheme: note.noteTheme === 0 ? 1 : 0 })}>
+                      <FaMoon className={note.noteTheme === 0 ? 'active-icon' : ''} />
+                      <span>{note.noteTheme === 0 ? 'DARK' : 'LIGHT'}</span>
+                    </div>
                     <div className="ins-control" onClick={() => onUpdate(note.id, { glow: !note.glow })}>
                       <FaGlow className={note.glow ? 'active-icon' : ''} />
                       <span>GLOW</span>
@@ -228,12 +233,24 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                       <FaBorderNone className={getBorderStyle(note.borderStyle) === 'dashed' ? 'active-icon' : ''} />
                       <span>DASHED</span>
                     </div>
-                    <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
-                      <FaCheckCircle className={note.isCompleted ? 'active-icon' : ''} />
-                      <span>DONE</span>
-                    </div>
                   </div>
                   
+                  <div className="ins-field mt-2">
+                    <label>TEXT_COLOR</label>
+                    <div className="ins-toggle-group full-width">
+                      {[
+                        { label: 'AUTO', val: null },
+                        { label: 'WHITE', val: '#ffffff' },
+                        { label: 'BLACK', val: '#000000' },
+                        { label: 'ACCENT', val: 'accent' }
+                      ].map(tc => (
+                        <button key={tc.label} className={`ins-toggle ${note.customTextColor === tc.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customTextColor: tc.val })}>
+                          {tc.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="ins-field mt-2">
                     <label>PATTERN</label>
                     <div className="ins-toggle-group full-width">
@@ -641,36 +658,65 @@ const DailyNoteApp = () => {
 
   window.allCurrentNotesGlobal = allCurrentNotes;
 
+  const getAnchorPoints = (n) => {
+    const h = n.isMinimized ? 40 : n.height;
+    return [
+      { x: n.x + n.width / 2, y: n.y, side: 'top' },           // Top mid
+      { x: n.x + n.width / 2, y: n.y + h, side: 'bottom' },    // Bottom mid
+      { x: n.x, y: n.y + h / 2, side: 'left' },               // Left mid
+      { x: n.x + n.width, y: n.y + h / 2, side: 'right' }      // Right mid
+    ];
+  };
+
   const renderNoteLinks = () => {
     return (
       <svg className="note-links-svg" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 0 }}>
+        <defs>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
         {allCurrentNotes.map(note => {
           const linkedIds = note.linkedNoteIds ? note.linkedNoteIds.split(',') : [];
           return linkedIds.map(targetId => {
             const targetNote = allCurrentNotes.find(n => n.id === targetId);
             if (!targetNote) return null;
             
-            // Calculate center points
-            const x1 = note.x + note.width / 2;
-            const y1 = note.y + (note.isMinimized ? 20 : note.height / 2);
-            const x2 = targetNote.x + targetNote.width / 2;
-            const y2 = targetNote.y + (targetNote.isMinimized ? 20 : targetNote.height / 2);
+            const p1Arr = getAnchorPoints(note);
+            const p2Arr = getAnchorPoints(targetNote);
             
+            let bestP1 = p1Arr[0], bestP2 = p2Arr[0], minDist = Infinity;
+            
+            p1Arr.forEach(p1 => {
+              p2Arr.forEach(p2 => {
+                const d = Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+                if (d < minDist) {
+                  minDist = d;
+                  bestP1 = p1;
+                  bestP2 = p2;
+                }
+              });
+            });
+
             const noteColor = COLORS.find(c => c.id === note.color)?.color || '#89ddff';
 
             return (
-              <g key={`${note.id}-${targetId}`}>
-                <line 
-                  x1={x1} y1={y1} x2={x2} y2={y2} 
+              <g key={`${note.id}-${targetId}`} filter="url(#glow)">
+                <path 
+                  d={`M ${bestP1.x} ${bestP1.y} L ${bestP2.x} ${bestP2.y}`}
                   stroke={noteColor} 
-                  strokeWidth="2" 
-                  strokeDasharray="5,5"
-                  opacity="0.3"
+                  strokeWidth="3" 
+                  strokeDasharray="8,8"
+                  fill="none"
+                  opacity="0.6"
                 >
-                  <animate attributeName="stroke-dashoffset" from="0" to="20" dur="2s" repeatCount="indefinite" />
-                </line>
-                <circle cx={x1} cy={y1} r="3" fill={noteColor} />
-                <circle cx={x2} cy={y2} r="3" fill={noteColor} />
+                  <animate attributeName="stroke-dashoffset" from="0" to="32" dur="1.5s" repeatCount="indefinite" />
+                </path>
+                <rect x={bestP1.x - 4} y={bestP1.y - 4} width="8" height="8" fill={noteColor} />
+                <rect x={bestP2.x - 4} y={bestP2.y - 4} width="8" height="8" fill={noteColor} />
               </g>
             );
           });
@@ -744,15 +790,27 @@ const DailyNoteApp = () => {
             <p>Initialize a new entry to begin data logging.</p>
           </div>
         ) : (
-          currentNotes.map(note => (
-            <Note 
-              key={note.id}
-              note={note}
-              onUpdate={updateNote}
-              onDelete={deleteNote}
-              onFocus={focusNote}
-            />
-          ))
+          <>
+            {currentNotes.map(note => (
+              <Note 
+                key={note.id}
+                note={note}
+                onUpdate={updateNote}
+                onDelete={deleteNote}
+                onFocus={focusNote}
+              />
+            ))}
+            {/* Dynamic scroll anchor to ensure there is always space below the lowest note */}
+            <div style={{ 
+              position: 'absolute', 
+              top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500, 
+              left: 0, 
+              width: 1, 
+              height: 1, 
+              opacity: 0,
+              pointerEvents: 'none'
+            }} />
+          </>
         )}
       </main>
     </div>
