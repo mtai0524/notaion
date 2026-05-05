@@ -2,7 +2,7 @@ import { Switch, Tooltip } from "antd";
 import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette } from "@fortawesome/free-solid-svg-icons";
 
 const Setting = () => {
   const [bubble, setBubble] = useState(localStorage.getItem("isBubbleMenuVisible") === "true");
@@ -137,7 +137,42 @@ const Setting = () => {
     }
   };
 
+  const applyPreset = (preset) => {
+    let styles = {};
+    switch (preset) {
+      case 'Omarchy':
+        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '1px', bgTheme: 'theme-none' };
+        break;
+      case 'Sketchy':
+        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '3px', bgTheme: 'theme-paper' };
+        break;
+      case 'Minimal':
+        styles = { borderColor: '#e5e7eb', borderStyle: 'solid', borderWidth: '1px', bgTheme: 'theme-none' };
+        break;
+      case 'Cyber':
+        styles = { borderColor: '#00ff00', borderStyle: 'dashed', borderWidth: '2px', bgTheme: 'theme-grid' };
+        break;
+      default:
+        return;
+    }
+    
+    Object.keys(styles).forEach(key => handleStyleChange(key, styles[key]));
+  };
+
   const categories = [
+    {
+      title: "Theme Presets",
+      items: [
+        { 
+          label: "OS Style Presets", 
+          key: "presets", 
+          type: "presets", 
+          options: ["Omarchy", "Sketchy", "Minimal", "Cyber"], 
+          icon: faDesktop, 
+          desc: "Quickly switch between pre-configured OS styles" 
+        },
+      ]
+    },
     {
       title: "Interface Settings",
       items: [
@@ -216,6 +251,27 @@ const Setting = () => {
                                 onClick={() => handleStyleChange(item.key, theme)}
                               ></div>
                             </Tooltip>
+                          ))}
+                        </div>
+                      ) : item.type === 'presets' ? (
+                        <div className="preset-container" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          {item.options.map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => applyPreset(opt)}
+                              style={{
+                                padding: '6px 12px',
+                                border: '2px solid var(--border-color)',
+                                borderRadius: 'var(--radius-sm)',
+                                background: 'var(--container-bg)',
+                                color: 'var(--text-color)',
+                                fontWeight: '800',
+                                cursor: 'pointer',
+                                fontSize: '0.8rem'
+                              }}
+                            >
+                              {opt}
+                            </button>
                           ))}
                         </div>
                       ) : (

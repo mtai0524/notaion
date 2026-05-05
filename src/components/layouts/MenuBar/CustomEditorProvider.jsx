@@ -142,7 +142,7 @@ const CustomEditorProvider = ({ pageId }) => {
             );
             const fileData = response.data[0];
             const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-            
+
             if (file.type.startsWith("image/")) {
               editor.chain().focus().setImage({ src: fileUrl }).run();
             } else {
@@ -182,7 +182,7 @@ const CustomEditorProvider = ({ pageId }) => {
             );
             const fileData = response.data[0];
             const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-            
+
             if (file.type.startsWith("image/")) {
               editor.chain().focus().setImage({ src: fileUrl }).run();
             } else {
@@ -234,17 +234,22 @@ const CustomEditorProvider = ({ pageId }) => {
       {loading && (
         <div
           style={{
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            backgroundColor: "var(--container-bg)",
             position: "absolute",
             top: `calc(${spinPosition.top} - 150px)`,
             left: "50%",
             transform: "translate(-50%, -50%)",
             zIndex: 1000,
-            padding: "20px",
-            borderRadius: "8px",
+            padding: "30px",
+            borderRadius: "var(--radius-md)",
+            border: "var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color)",
+            boxShadow: "var(--box-shadow)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: center,
           }}
         >
-          <l-bouncy size="60" color="#DF74B4"></l-bouncy>
+          <l-bouncy size="60" color="var(--accent-color)"></l-bouncy>
         </div>
       )}
       <MenuBar editor={editor} />
