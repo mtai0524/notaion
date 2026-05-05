@@ -7,6 +7,8 @@ import {
   FaPlus, FaChevronLeft, FaChevronRight, FaTimes, 
   FaPalette, FaTag, FaClock, FaTrash 
 } from 'react-icons/fa';
+import axiosInstance from '../../../axiosConfig';
+import debounce from 'lodash.debounce';
 import './DailyNoteApp.scss';
 
 const COLORS = [
@@ -115,11 +117,53 @@ const DailyNoteApp = () => {
   const [notesByDate, setNotesByDate] = useState({});
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState('yellow');
+  const [loading, setLoading] = useState(false);
   
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const currentNotes = notesByDate[dateKey] || [];
 
-  const addNote = () => {
+  const fetchNotes = async (date) => {
+    console.log(`[DailyNote] Fetching notes for ${date}...`);
+    setLoading(true);
+    try {
+      const response = await axiosInstance.get(`/api/DailyNote/${date}`);
+      console.log(`[DailyNote] Fetched ${response.data.length} notes.`);
+      setNotesByDate(prev => ({
+        ...prev,
+        [date]: response.data.map(n => ({ ...n, isFocused: false, isDeleting: false }))
+      }));
+      
+      if (response.data.length > 0) {
+        const maxZ = Math.max(...response.data.map(n => n.zIndex));
+        setTopZIndex(prev => Math.max(prev, maxZ));
+      }
+    } catch (error) {
+      console.error("[DailyNote] Error fetching notes:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotes(dateKey);
+  }, [dateKey]);
+
+  const saveNotesToBackend = useCallback(
+    debounce(async (notes) => {
+      console.log("[DailyNote] Bulk saving notes...", notes);
+      try {
+        // Clean notes before sending
+        const cleanNotes = notes.map(({ isFocused, isDeleting, ...rest }) => rest);
+        await axiosInstance.post('/api/DailyNote/bulk', cleanNotes);
+        console.log("[DailyNote] Bulk save successful.");
+      } catch (error) {
+        console.error("[DailyNote] Error saving notes:", error.response?.data ? JSON.stringify(error.response.data, null, 2) : error);
+      }
+    }, 1000),
+    []
+  );
+
+  const addNote = async () => {
     const newNote = {
       id: uuidv4(),
       title: '',
@@ -127,6 +171,7 @@ const DailyNoteApp = () => {
       color: selectedColor,
       category: CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)],
       timestamp: format(new Date(), 'HH:mm'),
+      date: dateKey,
       x: Math.random() * 200,
       y: Math.random() * 200,
       width: 220,
@@ -140,36 +185,62 @@ const DailyNoteApp = () => {
       ...prev,
       [dateKey]: [...(prev[dateKey] || []), newNote]
     }));
+
+    console.log("[DailyNote] Creating new note...", newNote);
+    try {
+      // Clean note before sending
+      const { isFocused, isDeleting, ...cleanNote } = newNote;
+      await axiosInstance.post('/api/DailyNote', cleanNote);
+      console.log("[DailyNote] Note created.");
+    } catch (error) {
+      console.error("[DailyNote] Error creating note:", error.response?.data ? JSON.stringify(error.response.data, null, 2) : error);
+    }
   };
 
   const updateNote = (id, updates) => {
-    setNotesByDate(prev => ({
-      ...prev,
-      [dateKey]: prev[dateKey].map(n => n.id === id ? { ...n, ...updates } : n)
-    }));
+    setNotesByDate(prev => {
+      const updated = prev[dateKey].map(n => n.id === id ? { ...n, ...updates } : n);
+      saveNotesToBackend(updated.map(n => ({ ...n, date: dateKey })));
+      return {
+        ...prev,
+        [dateKey]: updated
+      };
+    });
   };
 
-  const deleteNote = (id) => {
-    // Smooth delete animation
+  const deleteNote = async (id) => {
+    console.log(`[DailyNote] Deleting note ${id}...`);
     updateNote(id, { isDeleting: true });
-    setTimeout(() => {
-      setNotesByDate(prev => ({
-        ...prev,
-        [dateKey]: prev[dateKey].filter(n => n.id !== id)
-      }));
-    }, 300);
+    
+    try {
+      await axiosInstance.delete(`/api/DailyNote/${id}`);
+      console.log("[DailyNote] Note deleted from backend.");
+      setTimeout(() => {
+        setNotesByDate(prev => ({
+          ...prev,
+          [dateKey]: prev[dateKey].filter(n => n.id !== id)
+        }));
+      }, 300);
+    } catch (error) {
+      console.error("[DailyNote] Error deleting note:", error);
+      updateNote(id, { isDeleting: false });
+    }
   };
 
   const focusNote = (id) => {
     setTopZIndex(prev => prev + 1);
-    setNotesByDate(prev => ({
-      ...prev,
-      [dateKey]: prev[dateKey].map(n => ({
+    setNotesByDate(prev => {
+      const updated = prev[dateKey].map(n => ({
         ...n,
         zIndex: n.id === id ? topZIndex + 1 : n.zIndex,
         isFocused: n.id === id
-      }))
-    }));
+      }));
+      saveNotesToBackend(updated.map(n => ({ ...n, date: dateKey })));
+      return {
+        ...prev,
+        [dateKey]: updated
+      };
+    });
   };
 
   const navigateDate = (days) => {
