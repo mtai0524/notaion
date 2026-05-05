@@ -158,6 +158,9 @@ const Header = () => {
       case "files":
         navigate("/files");
         break;
+      case "daily-note":
+        navigate("/daily-note");
+        break;
 
       default:
         break;
@@ -230,6 +233,15 @@ const Header = () => {
             }}
           >
             Files
+          </Menu.Item>
+          <Menu.Item
+            key="daily-note"
+            icon={<FontAwesomeIcon icon={faNewspaper} />}
+            style={{
+              backgroundColor: location.pathname === "/daily-note" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Daily Notes
           </Menu.Item>
 
 

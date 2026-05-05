@@ -23,6 +23,7 @@ import jwt_decode from "jwt-decode";
 import NotFound from "./components/pages/NotFound/NotFound";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
 import FilesPage from "./pages/FilesPage";
+import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
 
 
 const App = () => {
@@ -144,6 +145,7 @@ const MainApp = () => {
         <Route path="/guide" element={<Guide />} />
         <Route path="/shortcut" element={<Shortcut />} />
         <Route path="/note" element={<Note />} />
+        <Route path="/daily-note" element={<DailyNoteApp />} />
         <Route path="/files" element={<FilesPage />} />
 
         <Route path="*" element={<NotFound />}></Route>
