@@ -765,7 +765,7 @@ const DailyNoteApp = () => {
       isMinimized: false,
       opacity: 1,
       fontSize: '0.85rem',
-      borderStyle: 'solid',
+      borderStyle: 0,
       isCompleted: false
     };
 
