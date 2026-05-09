@@ -3,7 +3,9 @@ import config from "./config";
 import Cookies from "js-cookie";
 
 const instance = axios.create({
-  baseURL: config.API_HOSTING,
+  baseURL: window.location.hostname === "localhost" 
+    ? config.API_LOCAL 
+    : config.API_HOSTING,
 });
 
 // Add a request interceptor

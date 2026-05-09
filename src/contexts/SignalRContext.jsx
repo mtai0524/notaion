@@ -14,7 +14,9 @@ export const SignalRProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
-    const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+    const isLocal = window.location.hostname === "localhost";
+    const baseUrl = isLocal ? "https://localhost:7059" : "https://notaion.runasp.net";
+    const signalRUrl = `${baseUrl}/chathub`;
 
     const connect = new signalR.HubConnectionBuilder()
       .withUrl(signalRUrl, {
