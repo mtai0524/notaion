@@ -151,6 +151,14 @@ const Login = () => {
             >
               Login
             </button>
+            <div className="divider">OR</div>
+            <button
+              type="button"
+              className="discord-login-button"
+              onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/discord-login`}
+            >
+              Login with Discord
+            </button>
           </form>
         </Spin>
         <div className="flex justify-end w-full">

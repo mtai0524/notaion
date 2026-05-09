@@ -6,6 +6,8 @@ import { Route, Routes } from "react-router-dom";
 import Realtime from "./components/pages/Signal/Signal";
 import Notion from "./components/pages/Notion/Notion";
 import Login from "./components/pages/Login/Login";
+import LoginSuccess from "./components/pages/Login/LoginSuccess";
+import Home from "./components/pages/Home/Home";
 import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
 import Guide from "./components/pages/Guide/Guide";
@@ -128,8 +130,10 @@ const MainApp = () => {
         <Route path="/" element={<Navigate to="/home-page" />} />
         <Route path="/signal" element={<Realtime />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/login-success" element={<LoginSuccess />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/home-page" element={<Notion />} />
+        <Route path="/home-page" element={<Home />} />
+        <Route path="/notion" element={<Notion />} />
         <Route path="/profile/:identifier" element={<Profile />} />
         <Route path="/profile/" element={<Profile />} />
         <Route path="/page/" element={<Page />} />
