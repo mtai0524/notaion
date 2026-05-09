@@ -16,6 +16,15 @@
   flex-direction: column;
   word-break: break-word;
   background-color: white;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  &.expanded {
+    max-width: 800px;
+    width: 95%;
+    min-height: 85vh;
+    bottom: 20px;
+    right: 10px;
+  }
 }
 
 .section {

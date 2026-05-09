@@ -5,7 +5,7 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsLeftRight, faBan, faCompress, faEraser, faExpand, faGear, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -147,6 +147,7 @@ const ChatBox = ({ onClose }) => {
   const { isAiThinking, setIsAiThinking } = useChat();
   const scrollHeightBeforeUpdateRef = useRef(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isStudyMode, setIsStudyMode] = useState(false);
 
 
   // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
@@ -310,12 +311,40 @@ const ChatBox = ({ onClose }) => {
       setMessage("");
       setLatestMessageFromUser(true);
       
-      if (aiMode) {
+      if (aiMode && !isStudyMode) {
         setIsAiThinking(true);
       }
 
       try {
-        const response = await axiosInstance.post("/api/Chat/add-chat", {
+        let response;
+        if (isStudyMode && username === "minhtai") {
+          // Gửi vào bộ nhớ
+          response = await axiosInstance.post("/api/Chat/update-ai-memory", {
+            userId: userId,
+            userName: username,
+            content: message, // Ghi nguyên văn nội dung bạn muốn AI học
+          });
+
+          if (response.status === 200) {
+            notification.success({
+              message: "Đã ghi vào bộ nhớ AI",
+              description: "AI sẽ sử dụng kiến thức này trong các câu trả lời sau.",
+              duration: 2
+            });
+            // Đánh dấu tin nhắn đã học trong UI
+            setMessages((prevMessages) =>
+              prevMessages.map((msg) =>
+                msg.id === tempMessageId
+                  ? { ...msg, content: `📝 [Đã học]: ${msg.content}`, status: "sent" }
+                  : msg
+              )
+            );
+          }
+          return; // Kết thúc xử lý Study Mode
+        }
+
+        // Xử lý chat thông thường
+        response = await axiosInstance.post("/api/Chat/add-chat", {
           userId: userId,
           userName: username,
           content: messageContent,
@@ -532,6 +561,16 @@ const ChatBox = ({ onClose }) => {
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
+          {username === "minhtai" && (
+            <button 
+              className="p-1 mr-2" 
+              onClick={() => setIsStudyMode(!isStudyMode)} 
+              title={isStudyMode ? "Tắt chế độ học" : "Bật chế độ học"}
+              style={{ color: isStudyMode ? "#ff9800" : "inherit" }}
+            >
+              <FontAwesomeIcon icon={faBookOpen} />
+            </button>
+          )}
           <button className="p-1 mr-2" onClick={() => setIsExpanded(!isExpanded)} title={isExpanded ? "Thu nhỏ" : "Mở rộng"}>
             <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} />
           </button>
