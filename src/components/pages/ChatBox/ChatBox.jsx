@@ -5,12 +5,13 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faBan, faEraser, faGear, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsLeftRight, faBan, faCompress, faEraser, faExpand, faGear, faRobot, faXmark } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import axiosInstance from "../../../axiosConfig";
 import { cardio } from 'ldrs'
+import ReactMarkdown from 'react-markdown';
 cardio.register()
 const useUsername = () => {
   const animalNames = [
@@ -145,6 +146,7 @@ const ChatBox = ({ onClose }) => {
   const [aiMode, setAiMode] = useState(() => localStorage.getItem("aiMode") === "true");
   const { isAiThinking, setIsAiThinking } = useChat();
   const scrollHeightBeforeUpdateRef = useRef(0);
+  const [isExpanded, setIsExpanded] = useState(false);
 
 
   // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
@@ -459,138 +461,87 @@ const ChatBox = ({ onClose }) => {
     </Menu>
   );
 
-  const convertLinksToEmbedTags = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
-    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
-    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
+  const markdownComponents = {
+    // Tùy chỉnh cách hiển thị link để giữ tính năng Embed YouTube/Spotify
+    a: ({ href, children }) => {
+      const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+      const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
 
-    let segments = [];
-    let lastIndex = 0;
-
-    text.split(" ").forEach((word, index) => {
-      if (embedRegex.test(word)) {
-        if (lastIndex < index) {
-          segments.push(text.slice(lastIndex, text.indexOf(word)));
-        }
-
-        segments.push(
-          <div key={index} className="embed-container">
+      if (embedRegex.test(href)) {
+        return (
+          <div className="embed-container">
             <iframe
               width="560"
               height="315"
-              src={word.replace("watch?v=", "embed/")}
+              src={href.replace("watch?v=", "embed/")}
               frameBorder="0"
               allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
               allowFullScreen
             />
-            <p className="italic text-blue-600 mt-2">
-              <a href={word} target="_blank" rel="noopener noreferrer">
-                {word}
-              </a>
-            </p>
+            <a href={href} target="_blank" rel="noopener noreferrer" className="italic text-blue-600 block mt-1">
+              {href}
+            </a>
           </div>
         );
+      }
 
-        lastIndex = text.indexOf(word) + word.length;
-      } else if (spotifyRegex.test(word)) {
-        if (lastIndex < index) {
-          segments.push(text.slice(lastIndex, text.indexOf(word)));
-        }
-
-        const spotifyType = word.includes("track")
-          ? "Spotify Track"
-          : word.includes("album")
-            ? "Spotify Album"
-            : "Spotify Playlist";
-
-        const spotifyEmbedUrl = word.replace(
-          /(https:\/\/open\.spotify\.com\/)/,
-          "https://open.spotify.com/embed/"
-        );
-        segments.push(
-          <div key={index} className="spotify-container">
-            <p className="spotify-label text-sm text-gray-500">{spotifyType}</p>
+      if (spotifyRegex.test(href)) {
+        const spotifyEmbedUrl = href.replace(/(https:\/\/open\.spotify\.com\/)/, "https://open.spotify.com/embed/");
+        return (
+          <div className="spotify-container">
             <iframe
               style={{ borderRadius: "12px" }}
               src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
-              width="560"
-              height="315"
+              width="100%"
+              height="152"
               frameBorder="0"
               allowFullScreen
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
               loading="lazy"
             />
-            <p className="italic text-blue-600 mt-2">
-              <a href={word} target="_blank" rel="noopener noreferrer">
-                {word}
-              </a>
-            </p>
           </div>
         );
-
-        lastIndex = text.indexOf(word) + word.length;
-      } else if (imageRegex.test(word)) {
-        if (lastIndex < index) {
-          segments.push(text.slice(lastIndex, text.indexOf(word)));
-        }
-
-        segments.push(
-          <div key={index} className="image-container">
-            <img
-              src={word}
-              alt="Embedded"
-              style={{ maxWidth: "100%", maxHeight: "500px" }}
-            />
-            <p className="italic text-blue-600 mt-2">
-              <a href={word} target="_blank" rel="noopener noreferrer">
-                {word}
-              </a>
-            </p>
-          </div>
-        );
-        lastIndex = text.indexOf(word) + word.length;
-      } else if (urlRegex.test(word)) {
-        if (lastIndex < index) {
-          segments.push(text.slice(lastIndex, text.indexOf(word)));
-        }
-
-        segments.push(
-          <a
-            key={index}
-            className="italic text-blue-600"
-            href={word}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {word}
-          </a>
-        );
-        lastIndex = text.indexOf(word) + word.length;
       }
-    });
 
-    if (lastIndex < text.length) {
-      segments.push(text.slice(lastIndex));
+      return <a href={href} target="_blank" rel="noopener noreferrer" className="italic text-blue-600">{children}</a>;
+    },
+    // Tùy chỉnh hiển thị ảnh
+    img: ({ src, alt }) => (
+      <div className="image-container">
+        <img src={src} alt={alt} style={{ maxWidth: "100%", borderRadius: "8px", border: "1px solid #ddd" }} />
+      </div>
+    ),
+    // Thêm style cho code block
+    code: ({ node, inline, className, children, ...props }) => {
+      return !inline ? (
+        <pre className="bg-gray-800 text-white p-2 rounded-md overflow-x-auto my-2 text-sm">
+          <code {...props}>{children}</code>
+        </pre>
+      ) : (
+        <code className="bg-gray-200 px-1 rounded text-red-600 font-mono" {...props}>
+          {children}
+        </code>
+      );
     }
-
-    return <>{segments}</>;
   };
 
 
 
   return (
-    <div className="chat-box">
+    <div className={`chat-box ${isExpanded ? "expanded" : ""}`}>
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
+          <button className="p-1 mr-2" onClick={() => setIsExpanded(!isExpanded)} title={isExpanded ? "Thu nhỏ" : "Mở rộng"}>
+            <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} />
+          </button>
           <Dropdown
             placement="bottomLeft"
             overlay={menuProfile}
             trigger={["click"]}
             onClick={() => setDropdownVisible(!dropdownVisible)}
             onOpenChange={(visible) => setDropdownVisible(visible)}
-            className="mr-3"
+            className="mr-2"
           >
             <a className="ant-dropdown-link" onClick={(e) => e.preventDefault()}>
               <button className="p-1">
@@ -637,7 +588,11 @@ const ChatBox = ({ onClose }) => {
                   {msg.userName}
                   <span className={`status-dot ${isOnline ? "online" : "offline"}`} />
                 </strong>
-                <p className="chat-text">{convertLinksToEmbedTags(msg.content)}</p>
+                <div className="chat-text">
+                  <ReactMarkdown components={markdownComponents}>
+                    {msg.content}
+                  </ReactMarkdown>
+                </div>
                 <p className="chat-date">
                   {new Date(msg.sentDate)
                     .toLocaleString("en-GB", {
