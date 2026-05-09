@@ -45,6 +45,18 @@ export const SignalRProvider = ({ children }) => {
         setConnectionId(connect.connectionId);
         setConnection(connect);
 
+        // Đăng ký nhận tin nhắn ngay khi vừa kết nối thành công
+        connect.on("ReceiveMessage", (user, receivedMessage) => {
+            console.log(`[Global-SignalR] Received from ${user}: ${receivedMessage}`);
+            
+            // Phát sự kiện hoặc gọi hàm callback từ đây
+            // Ở đây ta có thể dùng Window Event hoặc một giải pháp tương tự
+            const event = new CustomEvent("new-signalr-message", { 
+                detail: { user, content: receivedMessage } 
+            });
+            window.dispatchEvent(event);
+        });
+
         const tokenFromStorage = Cookies.get("token");
         if (tokenFromStorage) {
           const decodedToken = jwt_decode(tokenFromStorage);

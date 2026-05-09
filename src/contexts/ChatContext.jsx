@@ -13,9 +13,10 @@ export const useChat = () => {
 
 export const ChatProvider = ({ children }) => {
   const [messages, setMessages] = useState([]);
+  const [isAiThinking, setIsAiThinking] = useState(false);
 
   return (
-    <ChatContext.Provider value={{ messages, setMessages }}>
+    <ChatContext.Provider value={{ messages, setMessages, isAiThinking, setIsAiThinking }}>
       {children}
     </ChatContext.Provider>
   );

@@ -142,9 +142,38 @@ const ChatBox = ({ onClose }) => {
   const [pageNumber, setPageNumber] = useState(1);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [isMessageSent, setIsMessageSent] = useState(false);
-  const [aiMode, setAiMode] = useState(false);
+  const [aiMode, setAiMode] = useState(() => localStorage.getItem("aiMode") === "true");
+  const { isAiThinking, setIsAiThinking } = useChat();
   const scrollHeightBeforeUpdateRef = useRef(0);
 
+
+  // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
+  useEffect(() => {
+    const handleNewMessage = (event) => {
+      const { user, content } = event.detail;
+      console.log(`[ChatBox-Event] New message from ${user}`);
+      
+      // Cập nhật danh sách tin nhắn
+      if (user !== username) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            userName: user,
+            content: content,
+            sentDate: new Date().toISOString(),
+          },
+        ]);
+        setLatestMessageFromUser(true); // Kích hoạt cuộn xuống
+      }
+
+      if (user && user.toLowerCase().includes("chatbot")) {
+        setIsAiThinking(false);
+      }
+    };
+
+    window.addEventListener("new-signalr-message", handleNewMessage);
+    return () => window.removeEventListener("new-signalr-message", handleNewMessage);
+  }, [username, setMessages, setIsAiThinking]);
 
   useEffect(() => {
     const isFirstLoad = sessionStorage.getItem("isFirstLoad");
@@ -165,6 +194,16 @@ const ChatBox = ({ onClose }) => {
       }
     }
   }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
+
+  // Tự động tắt trạng thái thinking nếu tin nhắn cuối cùng là của Chatbot (Fallback)
+  useEffect(() => {
+    if (messages.length > 0 && isAiThinking) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.userName === "Chatbot") {
+        setIsAiThinking(false);
+      }
+    }
+  }, [messages, isAiThinking, setIsAiThinking]);
 
   useLayoutEffect(() => {
     if (chatMessagesRef.current) {
@@ -236,11 +275,12 @@ const ChatBox = ({ onClose }) => {
   const handleAiModeToggle = () => {
     setAiMode((prev) => {
       const newAiMode = !prev;
+      localStorage.setItem("aiMode", newAiMode);
       notification.info({
         message: newAiMode ? "AI Mode Activated" : "AI Mode Deactivated",
         description: newAiMode
-          ? "You can now interact with the bot."
-          : "You are now chatting with a human.",
+          ? "You can giờ đây chat với AI Bot."
+          : "Bạn đang chat với mọi người.",
         placement: "topRight",
         duration: 2,
       });
@@ -267,6 +307,10 @@ const ChatBox = ({ onClose }) => {
       setMessages((prevMessages) => [...prevMessages, newMessage]);
       setMessage("");
       setLatestMessageFromUser(true);
+      
+      if (aiMode) {
+        setIsAiThinking(true);
+      }
 
       try {
         const response = await axiosInstance.post("/api/Chat/add-chat", {
@@ -608,6 +652,18 @@ const ChatBox = ({ onClose }) => {
               </div>
             );
           })
+        )}
+        {isAiThinking && (
+          <div className="chat-message received-message ai-thinking">
+            <strong className="chat-user">
+              <FontAwesomeIcon icon={faRobot} style={{ marginRight: "5px", color: "#504cd6" }} />
+              Chatbot
+            </strong>
+            <div className="chat-text thinking-animation">
+              <l-cardio size="25" stroke="2" speed="0.8" color="#504cd6" />
+              <span className="ml-2 italic text-gray-500">AI đang suy nghĩ...</span>
+            </div>
+          </div>
         )}
       </div>
 

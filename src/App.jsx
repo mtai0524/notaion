@@ -44,7 +44,7 @@ const MainApp = () => {
     return parseInt(localStorage.getItem("newMessagesCount")) || 0;
   });
 
-  const { messages, setMessages } = useChat();
+  const { messages, setMessages, setIsAiThinking } = useChat();
   const { connection } = useSignalR();
 
   const tokenFromStorage = Cookies.get("token");
@@ -83,23 +83,18 @@ const MainApp = () => {
   }, []);
 
   useEffect(() => {
-    if (!connection) return;
+    const handleNewMessage = (event) => {
+      const { user, content } = event.detail;
+      console.log(`[App-Event] Incoming: user=${user}`);
 
-    const handleReceiveMessage = (user, receivedMessage) => {
-      console.log("Message received:", user, receivedMessage);
-      console.log("user       " + user);
+      // 1. Luôn tắt trạng thái thinking nếu tên là Chatbot
+      if (user && user.toLowerCase().includes("chatbot")) {
+        console.log("[App-Event] Resetting AI thinking state...");
+        setIsAiThinking(false);
+      }
+
+      // 2. Thông báo và đếm số tin nhắn mới
       if (user !== username) {
-        console.log("user" + user);
-        console.log("username" + username);
-
-        setMessages((prevMessages) => [
-          ...prevMessages,
-          {
-            userName: user,
-            content: receivedMessage,
-            sentDate: new Date().toISOString(),
-          },
-        ]);
         setNewMessagesCount((prevCount) => {
           const newCount = prevCount + 1;
           localStorage.setItem("newMessagesCount", newCount);
@@ -108,15 +103,13 @@ const MainApp = () => {
       }
     };
 
-    connection.on("ReceiveMessage", handleReceiveMessage);
-
-    return () => {
-      connection.off("ReceiveMessage", handleReceiveMessage);
-    };
-  }, [connection, setMessages, username]);
+    window.addEventListener("new-signalr-message", handleNewMessage);
+    return () => window.removeEventListener("new-signalr-message", handleNewMessage);
+  }, [username, setIsAiThinking]);
 
   const clearChatList = () => {
     setMessages([]); // clear chat when close
+    setIsAiThinking(false);
   };
 
   const handleFloatingButtonClick = () => {
