@@ -17,7 +17,10 @@ export const SignalRProvider = ({ children }) => {
     const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
 
     const connect = new signalR.HubConnectionBuilder()
-      .withUrl(signalRUrl, { withCredentials: true })
+      .withUrl(signalRUrl, {
+        accessTokenFactory: () => Cookies.get("token"),
+        withCredentials: true
+      })
       .withAutomaticReconnect()
       .configureLogging(signalR.LogLevel.Information)
       .build();

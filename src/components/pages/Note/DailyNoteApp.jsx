@@ -618,9 +618,12 @@ const DailyNoteApp = () => {
     }
     setUserId(uId);
 
-    const hubUrl = `${config.API_LOCAL}/dailyNoteHub`;
+    const hubUrl = `${config.API_HOSTING}/dailyNoteHub`;
     const newConnection = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl, { withCredentials: true })
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => Cookies.get('token'),
+        withCredentials: true
+      })
       .withAutomaticReconnect()
       .build();
 

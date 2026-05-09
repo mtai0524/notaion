@@ -366,11 +366,7 @@ const ChatBox = ({ onClose }) => {
     console.log(token);
 
     try {
-      const response = await axiosInstance.delete("/api/Chat/delete-all-chats", {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      const response = await axiosInstance.delete("/api/Chat/delete-all-chats");
       if (response.status === 200) {
         console.log('All chats deleted successfully');
         setMessages([]); // update messages state
