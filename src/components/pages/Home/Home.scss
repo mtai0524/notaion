@@ -1,44 +1,117 @@
 .home-container {
-  margin: 15px;
-  padding: 20px;
-  box-shadow: var(--box-shadow-container);
-  border: 2px #111827 solid;
-}
-
-.home-title {
-  font-size: 0.9em;
-  color: #333;
-  margin-bottom: 10px;
-}
-
-.home-message {
-  font-size: 1.5rem;
-  line-height: 1.5;
-  color: #666;
-}
-
-.game-container {
-  width: 100%;
+  max-width: 1000px;
+  margin: 40px auto;
   display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.board-game {
-  background-color: var(--slide-board);
-  display: grid;
-  grid-template-columns: repeat(3, 100px);
-  grid-template-rows: repeat(3, 100px);
-  gap: 2px;
+  flex-direction: column;
+  gap: 30px;
+  animation: fadeIn 0.5s ease-out;
+
+  .home-header {
+    text-align: center;
+    border-bottom: 3px solid var(--border-color);
+    padding-bottom: 20px;
+    margin-bottom: 10px;
+
+    .home-title {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: -1px;
+    }
+
+    .home-message {
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+
+    .neo-datepicker {
+      border: 3px solid var(--border-color);
+      box-shadow: -4px 4px 0 0 var(--shadow-color);
+      border-radius: 4px;
+      font-weight: 800;
+      
+      &:hover, &:focus {
+        transform: translate(2px, -2px);
+        box-shadow: -6px 6px 0 0 var(--shadow-color);
+      }
+    }
+  }
+
+  .neo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+
+    .neo-card {
+      background: var(--accent-color);
+      border: 3px solid var(--border-color);
+      box-shadow: -6px 6px 0 0 var(--shadow-color);
+      padding: 30px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 15px;
+      text-decoration: none;
+      color: var(--border-color);
+      transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+      &:hover {
+        transform: translate(4px, -4px);
+        box-shadow: -10px 10px 0 0 var(--shadow-color);
+        background: var(--accent-color) !important; // override inline color logic if needed
+      }
+
+      &:nth-child(1) { background-color: #fdf57d; }
+      &:nth-child(2) { background-color: #a5f3fc; }
+      &:nth-child(3) { background-color: #fca5a5; }
+      &:nth-child(4) { background-color: #c084fc; }
+
+      .neo-icon {
+        font-size: 2.5rem;
+      }
+
+      .neo-text {
+        font-weight: 900;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+      }
+    }
+  }
+
+  .home-footer {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 20px;
+
+    .footer-tag {
+      background: var(--border-color);
+      color: #fff;
+      padding: 4px 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      border-radius: 4px;
+    }
+  }
 }
 
-.square {
-  width: 100px;
-  height: 100px;
-  background-color: #fff;
-  border: 2px solid #000;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 2rem;
-  cursor: pointer;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .home-container {
+    width: 90%;
+    margin: 20px auto;
+    
+    .home-title {
+      font-size: 1.8rem;
+    }
+    
+    .neo-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
 }

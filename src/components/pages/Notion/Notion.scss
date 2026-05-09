@@ -9,8 +9,97 @@
 }
 
 .draggable-item {
-  width: 60vw;
-  margin: 0 0 5px 0;
+  width: 75vw;
+  margin: 0 0 15px 0;
+  transition: transform 0.2s;
+}
+
+.file-block {
+  background: #fff;
+  border: 3px solid #111827;
+  box-shadow: -6px 6px 0 0 #111827;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 10px 0;
+  transition: all 0.2s;
+
+  &:hover {
+    transform: translate(3px, -3px);
+    box-shadow: -9px 9px 0 0 #111827;
+    background: #f9fafb;
+    
+    .file-icon-box {
+      background: #fdf57d;
+    }
+  }
+
+  .file-icon-box {
+    width: 50px;
+    height: 50px;
+    background: #f3f4f6;
+    border: 2px solid #111827;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    transition: 0.2s;
+  }
+
+  .file-details {
+    flex: 1;
+    overflow: hidden;
+
+    .file-name {
+      font-weight: 900;
+      color: #111827;
+      display: block;
+      margin-bottom: 2px;
+      font-size: 1.1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .file-meta {
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      font-weight: bold;
+    }
+  }
+
+  .file-actions {
+    display: flex;
+    gap: 8px;
+
+    .download-btn {
+      padding: 8px 20px;
+      background: #3b82f6;
+      color: white;
+      border: 2px solid #111827;
+      box-shadow: -3px 3px 0 0 #111827;
+      border-radius: 4px;
+      font-weight: 900;
+      font-size: 0.8rem;
+      text-decoration: none;
+      text-transform: uppercase;
+      
+      &:hover {
+        transform: translate(2px, -2px);
+        box-shadow: -5px 5px 0 0 #111827;
+        background: #2563eb;
+      }
+
+      &:active {
+        transform: translate(0, 0);
+        box-shadow: 0 0 0 0 #111827;
+      }
+    }
+  }
 }
 
 .edit-textarea {

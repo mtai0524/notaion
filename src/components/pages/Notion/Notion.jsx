@@ -684,25 +684,43 @@ const Notion = () => {
       // Check if it's our uploaded file link
       if (item.content.includes('/api/files/download/')) {
          let fileName = "File";
+         let fileExt = "file";
          try {
             const url = new URL(item.content);
             fileName = url.searchParams.get('name') || item.content.split('/').pop();
+            fileExt = fileName.split('.').pop().toLowerCase();
          } catch(e) {
             fileName = item.content.split('/').pop();
+            fileExt = fileName.split('.').pop().toLowerCase();
          }
+
+         const getFileIcon = (ext) => {
+            if (['zip', 'rar', '7z'].includes(ext)) return "📦";
+            if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return "📑";
+            if (['xls', 'xlsx', 'csv'].includes(ext)) return "📊";
+            if (['mp4', 'mov', 'avi'].includes(ext)) return "🎬";
+            if (['mp3', 'wav', 'ogg'].includes(ext)) return "🎵";
+            return "📄";
+         };
+
          return (
-           <div className="file-block border-2 border-black p-4 bg-white shadow-[-4px_4px_0px_0px_#111827] flex items-center justify-between font-['Mali'] mb-4">
-              <div className="flex items-center space-x-3 overflow-hidden">
-                <span className="text-2xl">📄</span>
-                <span className="font-bold truncate">{fileName}</span>
+           <div className="file-block">
+              <div className="file-icon-box">
+                {getFileIcon(fileExt)}
               </div>
-              <a 
-                href={item.content} 
-                download 
-                className="px-4 py-1 border-2 border-black bg-blue-400 font-bold text-xs uppercase shadow-[-2px_2px_0px_0px_#111827] active:shadow-none active:translate-x-0.5 active:-translate-y-0.5 transition-all"
-              >
-                Download
-              </a>
+              <div className="file-details">
+                <span className="file-name">{fileName}</span>
+                <span className="file-meta">Resource • {fileExt.toUpperCase()}</span>
+              </div>
+              <div className="file-actions">
+                <a 
+                  href={item.content} 
+                  download 
+                  className="download-btn"
+                >
+                  Download
+                </a>
+              </div>
            </div>
          );
       }
