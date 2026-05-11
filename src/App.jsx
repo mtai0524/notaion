@@ -26,6 +26,7 @@ import NotFound from "./components/pages/NotFound/NotFound";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
 import FilesPage from "./pages/FilesPage";
 import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
+import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
 
 
 const App = () => {
@@ -127,12 +128,13 @@ const MainApp = () => {
     <BrowserRouter>
       <Header />
       <Routes>
-        <Route path="/" element={<Navigate to="/home-page" />} />
+        <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/signal" element={<Realtime />} />
         <Route path="/login" element={<Login />} />
         <Route path="/login-success" element={<LoginSuccess />} />
         <Route path="/register" element={<Register />} />
         <Route path="/home-page" element={<Home />} />
+        <Route path="/dashboard" element={<InsightDashboard />} />
         <Route path="/notion" element={<Notion />} />
         <Route path="/profile/:identifier" element={<Profile />} />
         <Route path="/profile/" element={<Profile />} />

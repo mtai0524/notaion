@@ -16,6 +16,7 @@ import {
   faSignInAlt,
   faUser,
   faFolderOpen,
+  faColumns,
 } from "@fortawesome/free-solid-svg-icons";
 
 import Cookies from "js-cookie";
@@ -161,6 +162,9 @@ const Header = () => {
       case "daily-note":
         navigate("/daily-note");
         break;
+      case "dashboard":
+        navigate("/dashboard");
+        break;
 
       default:
         break;
@@ -242,6 +246,15 @@ const Header = () => {
             }}
           >
             Daily Notes
+          </Menu.Item>
+          <Menu.Item
+            key="dashboard"
+            icon={<FontAwesomeIcon icon={faColumns} />}
+            style={{
+              backgroundColor: location.pathname === "/dashboard" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Dashboard
           </Menu.Item>
 
 

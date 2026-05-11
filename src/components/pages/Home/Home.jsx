@@ -20,7 +20,7 @@ const Home = ({ title, message }) => {
     { title: "Workspace", icon: <FileTextOutlined />, path: "/notion", color: "#fdf57d" },
     { title: "AI Chat", icon: <MessageOutlined />, path: "/signal", color: "#a5f3fc" },
     { title: "Quick Board", icon: <ThunderboltOutlined />, path: "/home2", color: "#fca5a5" },
-    { title: "Dashboard", icon: <RocketOutlined />, path: "/", color: "#c084fc" },
+    { title: "Dashboard", icon: <RocketOutlined />, path: "/dashboard", color: "#c084fc" },
   ];
 
   return (
