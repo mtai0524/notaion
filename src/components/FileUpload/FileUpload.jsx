@@ -76,7 +76,14 @@ const FileUpload = ({ onUploadSuccess }) => {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-none border-2 border-black shadow-[-4px_4px_0px_0px_#111827] font-['Mali']">
+    <div 
+      className="w-full max-w-2xl mx-auto p-6 bg-white font-['Mali']"
+      style={{
+        border: 'var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, black)',
+        boxShadow: 'var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0px 0px var(--global-border-color, #111827)',
+        borderRadius: 'var(--global-border-radius, 0px)'
+      }}
+    >
       <div 
         className={`relative border-2 border-dashed border-black p-8 text-center transition-all duration-200 ${
           dragActive 
@@ -97,7 +104,14 @@ const FileUpload = ({ onUploadSuccess }) => {
         />
         
         <div className="flex flex-col items-center justify-center space-y-4">
-          <div className="p-3 border-2 border-black bg-yellow-100 shadow-[-2px_2px_0px_0px_#111827]">
+          <div 
+            className="p-3 bg-yellow-100"
+            style={{
+              border: '2px solid var(--global-border-color, black)',
+              boxShadow: 'calc(var(--global-shadow-x, -4px) * 0.5) calc(var(--global-shadow-y, 4px) * 0.5) 0px 0px var(--global-border-color, #111827)',
+              borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+            }}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
@@ -115,7 +129,11 @@ const FileUpload = ({ onUploadSuccess }) => {
           <button
             type="button"
             onClick={() => fileInputRef.current.click()}
-            className="px-6 py-2 bg-white border-2 border-black font-bold uppercase tracking-widest hover:bg-yellow-100 hover:shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5"
+            className="px-6 py-2 bg-white font-bold uppercase tracking-widest hover:bg-yellow-100 transition-all active:translate-x-0.5 active:-translate-y-0.5"
+            style={{
+              border: '2px solid var(--global-border-color, black)',
+              borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+            }}
           >
             Browse
           </button>
@@ -140,7 +158,14 @@ const FileUpload = ({ onUploadSuccess }) => {
             {selectedFiles.map((file, index) => (
               <li key={index} className="py-3 flex items-center justify-between group">
                 <div className="flex items-center space-x-3 overflow-hidden">
-                  <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center border-2 border-black bg-gray-50 shadow-[-2px_2px_0px_0px_#111827]">
+                  <div 
+                    className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-50"
+                    style={{
+                      border: '2px solid var(--global-border-color, black)',
+                      boxShadow: 'calc(var(--global-shadow-x, -4px) * 0.5) calc(var(--global-shadow-y, 4px) * 0.5) 0px 0px var(--global-border-color, #111827)',
+                      borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+                    }}
+                  >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
                     </svg>
@@ -170,7 +195,14 @@ const FileUpload = ({ onUploadSuccess }) => {
                   <span>Uploading...</span>
                   <span>{progress}%</span>
                 </div>
-                <div className="w-full bg-gray-100 border-2 border-black h-4 overflow-hidden shadow-[-2px_2px_0px_0px_#111827]">
+                <div 
+                  className="w-full bg-gray-100 h-4 overflow-hidden"
+                  style={{
+                    border: '2px solid var(--global-border-color, black)',
+                    boxShadow: 'calc(var(--global-shadow-x, -4px) * 0.5) calc(var(--global-shadow-y, 4px) * 0.5) 0px 0px var(--global-border-color, #111827)',
+                    borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+                  }}
+                >
                   <div 
                     className="bg-green-400 h-full transition-all duration-300" 
                     style={{ width: `${progress}%` }}
@@ -182,11 +214,16 @@ const FileUpload = ({ onUploadSuccess }) => {
             <button
               onClick={handleUpload}
               disabled={uploading}
-              className={`w-full py-3 border-2 border-black font-black uppercase tracking-[0.2em] shadow-[-4px_4px_0px_0px_#111827] transition-all ${
+              className={`w-full py-3 font-black uppercase tracking-[0.2em] transition-all ${
                 uploading 
                   ? "bg-gray-200 cursor-not-allowed opacity-50" 
-                  : "bg-blue-400 hover:bg-blue-500 active:translate-x-0.5 active:-translate-y-0.5 active:shadow-[-2px_2px_0px_0px_#111827]"
+                  : "bg-blue-400 hover:bg-blue-500 active:translate-x-0.5 active:-translate-y-0.5"
               }`}
+              style={{
+                border: 'var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, black)',
+                boxShadow: !uploading ? 'var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0px 0px var(--global-border-color, #111827)' : 'none',
+                borderRadius: 'var(--global-border-radius, 0px)'
+              }}
             >
               {uploading ? "Wait..." : `Push ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'}`}
             </button>

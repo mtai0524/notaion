@@ -42,6 +42,29 @@
   padding-right: 0 !important;
   border-radius: var(--global-border-radius, 6px) !important;
   border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  box-shadow: var(--box-shadow-sm) !important;
+}
+
+.custom-dropdown-menu {
+  border-radius: var(--global-border-radius, 6px) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  padding: 5px !important;
+
+  .ant-dropdown-menu-item {
+    border-radius: calc(var(--global-border-radius, 6px) * 0.5) !important;
+    margin-bottom: 2px;
+    font-weight: 800 !important;
+    
+    &:hover {
+      background-color: #f3f4f6 !important;
+      outline: 1px solid var(--global-border-color, #111827);
+    }
+
+    &.ant-dropdown-menu-item-active {
+      background-color: #f3f4f6 !important;
+    }
+  }
 }
 
 @media screen and (max-width: 400px) {

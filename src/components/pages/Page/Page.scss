@@ -4,43 +4,54 @@
 }
 
 .new-page-btn {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  border-radius: var(--global-border-radius, 4px) !important;
 }
 
 .main-button {
   background-color: rgb(255, 255, 255);
-  border: 2px solid #21242b;
-  box-shadow: -3px 3px 0px 0px #21242b;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #21242b);
+  box-shadow: var(--global-shadow-x, -3px) var(--global-shadow-y, 3px) 0px 0px var(--global-border-color, #21242b);
   padding: 10px 15px;
   margin: 7px;
   cursor: pointer;
   text-decoration: none;
   font-size: 16px;
-  border-radius: 6px;
-  transition: box-shadow 0.3s ease, transform 0.3s ease, border 0.1s ease-out;
+  border-radius: var(--global-border-radius, 6px);
+  transition: all 0.3s ease;
+  font-weight: 900;
+  color: var(--global-border-color, #21242b);
+
+  &:hover {
+    box-shadow: none;
+    transform: translate(calc(var(--global-shadow-x) * 1), calc(var(--global-shadow-y) * -1));
+  }
+
+  &:focus, &:active {
+    background-color: #f3f4f6;
+  }
 }
 
-.main-button:hover {
-  box-shadow: none;
-  transform: translate(-3px, 3px);
-}
+.profile-card {
+  margin: 20px;
+  box-shadow: var(--box-shadow) !important;
+  border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #21242b) !important;
+  border-radius: var(--global-border-radius, 8px) !important;
+  background-color: var(--container-bg);
+  transition: all 0.3s ease;
 
-.main-button:focus,
-.main-button:active {
-  border: 2px solid #21242b !important;
-  outline: 3px solid #21242b !important;
-  background-color: rgb(238, 238, 237);
-  box-shadow: none;
-  transform: translate(-3px, 3px);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: calc(var(--global-shadow-x) * 1.5) calc(var(--global-shadow-y) * 1.5) 0 0 var(--global-border-color, #21242b) !important;
+  }
 }
 
 .filter-option {
   transition: color 0.3s;
-}
-
-.filter-option.selected {
-  background-color: rgb(219, 217, 217);
+  &.selected {
+    background-color: #f3f4f6;
+  }
 }
 
 .anticon-dash {

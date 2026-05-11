@@ -40,7 +40,14 @@ const FileList = ({ files, onDelete }) => {
 
   if (files.length === 0) {
     return (
-      <div className="text-center py-16 bg-[#fafafa] border-2 border-dashed border-black shadow-[-4px_4px_0px_0px_#111827] font-['Mali']">
+      <div 
+        className="text-center py-16 bg-[#fafafa] border-2 border-dashed font-['Mali']"
+        style={{ 
+          borderColor: 'var(--global-border-color, black)',
+          boxShadow: 'var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0px 0px var(--global-border-color, #111827)',
+          borderRadius: 'var(--global-border-radius, 0px)'
+        }}
+      >
         <div className="text-5xl mb-4 grayscale opacity-50">📤</div>
         <p className="text-gray-600 font-bold uppercase tracking-widest">Storage is empty</p>
       </div>
@@ -48,7 +55,14 @@ const FileList = ({ files, onDelete }) => {
   }
 
   return (
-    <div className="bg-white border-2 border-black shadow-[-4px_4px_0px_0px_#111827] overflow-hidden font-['Mali']">
+    <div 
+      className="bg-white border-2 overflow-hidden font-['Mali']"
+      style={{ 
+        borderColor: 'var(--global-border-color, black)',
+        boxShadow: 'var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0px 0px var(--global-border-color, #111827)',
+        borderRadius: 'var(--global-border-radius, 0px)'
+      }}
+    >
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -81,7 +95,12 @@ const FileList = ({ files, onDelete }) => {
                 <td className="px-6 py-4 text-right space-x-2">
                   <button
                     onClick={() => downloadFile(file.savedName, file.originalName)}
-                    className="p-2 border-2 border-black bg-white hover:bg-blue-100 shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
+                    className="p-2 border-2 bg-white hover:bg-blue-100 transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
+                    style={{
+                      borderColor: 'var(--global-border-color, black)',
+                      boxShadow: 'calc(var(--global-shadow-x, -4px) * 0.5) calc(var(--global-shadow-y, 4px) * 0.5) 0px 0px var(--global-border-color, #111827)',
+                      borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+                    }}
                     title="Download"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -90,7 +109,12 @@ const FileList = ({ files, onDelete }) => {
                   </button>
                   <button
                     onClick={() => handleDelete(file.savedName, file.originalName)}
-                    className="p-2 border-2 border-black bg-white hover:bg-red-100 shadow-[-2px_2px_0px_0px_#111827] transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
+                    className="p-2 border-2 bg-white hover:bg-red-100 transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
+                    style={{
+                      borderColor: 'var(--global-border-color, black)',
+                      boxShadow: 'calc(var(--global-shadow-x, -4px) * 0.5) calc(var(--global-shadow-y, 4px) * 0.5) 0px 0px var(--global-border-color, #111827)',
+                      borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+                    }}
                     title="Delete"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
