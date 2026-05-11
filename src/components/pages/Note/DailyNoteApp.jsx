@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Rnd } from 'react-rnd';
 import ReactMarkdown from 'react-markdown';
 import { v4 as uuidv4 } from 'uuid';
@@ -585,7 +586,26 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
 };
 
 const DailyNoteApp = () => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [searchParams] = useSearchParams();
+  const urlDateStr = searchParams.get('date');
+  
+  const [currentDate, setCurrentDate] = useState(() => {
+    if (urlDateStr) {
+      const parsed = new Date(urlDateStr);
+      if (!isNaN(parsed)) return parsed;
+    }
+    return new Date();
+  });
+
+  useEffect(() => {
+    if (urlDateStr) {
+      const parsed = new Date(urlDateStr);
+      if (!isNaN(parsed)) {
+        setCurrentDate(parsed);
+      }
+    }
+  }, [urlDateStr]);
+
   const [notesByDate, setNotesByDate] = useState({});
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState('cyan');

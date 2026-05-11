@@ -6,12 +6,15 @@
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
   // Neo-Brutalism Theme Variables
-  --dark: #111827;
+  --dark: var(--global-border-color, #111827);
   --yellow: #fdf57d;
   --cyan: #a5f3fc;
   --red: #fca5a5;
   --purple: #c084fc;
   --green: #86efac;
+  --radius: var(--global-border-radius, 0px);
+  --border-w: var(--global-border-width, 3px);
+  --border-s: var(--global-border-style, solid);
 
   .dashboard-header {
     display: flex;
@@ -26,12 +29,12 @@
         margin: 0;
         text-transform: uppercase;
         color: var(--dark);
-        -webkit-text-stroke: 1px var(--dark);
         
         .highlight {
           background: var(--yellow);
           padding: 0 10px;
-          border: 3px solid var(--dark);
+          border: var(--border-w) var(--border-s) var(--dark);
+          border-radius: var(--radius);
           box-shadow: 4px 4px 0 0 var(--dark);
         }
       }
@@ -48,7 +51,8 @@
       background: var(--dark);
       color: #fff;
       padding: 12px 24px;
-      border: 3px solid var(--dark);
+      border: var(--border-w) var(--border-s) var(--dark);
+      border-radius: var(--radius);
       box-shadow: 6px 6px 0 0 var(--yellow);
       font-weight: 900;
       text-decoration: none;
@@ -62,10 +66,6 @@
         transform: translate(-2px, -2px);
         box-shadow: 8px 8px 0 0 var(--yellow);
       }
-      &:active {
-        transform: translate(2px, 2px);
-        box-shadow: 0 0 0 0 var(--yellow);
-      }
     }
   }
 
@@ -77,7 +77,8 @@
 
     .stat-card {
       background: #fff;
-      border: 3px solid var(--dark);
+      border: var(--border-w) var(--border-s) var(--dark);
+      border-radius: var(--radius);
       padding: 24px;
       box-shadow: 6px 6px 0 0 var(--dark);
       transition: all 0.2s;
@@ -92,7 +93,7 @@
         margin-bottom: 15px;
         display: inline-block;
         padding: 8px;
-        border-radius: 4px;
+        border-radius: calc(var(--radius) / 2);
         border: 2px solid var(--dark);
       }
 
@@ -131,7 +132,8 @@
 
   .section-panel {
     background: #fff;
-    border: 3px solid var(--dark);
+    border: var(--border-w) var(--border-s) var(--dark);
+    border-radius: var(--radius);
     box-shadow: 8px 8px 0 0 var(--dark);
     padding: 30px;
 
@@ -140,7 +142,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 25px;
-      border-bottom: 3px solid var(--dark);
+      border-bottom: 2px solid var(--dark);
       padding-bottom: 15px;
 
       h2 {
@@ -160,12 +162,32 @@
         text-decoration: none;
         color: var(--dark);
         border: 2px solid var(--dark);
+        border-radius: calc(var(--radius) / 2);
         padding: 4px 12px;
         background: var(--yellow);
         
         &:hover {
           background: #000;
           color: #fff;
+        }
+      }
+
+      .calendar-controls {
+        display: flex;
+        gap: 8px;
+        button {
+          background: #fff;
+          border: 2px solid var(--dark);
+          border-radius: calc(var(--radius) / 2);
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          &:hover {
+            background: var(--yellow);
+          }
         }
       }
     }
@@ -181,8 +203,11 @@
       align-items: center;
       padding: 16px;
       border: 2px solid var(--dark);
+      border-radius: calc(var(--radius) / 2);
       background: #fff;
       transition: all 0.2s;
+      text-decoration: none;
+      color: inherit;
 
       &:hover {
         background: #f9fafb;
@@ -197,6 +222,7 @@
         color: #fff;
         padding: 4px 8px;
         margin-right: 15px;
+        border-radius: 2px;
       }
 
       .item-content {
@@ -230,9 +256,18 @@
 
     .task-mini-card {
       border: 2px solid var(--dark);
+      border-radius: calc(var(--radius) / 2);
       padding: 16px;
       background: #fff;
       position: relative;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        transform: translate(-2px, -2px);
+        box-shadow: 4px 4px 0 0 var(--dark);
+        background: #f9fafb;
+      }
       
       &::before {
         content: "";
@@ -243,6 +278,7 @@
         height: 12px;
         background: var(--red);
         border: 2px solid var(--dark);
+        border-radius: 50%;
       }
 
       .task-text {
@@ -271,6 +307,7 @@
 
     .quick-link {
       border: 2px solid var(--dark);
+      border-radius: var(--radius);
       padding: 20px;
       text-decoration: none;
       color: var(--dark);
@@ -285,7 +322,7 @@
 
       &:nth-child(1) { background: var(--yellow); }
       &:nth-child(2) { background: var(--cyan); }
-      &:nth-child(3) { background: var(--purple); color: #fff; border-color: var(--dark); }
+      &:nth-child(3) { background: var(--purple); color: #fff; }
       &:nth-child(4) { background: var(--green); }
 
       &:hover {
@@ -328,16 +365,30 @@
         font-size: 0.75rem;
         font-weight: 700;
         border: 2px solid #e5e7eb;
+        border-radius: calc(var(--radius) / 4);
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: #f3f4f6;
+          border-color: var(--dark);
+        }
+
+        &.not-current {
+          opacity: 0.3;
+        }
 
         &.today {
           border-color: var(--dark);
           background: var(--yellow);
           box-shadow: 2px 2px 0 0 var(--dark);
+          font-weight: 900;
         }
 
         &.has-notes {
           border-color: var(--dark);
           background: var(--cyan);
+          border-width: 2px;
         }
       }
     }
@@ -349,6 +400,7 @@
     font-weight: 700;
     color: #9ca3af;
     border: 2px dashed #d1d5db;
+    border-radius: var(--radius);
     text-transform: uppercase;
     font-size: 0.8rem;
   }

@@ -32,9 +32,9 @@
   --danger-color: #ef4444;
   
   /* Shared Defaults */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-sm: var(--global-border-radius, 6px);
+  --radius-md: var(--global-border-radius, 12px);
+  --radius-lg: var(--global-border-radius, 20px);
   --box-shadow: -4px 4px 0px 0px var(--shadow-color);
   --box-shadow-sm: -2px 2px 0px 0px var(--shadow-color);
 }

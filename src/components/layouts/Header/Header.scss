@@ -5,20 +5,18 @@
 }
 
 .navbar {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
   max-width: 700px;
   width: 80vw;
   height: 60px;
   margin: 20px;
-  border-radius: 6px;
+  border-radius: var(--global-border-radius, 6px);
 }
 
 .nav-eye-protection {
   background-color: #ffffff;
 }
-
-
 
 .switch-login-page {
   color: #6394f7 !important;
@@ -42,6 +40,8 @@
 
 .ant-popover-inner {
   padding-right: 0 !important;
+  border-radius: var(--global-border-radius, 6px) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
 }
 
 @media screen and (max-width: 400px) {
@@ -83,16 +83,16 @@
 }
 
 .ant-tour {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
   width: 70% !important;
   max-width: 300px !important;
-  border-radius: 6px !important;
+  border-radius: var(--global-border-radius, 6px) !important;
 
 }
 
 .ant-tour-inner,
 .ant-tour-header {
-  border-radius: 5px !important;
+  border-radius: var(--global-border-radius, 5px) !important;
 
 }

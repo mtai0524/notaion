@@ -16,9 +16,9 @@
 
 .file-block {
   background: #fff;
-  border: 3px solid #111827;
-  box-shadow: -6px 6px 0 0 #111827;
-  border-radius: 8px;
+  border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
+  box-shadow: -6px 6px 0 0 var(--global-border-color, #111827);
+  border-radius: var(--global-border-radius, 8px);
   padding: 16px;
   display: flex;
   align-items: center;
@@ -28,7 +28,7 @@
 
   &:hover {
     transform: translate(3px, -3px);
-    box-shadow: -9px 9px 0 0 #111827;
+    box-shadow: -9px 9px 0 0 var(--global-border-color, #111827);
     background: #f9fafb;
     
     .file-icon-box {
@@ -40,8 +40,8 @@
     width: 50px;
     height: 50px;
     background: #f3f4f6;
-    border: 2px solid #111827;
-    border-radius: 6px;
+    border: 2px solid var(--global-border-color, #111827);
+    border-radius: calc(var(--global-border-radius, 6px) * 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -80,9 +80,9 @@
       padding: 8px 20px;
       background: #3b82f6;
       color: white;
-      border: 2px solid #111827;
-      box-shadow: -3px 3px 0 0 #111827;
-      border-radius: 4px;
+      border: 2px solid var(--global-border-color, #111827);
+      box-shadow: -3px 3px 0 0 var(--global-border-color, #111827);
+      border-radius: calc(var(--global-border-radius, 4px) * 0.5);
       font-weight: 900;
       font-size: 0.8rem;
       text-decoration: none;
@@ -90,13 +90,13 @@
       
       &:hover {
         transform: translate(2px, -2px);
-        box-shadow: -5px 5px 0 0 #111827;
+        box-shadow: -5px 5px 0 0 var(--global-border-color, #111827);
         background: #2563eb;
       }
 
       &:active {
         transform: translate(0, 0);
-        box-shadow: 0 0 0 0 #111827;
+        box-shadow: 0 0 0 0 var(--global-border-color, #111827);
       }
     }
   }
@@ -111,7 +111,7 @@
   padding-left: 10px;
   padding-right: 10px;
   box-sizing: border-box;
-  border-radius: 4px;
+  border-radius: var(--global-border-radius, 4px);
   resize: none;
   overflow: hidden;
   box-shadow: none;
@@ -199,9 +199,9 @@
 
 .ant-dropdown-menu,
 .ant-popover-inner {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
-  border-radius: 6px !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  border-radius: var(--global-border-radius, 6px) !important;
 }
 
 .ant-tooltip .ant-tooltip-inner {
@@ -253,7 +253,7 @@
   outline: none;
   display: inline-block;
   padding: 4px;
-  border-radius: 4px;
+  border-radius: var(--global-border-radius, 4px);
   transition: all 0.2s ease;
 
   &:hover {
@@ -270,7 +270,7 @@
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #ededed 0%, #f5f5f5 100%);
-  border-radius: 4px;
+  border-radius: var(--global-border-radius, 4px);
   margin-top: 8px;
   transition: all 0.2s ease;
   user-select: none;
@@ -296,14 +296,14 @@
   gap: 15px;
   background: white;
   padding: 12px 24px;
-  border: 3px solid #111827;
-  box-shadow: 6px 6px 0 0 #111827;
-  border-radius: 12px;
+  border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
+  box-shadow: 6px 6px 0 0 var(--global-border-color, #111827);
+  border-radius: var(--global-border-radius, 12px);
   z-index: 1000;
   transition: all 0.3s ease;
 
   &:hover {
-    box-shadow: 8px 8px 0 0 #111827;
+    box-shadow: 8px 8px 0 0 var(--global-border-color, #111827);
     transform: translate(-50%, -2px);
   }
 
@@ -312,7 +312,7 @@
     align-items: center;
     gap: 10px;
     padding: 10px 18px;
-    border: 2px solid #111827;
+    border: 2px solid var(--global-border-color, #111827);
     background: #fff;
     font-weight: 900;
     cursor: pointer;
@@ -320,6 +320,7 @@
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-radius: calc(var(--global-border-radius, 4px) * 0.5);
 
     span {
       display: inline-block;
@@ -327,12 +328,12 @@
 
     &:hover {
       transform: translate(-3px, -3px);
-      box-shadow: 3px 3px 0 0 #111827;
+      box-shadow: 3px 3px 0 0 var(--global-border-color, #111827);
     }
 
     &:active {
       transform: translate(0, 0);
-      box-shadow: 0 0 0 0 #111827;
+      box-shadow: 0 0 0 0 var(--global-border-color, #111827);
     }
 
     &.add-text {

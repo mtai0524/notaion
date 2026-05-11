@@ -1,18 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FaRocket, FaChartLine, FaTasks, FaHistory, 
   FaPlus, FaChevronRight, FaRegCalendarAlt, FaFire,
-  FaFileAlt, FaBrain, FaSearch, FaEllipsisV
+  FaFileAlt, FaBrain, FaSearch, FaEllipsisV, FaChevronLeft
 } from 'react-icons/fa';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import axiosInstance from '../../../axiosConfig';
-import { format } from 'date-fns';
+import { 
+  format, 
+  startOfMonth, 
+  endOfMonth, 
+  startOfWeek, 
+  endOfWeek, 
+  eachDayOfInterval, 
+  isSameMonth, 
+  isSameDay, 
+  addMonths, 
+  subMonths 
+} from 'date-fns';
 import './InsightDashboard.scss';
 
 const InsightDashboard = () => {
+  const navigate = useNavigate();
   const [allNotes, setAllNotes] = useState([]);
   const [recentFiles, setRecentFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  
   const [stats, setStats] = useState({
     totalNotes: 0,
     activeTasks: 0,
@@ -49,9 +63,36 @@ const InsightDashboard = () => {
     }
   };
 
-  const recentNotes = [...allNotes]
-    .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
-    .slice(0, 4);
+  const recentNotes = useMemo(() => {
+    return [...allNotes]
+      .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+      .slice(0, 4);
+  }, [allNotes]);
+
+  // Calendar Logic
+  const calendarDays = useMemo(() => {
+    const monthStart = startOfMonth(currentMonth);
+    const monthEnd = endOfMonth(monthStart);
+    const startDate = startOfWeek(monthStart);
+    const endDate = endOfWeek(monthEnd);
+    
+    return eachDayOfInterval({
+      start: startDate,
+      end: endDate
+    });
+  }, [currentMonth]);
+
+  const hasNotesOnDay = (day) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    return allNotes.some(note => note.date === dateStr);
+  };
+
+  const handleDayClick = (day) => {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    // We need to pass the date to DailyNoteApp. 
+    // Usually via URL or state. Let's check how DailyNoteApp handles date.
+    navigate(`/daily-note?date=${dateStr}`);
+  };
 
   return (
     <div className="insight-dashboard">
@@ -121,7 +162,7 @@ const InsightDashboard = () => {
                         <span className="time">{note.timestamp}</span>
                       </div>
                     </div>
-                    <NavLink to="/daily-note" className="item-link"><FaChevronRight /></NavLink>
+                    <NavLink to={`/daily-note?date=${note.date}`} className="item-link"><FaChevronRight /></NavLink>
                   </div>
                 ))
               ) : (
@@ -136,7 +177,7 @@ const InsightDashboard = () => {
             </div>
             <div className="task-preview-grid">
                {allNotes.filter(n => (n.category === 'TASK' || n.customCategory === 'TASK') && !n.isCompleted).slice(0, 6).map(task => (
-                 <div key={task.id} className="task-mini-card">
+                 <div key={task.id} className="task-mini-card" onClick={() => navigate(`/daily-note?date=${task.date}`)}>
                     <div className="task-text">{task.title || task.content?.substring(0, 30) || "Task..."}</div>
                     <div className="task-date">{task.date}</div>
                  </div>
@@ -176,18 +217,32 @@ const InsightDashboard = () => {
           <section className="section-panel mt-4">
              <div className="panel-header">
               <h2><FaRegCalendarAlt /> Calendar</h2>
+              <div className="calendar-controls">
+                <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><FaChevronLeft /></button>
+                <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><FaChevronRight /></button>
+              </div>
             </div>
             <div className="mini-calendar">
-              <div className="cal-month">{format(new Date(), 'MMMM yyyy')}</div>
+              <div className="cal-month">{format(currentMonth, 'MMMM yyyy')}</div>
               <div className="cal-grid">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <div key={i} className="cal-day-label">{['S', 'M', 'T', 'W', 'T', 'F', 'S'][i]}</div>
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
+                  <div key={day} className="cal-day-label">{day}</div>
                 ))}
-                {Array.from({ length: 31 }).map((_, i) => (
-                  <div key={i} className={`cal-day ${i + 1 === new Date().getDate() ? 'today' : ''} ${[5, 12, 18, 25].includes(i) ? 'has-notes' : ''}`}>
-                    {i + 1}
-                  </div>
-                ))}
+                {calendarDays.map((day, i) => {
+                  const isCurrentMonth = isSameMonth(day, currentMonth);
+                  const isToday = isSameDay(day, new Date());
+                  const hasNotes = hasNotesOnDay(day);
+                  
+                  return (
+                    <div 
+                      key={i} 
+                      className={`cal-day ${!isCurrentMonth ? 'not-current' : ''} ${isToday ? 'today' : ''} ${hasNotes ? 'has-notes' : ''}`}
+                      onClick={() => handleDayClick(day)}
+                    >
+                      {format(day, 'd')}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </section>

@@ -18,6 +18,7 @@ const Setting = () => {
   const [globalBorderColor, setGlobalBorderColor] = useState(localStorage.getItem("globalBorderColor") || "#111827");
   const [globalBorderStyle, setGlobalBorderStyle] = useState(localStorage.getItem("globalBorderStyle") || "solid");
   const [globalBorderWidth, setGlobalBorderWidth] = useState(localStorage.getItem("globalBorderWidth") || "2px");
+  const [globalBorderRadius, setGlobalBorderRadius] = useState(localStorage.getItem("globalBorderRadius") || "0px");
   const [globalBgTheme, setGlobalBgTheme] = useState(localStorage.getItem("globalBgTheme") || "theme-none");
   const [globalBgScope, setGlobalBgScope] = useState(localStorage.getItem("globalBgScope") || "all");
 
@@ -66,6 +67,7 @@ const Setting = () => {
     document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
     document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
     document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
+    document.documentElement.style.setProperty('--global-border-radius', globalBorderRadius);
 
     document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-cross", "theme-waves", "theme-notebook", "theme-none", "bg-scope-all", "bg-scope-base");
     if (globalBgTheme && globalBgTheme !== "theme-none") {
@@ -73,7 +75,7 @@ const Setting = () => {
       document.body.classList.add(`bg-scope-${globalBgScope}`);
     }
 
-  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBgTheme, globalBgScope]);
+  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalBgTheme, globalBgScope]);
 
   const handleSwitchChange = (key, value) => {
     switch (key) {
@@ -128,6 +130,9 @@ const Setting = () => {
     } else if (key === 'borderWidth') {
       setGlobalBorderWidth(value);
       localStorage.setItem("globalBorderWidth", value);
+    } else if (key === 'borderRadius') {
+      setGlobalBorderRadius(value);
+      localStorage.setItem("globalBorderRadius", value);
     } else if (key === 'bgTheme') {
       setGlobalBgTheme(value);
       localStorage.setItem("globalBgTheme", value);
@@ -141,16 +146,16 @@ const Setting = () => {
     let styles = {};
     switch (preset) {
       case 'Omarchy':
-        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '1px', bgTheme: 'theme-none' };
+        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '1px', borderRadius: '4px', bgTheme: 'theme-none' };
         break;
       case 'Sketchy':
-        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '3px', bgTheme: 'theme-paper' };
+        styles = { borderColor: '#111827', borderStyle: 'solid', borderWidth: '3px', borderRadius: '0px', bgTheme: 'theme-paper' };
         break;
       case 'Minimal':
-        styles = { borderColor: '#e5e7eb', borderStyle: 'solid', borderWidth: '1px', bgTheme: 'theme-none' };
+        styles = { borderColor: '#e5e7eb', borderStyle: 'solid', borderWidth: '1px', borderRadius: '8px', bgTheme: 'theme-none' };
         break;
       case 'Cyber':
-        styles = { borderColor: '#00ff00', borderStyle: 'dashed', borderWidth: '2px', bgTheme: 'theme-grid' };
+        styles = { borderColor: '#00ff00', borderStyle: 'dashed', borderWidth: '2px', borderRadius: '0px', bgTheme: 'theme-grid' };
         break;
       default:
         return;
@@ -200,6 +205,7 @@ const Setting = () => {
         { label: "Border Color", key: "borderColor", type: "color", value: globalBorderColor, icon: faFillDrip, desc: "Change color of all borders" },
         { label: "Border Style", key: "borderStyle", type: "select", options: ["solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset", "none"], value: globalBorderStyle, icon: faMagic, desc: "Change style of all borders" },
         { label: "Border Width", key: "borderWidth", type: "select", options: ["1px", "2px", "3px", "4px", "5px", "6px", "8px"], value: globalBorderWidth, icon: faFeatherPointed, desc: "Change thickness of all borders" },
+        { label: "Border Radius", key: "borderRadius", type: "select", options: ["0px", "4px", "8px", "12px", "16px", "24px", "50%"], value: globalBorderRadius, icon: faMagic, desc: "Change corner rounding of all components" },
       ]
     }
   ];

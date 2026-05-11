@@ -8,7 +8,7 @@
 
   .home-header {
     text-align: center;
-    border-bottom: 3px solid var(--border-color);
+    border-bottom: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
     padding-bottom: 20px;
     margin-bottom: 10px;
 
@@ -25,14 +25,14 @@
     }
 
     .neo-datepicker {
-      border: 3px solid var(--border-color);
-      box-shadow: -4px 4px 0 0 var(--shadow-color);
-      border-radius: 4px;
+      border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
+      box-shadow: -4px 4px 0 0 var(--global-border-color, #111827);
+      border-radius: var(--global-border-radius, 4px);
       font-weight: 800;
       
       &:hover, &:focus {
         transform: translate(2px, -2px);
-        box-shadow: -6px 6px 0 0 var(--shadow-color);
+        box-shadow: -6px 6px 0 0 var(--global-border-color, #111827);
       }
     }
   }
@@ -44,8 +44,9 @@
 
     .neo-card {
       background: var(--accent-color);
-      border: 3px solid var(--border-color);
-      box-shadow: -6px 6px 0 0 var(--shadow-color);
+      border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
+      box-shadow: -6px 6px 0 0 var(--global-border-color, #111827);
+      border-radius: var(--global-border-radius, 0px);
       padding: 30px 20px;
       display: flex;
       flex-direction: column;
@@ -53,13 +54,13 @@
       justify-content: center;
       gap: 15px;
       text-decoration: none;
-      color: var(--border-color);
+      color: var(--global-border-color, #111827);
       transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
       &:hover {
         transform: translate(4px, -4px);
-        box-shadow: -10px 10px 0 0 var(--shadow-color);
-        background: var(--accent-color) !important; // override inline color logic if needed
+        box-shadow: -10px 10px 0 0 var(--global-border-color, #111827);
+        background: var(--accent-color) !important;
       }
 
       &:nth-child(1) { background-color: #fdf57d; }
@@ -86,12 +87,12 @@
     margin-top: 20px;
 
     .footer-tag {
-      background: var(--border-color);
+      background: var(--global-border-color, #111827);
       color: #fff;
       padding: 4px 12px;
       font-size: 0.75rem;
       font-weight: bold;
-      border-radius: 4px;
+      border-radius: var(--global-border-radius, 4px);
     }
   }
 }
