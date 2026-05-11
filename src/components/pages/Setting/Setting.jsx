@@ -21,6 +21,8 @@ const Setting = () => {
   const [globalBorderRadius, setGlobalBorderRadius] = useState(localStorage.getItem("globalBorderRadius") || "0px");
   const [globalBgTheme, setGlobalBgTheme] = useState(localStorage.getItem("globalBgTheme") || "theme-none");
   const [globalBgScope, setGlobalBgScope] = useState(localStorage.getItem("globalBgScope") || "all");
+  const [globalShadowX, setGlobalShadowX] = useState(localStorage.getItem("globalShadowX") || "-4px");
+  const [globalShadowY, setGlobalShadowY] = useState(localStorage.getItem("globalShadowY") || "4px");
 
   useEffect(() => {
     // Eye Protection
@@ -75,7 +77,9 @@ const Setting = () => {
       document.body.classList.add(`bg-scope-${globalBgScope}`);
     }
 
-  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalBgTheme, globalBgScope]);
+    document.documentElement.style.setProperty('--global-shadow-x', globalShadowX);
+    document.documentElement.style.setProperty('--global-shadow-y', globalShadowY);
+  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalShadowX, globalShadowY, globalBgTheme, globalBgScope]);
 
   const handleSwitchChange = (key, value) => {
     switch (key) {
@@ -139,6 +143,12 @@ const Setting = () => {
     } else if (key === 'bgScope') {
       setGlobalBgScope(value);
       localStorage.setItem("globalBgScope", value);
+    } else if (key === 'shadowX') {
+      setGlobalShadowX(value);
+      localStorage.setItem("globalShadowX", value);
+    } else if (key === 'shadowY') {
+      setGlobalShadowY(value);
+      localStorage.setItem("globalShadowY", value);
     }
   };
 
@@ -206,6 +216,8 @@ const Setting = () => {
         { label: "Border Style", key: "borderStyle", type: "select", options: ["solid", "dashed", "dotted", "double", "groove", "ridge", "inset", "outset", "none"], value: globalBorderStyle, icon: faMagic, desc: "Change style of all borders" },
         { label: "Border Width", key: "borderWidth", type: "select", options: ["1px", "2px", "3px", "4px", "5px", "6px", "8px"], value: globalBorderWidth, icon: faFeatherPointed, desc: "Change thickness of all borders" },
         { label: "Border Radius", key: "borderRadius", type: "select", options: ["0px", "4px", "8px", "12px", "16px", "24px", "50%"], value: globalBorderRadius, icon: faMagic, desc: "Change corner rounding of all components" },
+        { label: "Shadow Direction (X)", key: "shadowX", type: "select", options: ["-10px", "-8px", "-6px", "-4px", "-2px", "0px", "2px", "4px", "6px", "8px", "10px"], value: globalShadowX, icon: faBullseye, desc: "Horizontal offset of shadows" },
+        { label: "Shadow Direction (Y)", key: "shadowY", type: "select", options: ["-10px", "-8px", "-6px", "-4px", "-2px", "0px", "2px", "4px", "6px", "8px", "10px"], value: globalShadowY, icon: faBullseye, desc: "Vertical offset of shadows" },
       ]
     }
   ];

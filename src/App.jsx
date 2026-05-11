@@ -73,11 +73,15 @@ const MainApp = () => {
     const globalBorderStyle = localStorage.getItem("globalBorderStyle") || "solid";
     const globalBorderWidth = localStorage.getItem("globalBorderWidth") || "2px";
     const globalBorderRadius = localStorage.getItem("globalBorderRadius") || "0px";
+    const globalShadowX = localStorage.getItem("globalShadowX") || "-4px";
+    const globalShadowY = localStorage.getItem("globalShadowY") || "4px";
 
     document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
     document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
     document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
     document.documentElement.style.setProperty('--global-border-radius', globalBorderRadius);
+    document.documentElement.style.setProperty('--global-shadow-x', globalShadowX);
+    document.documentElement.style.setProperty('--global-shadow-y', globalShadowY);
 
     const globalBgTheme = localStorage.getItem("globalBgTheme") || "theme-none";
     const globalBgScope = localStorage.getItem("globalBgScope") || "all";

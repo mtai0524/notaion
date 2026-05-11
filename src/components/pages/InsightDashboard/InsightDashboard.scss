@@ -15,6 +15,8 @@
   --radius: var(--global-border-radius, 0px);
   --border-w: var(--global-border-width, 3px);
   --border-s: var(--global-border-style, solid);
+  --sh-x: var(--global-shadow-x, -4px);
+  --sh-y: var(--global-shadow-y, 4px);
 
   .dashboard-header {
     display: flex;
@@ -35,7 +37,7 @@
           padding: 0 10px;
           border: var(--border-w) var(--border-s) var(--dark);
           border-radius: var(--radius);
-          box-shadow: 4px 4px 0 0 var(--dark);
+          box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--dark);
         }
       }
       p {
@@ -53,7 +55,7 @@
       padding: 12px 24px;
       border: var(--border-w) var(--border-s) var(--dark);
       border-radius: var(--radius);
-      box-shadow: 6px 6px 0 0 var(--yellow);
+      box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--yellow);
       font-weight: 900;
       text-decoration: none;
       text-transform: uppercase;
@@ -63,8 +65,8 @@
       transition: all 0.2s;
 
       &:hover {
-        transform: translate(-2px, -2px);
-        box-shadow: 8px 8px 0 0 var(--yellow);
+        transform: translate(calc(var(--sh-x) * -0.5), calc(var(--sh-y) * -0.5));
+        box-shadow: calc(var(--sh-x) * 1.5) calc(var(--sh-y) * 1.5) 0 0 var(--yellow);
       }
     }
   }
@@ -80,12 +82,12 @@
       border: var(--border-w) var(--border-s) var(--dark);
       border-radius: var(--radius);
       padding: 24px;
-      box-shadow: 6px 6px 0 0 var(--dark);
+      box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--dark);
       transition: all 0.2s;
 
       &:hover {
-        transform: translate(-3px, -3px);
-        box-shadow: 9px 9px 0 0 var(--dark);
+        transform: translate(calc(var(--sh-x) * -0.5), calc(var(--sh-y) * -0.5));
+        box-shadow: calc(var(--sh-x) * 1.5) calc(var(--sh-y) * 1.5) 0 0 var(--dark);
       }
 
       .stat-icon {
@@ -134,7 +136,7 @@
     background: #fff;
     border: var(--border-w) var(--border-s) var(--dark);
     border-radius: var(--radius);
-    box-shadow: 8px 8px 0 0 var(--dark);
+    box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--dark);
     padding: 30px;
 
     .panel-header {
@@ -211,8 +213,8 @@
 
       &:hover {
         background: #f9fafb;
-        transform: translate(-2px, -2px);
-        box-shadow: 4px 4px 0 0 var(--dark);
+        transform: translate(calc(var(--sh-x) * -0.5), calc(var(--sh-y) * -0.5));
+        box-shadow: calc(var(--sh-x) * 1) calc(var(--sh-y) * 1) 0 0 var(--dark);
       }
 
       .item-date {
@@ -264,8 +266,8 @@
       transition: all 0.2s;
 
       &:hover {
-        transform: translate(-2px, -2px);
-        box-shadow: 4px 4px 0 0 var(--dark);
+        transform: translate(calc(var(--sh-x) * -0.5), calc(var(--sh-y) * -0.5));
+        box-shadow: calc(var(--sh-x) * 1) calc(var(--sh-y) * 1) 0 0 var(--dark);
         background: #f9fafb;
       }
       
@@ -326,8 +328,8 @@
       &:nth-child(4) { background: var(--green); }
 
       &:hover {
-        transform: translate(-4px, -4px);
-        box-shadow: 4px 4px 0 0 var(--dark);
+        transform: translate(calc(var(--sh-x) * -1), calc(var(--sh-y) * -1));
+        box-shadow: calc(var(--sh-x) * 1) calc(var(--sh-y) * 1) 0 0 var(--dark);
       }
 
       .ql-icon {
@@ -381,7 +383,7 @@
         &.today {
           border-color: var(--dark);
           background: var(--yellow);
-          box-shadow: 2px 2px 0 0 var(--dark);
+          box-shadow: calc(var(--sh-x) * 0.5) calc(var(--sh-y) * 0.5) 0 0 var(--dark);
           font-weight: 900;
         }
 

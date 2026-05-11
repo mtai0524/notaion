@@ -297,7 +297,7 @@
   background: white;
   padding: 12px 24px;
   border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
-  box-shadow: 6px 6px 0 0 var(--global-border-color, #111827);
+  box-shadow: var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0 0 var(--global-border-color, #111827);
   border-radius: var(--global-border-radius, 12px);
   z-index: 1000;
   transition: all 0.3s ease;

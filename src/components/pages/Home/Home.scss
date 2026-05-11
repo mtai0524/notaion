@@ -26,7 +26,7 @@
 
     .neo-datepicker {
       border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
-      box-shadow: -4px 4px 0 0 var(--global-border-color, #111827);
+      box-shadow: var(--global-shadow-x, -4px) var(--global-shadow-y, 4px) 0 0 var(--global-border-color, #111827);
       border-radius: var(--global-border-radius, 4px);
       font-weight: 800;
       
@@ -45,7 +45,7 @@
     .neo-card {
       background: var(--accent-color);
       border: var(--global-border-width, 3px) var(--global-border-style, solid) var(--global-border-color, #111827);
-      box-shadow: -6px 6px 0 0 var(--global-border-color, #111827);
+      box-shadow: calc(var(--global-shadow-x, -4px) * 1.5) calc(var(--global-shadow-y, 4px) * 1.5) 0 0 var(--global-border-color, #111827);
       border-radius: var(--global-border-radius, 0px);
       padding: 30px 20px;
       display: flex;
