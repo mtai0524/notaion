@@ -24,6 +24,7 @@ import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import NotFound from "./components/pages/NotFound/NotFound";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
+import useTracking from "./hooks/useTracking";
 import FilesPage from "./pages/FilesPage";
 import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
 import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
@@ -34,7 +35,9 @@ const App = () => {
     <AuthProvider>
       <SignalRProvider>
         <ChatProvider>
-          <MainApp />
+          <BrowserRouter>
+            <MainApp />
+          </BrowserRouter>
         </ChatProvider>
       </SignalRProvider>
     </AuthProvider>
@@ -42,6 +45,7 @@ const App = () => {
 };
 
 const MainApp = () => {
+  useTracking();
   const [showChatBox, setShowChatBox] = useState(false);
   const [newMessagesCount, setNewMessagesCount] = useState(() => {
     return parseInt(localStorage.getItem("newMessagesCount")) || 0;
@@ -131,7 +135,7 @@ const MainApp = () => {
   };
 
   return (
-    <BrowserRouter>
+    <>
       <Header />
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" />} />
@@ -160,7 +164,7 @@ const MainApp = () => {
         newMessagesCount={newMessagesCount}
       />
       {showChatBox && <ChatBox onClose={handleFloatingButtonClick} />}
-    </BrowserRouter>
+    </>
   );
 };
 

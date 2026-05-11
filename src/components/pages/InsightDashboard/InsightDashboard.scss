@@ -31,7 +31,7 @@
         margin: 0;
         text-transform: uppercase;
         color: var(--dark);
-        
+
         .highlight {
           background: var(--yellow);
           padding: 0 10px;
@@ -40,6 +40,7 @@
           box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--dark);
         }
       }
+
       p {
         font-weight: 700;
         color: #4b5563;
@@ -108,6 +109,7 @@
           color: #6b7280;
           margin-bottom: 4px;
         }
+
         .value {
           font-size: 2.5rem;
           font-weight: 900;
@@ -115,10 +117,21 @@
         }
       }
 
-      &.neo-blue .stat-icon { background: var(--cyan); }
-      &.neo-purple .stat-icon { background: var(--purple); }
-      &.neo-green .stat-icon { background: var(--green); }
-      &.neo-orange .stat-icon { background: var(--red); }
+      &.neo-blue .stat-icon {
+        background: var(--cyan);
+      }
+
+      &.neo-purple .stat-icon {
+        background: var(--purple);
+      }
+
+      &.neo-green .stat-icon {
+        background: var(--green);
+      }
+
+      &.neo-orange .stat-icon {
+        background: var(--red);
+      }
     }
   }
 
@@ -167,7 +180,7 @@
         border-radius: calc(var(--radius) / 2);
         padding: 4px 12px;
         background: var(--yellow);
-        
+
         &:hover {
           background: #000;
           color: #fff;
@@ -177,6 +190,7 @@
       .calendar-controls {
         display: flex;
         gap: 8px;
+
         button {
           background: #fff;
           border: 2px solid var(--dark);
@@ -187,6 +201,7 @@
           align-items: center;
           justify-content: center;
           cursor: pointer;
+
           &:hover {
             background: var(--yellow);
           }
@@ -229,10 +244,12 @@
 
       .item-content {
         flex: 1;
+
         .item-title {
           font-weight: 900;
           font-size: 1.1rem;
         }
+
         .item-meta {
           font-weight: 700;
           font-size: 0.75rem;
@@ -240,7 +257,10 @@
           text-transform: uppercase;
           margin-top: 4px;
 
-          .tag { color: var(--purple); margin-right: 10px; }
+          .tag {
+            color: var(--purple);
+            margin-right: 10px;
+          }
         }
       }
 
@@ -270,7 +290,7 @@
         box-shadow: calc(var(--sh-x) * 1) calc(var(--sh-y) * 1) 0 0 var(--dark);
         background: #f9fafb;
       }
-      
+
       &::before {
         content: "";
         position: absolute;
@@ -322,10 +342,22 @@
       font-size: 0.75rem;
       transition: all 0.2s;
 
-      &:nth-child(1) { background: var(--yellow); }
-      &:nth-child(2) { background: var(--cyan); }
-      &:nth-child(3) { background: var(--purple); color: #fff; }
-      &:nth-child(4) { background: var(--green); }
+      &:nth-child(1) {
+        background: var(--yellow);
+      }
+
+      &:nth-child(2) {
+        background: var(--cyan);
+      }
+
+      &:nth-child(3) {
+        background: var(--purple);
+        color: #fff;
+      }
+
+      &:nth-child(4) {
+        background: var(--green);
+      }
 
       &:hover {
         transform: translate(calc(var(--sh-x) * -1), calc(var(--sh-y) * -1));
@@ -407,5 +439,212 @@
     font-size: 0.8rem;
   }
 
-  .mt-4 { margin-top: 30px; }
+  .mt-4 {
+    margin-top: 30px;
+  }
+
+  .heatmap-section {
+    margin-bottom: 40px;
+    width: 100%;
+
+    .panel-header {
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+
+      .title-group {
+        h2 {
+          font-size: 1.25rem;
+          margin-bottom: 4px;
+        }
+
+        .subtitle {
+          font-size: 0.75rem;
+          color: #6b7280;
+        }
+      }
+    }
+
+    .visit-summary-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 40px;
+      margin-bottom: 25px;
+      padding: 15px 25px;
+      background: #f9fafb;
+      border: 2px solid var(--dark);
+      border-radius: calc(var(--radius) / 2);
+      box-shadow: inset 2px 2px 0 0 rgba(0, 0, 0, 0.05);
+
+      .summary-item {
+        display: flex;
+        flex-direction: row;
+        align-items: baseline;
+        gap: 10px;
+
+        .s-label {
+          font-size: 0.75rem;
+          font-weight: 900;
+          text-transform: uppercase;
+          color: #6b7280;
+          white-space: nowrap;
+        }
+
+        .s-value {
+          font-size: 1.5rem;
+          font-weight: 900;
+          color: var(--dark);
+          line-height: 1;
+        }
+      }
+    }
+
+    .heatmap-wrapper {
+      background: #fff;
+      padding: 25px;
+      border: 2px solid var(--dark);
+      border-radius: var(--radius);
+      box-shadow: var(--sh-x) var(--sh-y) 0 0 var(--dark);
+    }
+
+    .heatmap-filters {
+      display: flex;
+      gap: 8px;
+
+      .filter-btn {
+        background: #fff;
+        border: 2px solid var(--dark);
+        border-radius: calc(var(--radius) / 2);
+        padding: 5px 12px;
+        font-weight: 900;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover {
+          background: var(--yellow);
+        }
+
+        &.active {
+          background: var(--dark);
+          color: #fff;
+          box-shadow: 2px 2px 0 0 var(--cyan);
+        }
+      }
+    }
+
+    .heatmap-container {
+      padding: 0 0;
+      width: 100%;
+
+      .react-calendar-heatmap {
+        font-size: 8px;
+        overflow: visible;
+        width: 100%;
+
+        text {
+          fill: #9ca3af;
+          font-weight: 700;
+          font-size: 6px;
+          text-transform: uppercase;
+        }
+      }
+
+      .react-calendar-heatmap .color-empty {
+        fill: #ebedf0;
+      }
+
+      // GitHub Classic Green scale
+      .react-calendar-heatmap .color-scale-1 {
+        fill: #9be9a8;
+      }
+
+      .react-calendar-heatmap .color-scale-2 {
+        fill: #40c463;
+      }
+
+      .react-calendar-heatmap .color-scale-3 {
+        fill: #30a14e;
+      }
+
+      .react-calendar-heatmap .color-scale-4 {
+        fill: #216e39;
+      }
+
+      rect {
+        rx: 1.5;
+        ry: 1.5;
+        stroke: rgba(0, 0, 0, 0.05);
+        stroke-width: 0.1px;
+        transition: stroke 0.2s, filter 0.2s;
+
+        &:hover {
+          stroke: var(--dark);
+          stroke-width: 0.6px;
+          filter: brightness(1.1);
+          cursor: pointer;
+        }
+      }
+    }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      font-size: 0.7rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #9ca3af;
+
+      .legend-cells {
+        display: flex;
+        gap: 4px;
+
+        .l-cell {
+          width: 12px;
+          height: 12px;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+          border-radius: 2px;
+
+          &.color-empty {
+            background: #ebedf0;
+          }
+
+          &.color-scale-1 {
+            background: #9be9a8;
+          }
+
+          &.color-scale-2 {
+            background: #40c463;
+          }
+
+          &.color-scale-3 {
+            background: #30a14e;
+          }
+
+          &.color-scale-4 {
+            background: #216e39;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Global tooltip override for the dashboard heatmap
+.react-tooltip#heatmap-tooltip {
+  font-weight: 900;
+  text-transform: uppercase;
+  border: 2px solid #111827 !important;
+  background: #fff !important;
+  color: #111827 !important;
+  box-shadow: 4px 4px 0 0 #111827 !important;
+  opacity: 1 !important;
+  font-size: 0.75rem;
+  padding: 10px 14px;
+  z-index: 1000;
 }
