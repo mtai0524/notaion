@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   FaRocket, FaChartLine, FaTasks, FaHistory,
   FaPlus, FaChevronRight, FaRegCalendarAlt, FaFire,
@@ -32,6 +32,15 @@ const InsightDashboard = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [heatmapData, setHeatmapData] = useState([]);
   const [heatmapFilter, setHeatmapFilter] = useState('all'); // 'all', 'localhost', 'production'
+  const [sandboxMode, setSandboxMode] = useState(false);
+  const [localEdits, setLocalEdits] = useState({}); // { '2026-05-11': count }
+  const isMouseDownRef = useRef(false);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => { isMouseDownRef.current = false; };
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, []);
 
   const [stats, setStats] = useState({
     totalNotes: 0,
@@ -74,7 +83,11 @@ const InsightDashboard = () => {
   };
 
   const filteredHeatmapData = useMemo(() => {
-    let data = [];
+    // Generate all dates for the last year to ensure every square is clickable
+    const end = new Date();
+    const start = subDays(end, 365);
+    const allDates = eachDayOfInterval({ start, end });
+    
     const grouped = heatmapData.reduce((acc, curr) => {
       if (heatmapFilter === 'all' ||
         (heatmapFilter === 'localhost' && curr.isLocalhost) ||
@@ -84,11 +97,50 @@ const InsightDashboard = () => {
       return acc;
     }, {});
 
-    return Object.keys(grouped).map(date => ({
-      date,
-      count: grouped[date]
+    // Merge with local sandbox edits
+    Object.keys(localEdits).forEach(date => {
+      grouped[date] = (grouped[date] || 0) + localEdits[date];
+    });
+
+    return allDates.map(date => {
+      const dateStr = format(date, 'yyyy-MM-dd');
+      return {
+        date: dateStr,
+        count: grouped[dateStr] || 0
+      };
+    });
+  }, [heatmapData, heatmapFilter, localEdits]);
+
+  const paintCell = useCallback((date) => {
+    if (!date) return;
+    setLocalEdits(prev => ({
+      ...prev,
+      [date]: (prev[date] || 0) + 5
     }));
-  }, [heatmapData, heatmapFilter]);
+  }, []);
+
+  const handleHeatmapClick = (value) => {
+    if (!sandboxMode || !value || !value.date) return;
+    paintCell(value.date);
+  };
+
+  const transformDayElement = (element, value) => {
+    if (!sandboxMode) return element;
+    
+    return React.cloneElement(element, {
+      onMouseDown: (e) => {
+        e.preventDefault();
+        isMouseDownRef.current = true;
+        if (value && value.date) paintCell(value.date);
+      },
+      onMouseEnter: () => {
+        if (isMouseDownRef.current && value && value.date) {
+          paintCell(value.date);
+        }
+      },
+      style: { cursor: 'crosshair' }
+    });
+  };
 
   const recentNotes = useMemo(() => {
     return [...allNotes]
@@ -203,6 +255,19 @@ const InsightDashboard = () => {
                 <p className="subtitle">Engagement across environments</p>
               </div>
               <div className="heatmap-filters">
+                <button 
+                  className={`sandbox-btn ${sandboxMode ? 'active' : ''}`}
+                  onClick={() => setSandboxMode(!sandboxMode)}
+                  title="Click to paint on heatmap (Temporary)"
+                >
+                  <FaBrain /> {sandboxMode ? 'Paint Mode: ON' : 'Paint Mode: OFF'}
+                </button>
+                {sandboxMode && Object.keys(localEdits).length > 0 && (
+                  <button className="clear-btn" onClick={() => setLocalEdits({})}>
+                    Clear
+                  </button>
+                )}
+                <div className="v-divider" />
                 <button
                   className={`filter-btn ${heatmapFilter === 'all' ? 'active' : ''}`}
                   onClick={() => setHeatmapFilter('all')}
@@ -244,19 +309,23 @@ const InsightDashboard = () => {
             </div>
 
             <div className="heatmap-wrapper">
-              <div className="heatmap-container">
+              <div className={`heatmap-container ${sandboxMode ? 'sandbox-active' : ''}`}>
                 <CalendarHeatmap
+                  key={`heatmap-${sandboxMode}`}
                   startDate={subDays(new Date(), 365)}
                   endDate={new Date()}
                   values={filteredHeatmapData}
                   showWeekdayLabels={true}
+                  onClick={handleHeatmapClick}
+                  transformDayElement={transformDayElement}
                   classForValue={(value) => {
                     if (!value || value.count === 0) return 'color-empty';
-                    const maxCount = filteredHeatmapData.length > 0 ? Math.max(...filteredHeatmapData.map(d => d.count)) : 1;
+                    
+                    // Fixed thresholds for better "painting" feel
                     const count = value.count;
-                    if (count >= maxCount * 0.8 && maxCount > 5) return 'color-scale-4';
-                    if (count >= maxCount * 0.5) return 'color-scale-3';
-                    if (count >= maxCount * 0.2) return 'color-scale-2';
+                    if (count >= 20) return 'color-scale-4';
+                    if (count >= 10) return 'color-scale-3';
+                    if (count >= 5) return 'color-scale-2';
                     return 'color-scale-1';
                   }}
                   tooltipDataAttrs={(value) => {

@@ -143,7 +143,7 @@ const MainApp = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/login-success" element={<LoginSuccess />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/home-page" element={<Home />} />
+        <Route path="/home-page" element={<InsightDashboard />} />
         <Route path="/dashboard" element={<InsightDashboard />} />
         <Route path="/notion" element={<Notion />} />
         <Route path="/profile/:identifier" element={<Profile />} />
