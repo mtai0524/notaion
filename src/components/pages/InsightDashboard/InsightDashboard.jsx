@@ -27,16 +27,13 @@ const InsightDashboard = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch all notes
       const notesRes = await axiosInstance.get('/api/DailyNote/all');
       const notes = notesRes.data;
       setAllNotes(notes);
 
-      // Fetch recent files
       const filesRes = await axiosInstance.get('/api/files');
       setRecentFiles(filesRes.data.slice(0, 5));
 
-      // Calculate stats
       const tasks = notes.filter(n => n.category === 'TASK' || n.customCategory === 'TASK');
       setStats({
         totalNotes: notes.length,
@@ -60,48 +57,48 @@ const InsightDashboard = () => {
     <div className="insight-dashboard">
       <div className="dashboard-header">
         <div className="welcome-section">
-          <h1>Command <span className="highlight">Center</span></h1>
-          <p>System operational. Visualizing your digital workspace.</p>
+          <h1>Work <span className="highlight">Dashboard</span></h1>
+          <p>Welcome back. Here is an overview of your notes and tasks.</p>
         </div>
         <div className="header-actions">
-          <NavLink to="/daily-note" className="action-btn-neon">
-            <FaPlus /> NEW_ENTRY
+          <NavLink to="/daily-note" className="action-btn-neo">
+            <FaPlus /> New Note
           </NavLink>
         </div>
       </div>
 
       <div className="stats-grid">
-        <div className="stat-card neon-blue">
+        <div className="stat-card neo-blue">
           <div className="stat-icon"><FaFileAlt /></div>
           <div className="stat-info">
-            <span className="label">TOTAL_NOTES</span>
+            <span className="label">Total Notes</span>
             <span className="value">{stats.totalNotes}</span>
           </div>
-          <div className="stat-progress" style={{ width: '70%' }}></div>
+          <div className="stat-progress"></div>
         </div>
-        <div className="stat-card neon-purple">
+        <div className="stat-card neo-purple">
           <div className="stat-icon"><FaTasks /></div>
           <div className="stat-info">
-            <span className="label">ACTIVE_TASKS</span>
+            <span className="label">Active Tasks</span>
             <span className="value">{stats.activeTasks}</span>
           </div>
-          <div className="stat-progress" style={{ width: '45%' }}></div>
+          <div className="stat-progress"></div>
         </div>
-        <div className="stat-card neon-green">
+        <div className="stat-card neo-green">
           <div className="stat-icon"><FaBrain /></div>
           <div className="stat-info">
-            <span className="label">IDEAS_LOGGED</span>
+            <span className="label">Ideas</span>
             <span className="value">{stats.ideas}</span>
           </div>
-          <div className="stat-progress" style={{ width: '30%' }}></div>
+          <div className="stat-progress"></div>
         </div>
-        <div className="stat-card neon-orange">
+        <div className="stat-card neo-orange">
           <div className="stat-icon"><FaFire /></div>
           <div className="stat-info">
-            <span className="label">COMPLETED</span>
+            <span className="label">Completed</span>
             <span className="value">{stats.completedTasks}</span>
           </div>
-          <div className="stat-progress" style={{ width: '85%' }}></div>
+          <div className="stat-progress"></div>
         </div>
       </div>
 
@@ -109,8 +106,8 @@ const InsightDashboard = () => {
         <div className="main-col">
           <section className="section-panel">
             <div className="panel-header">
-              <h2><FaHistory /> RECENT_ACTIVITY</h2>
-              <NavLink to="/daily-note" className="view-all">VIEW_ALL <FaChevronRight /></NavLink>
+              <h2><FaHistory /> Recent Activity</h2>
+              <NavLink to="/daily-note" className="view-all">View All <FaChevronRight /></NavLink>
             </div>
             <div className="activity-list">
               {recentNotes.length > 0 ? (
@@ -135,12 +132,11 @@ const InsightDashboard = () => {
 
           <section className="section-panel mt-4">
             <div className="panel-header">
-              <h2><FaTasks /> PENDING_TASKS</h2>
+              <h2><FaTasks /> Pending Tasks</h2>
             </div>
             <div className="task-preview-grid">
                {allNotes.filter(n => (n.category === 'TASK' || n.customCategory === 'TASK') && !n.isCompleted).slice(0, 6).map(task => (
                  <div key={task.id} className="task-mini-card">
-                    <div className="task-status"></div>
                     <div className="task-text">{task.title || task.content?.substring(0, 30) || "Task..."}</div>
                     <div className="task-date">{task.date}</div>
                  </div>
@@ -155,7 +151,7 @@ const InsightDashboard = () => {
         <div className="side-col">
           <section className="section-panel">
             <div className="panel-header">
-              <h2><FaRocket /> QUICK_ACCESS</h2>
+              <h2><FaRocket /> Quick Access</h2>
             </div>
             <div className="quick-links">
               <NavLink to="/notion" className="quick-link">
@@ -172,17 +168,16 @@ const InsightDashboard = () => {
               </NavLink>
               <NavLink to="/setting" className="quick-link">
                 <div className="ql-icon"><FaEllipsisV /></div>
-                <span>System Config</span>
+                <span>Settings</span>
               </NavLink>
             </div>
           </section>
 
           <section className="section-panel mt-4">
              <div className="panel-header">
-              <h2><FaRegCalendarAlt /> CALENDAR_SNAPSHOT</h2>
+              <h2><FaRegCalendarAlt /> Calendar</h2>
             </div>
             <div className="mini-calendar">
-              {/* Simplified visual calendar */}
               <div className="cal-month">{format(new Date(), 'MMMM yyyy')}</div>
               <div className="cal-grid">
                 {Array.from({ length: 7 }).map((_, i) => (
