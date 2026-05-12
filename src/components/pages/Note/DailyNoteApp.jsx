@@ -34,6 +34,99 @@ const COLORS = [
 
 const CATEGORIES = ['SYSTEM', 'TASK', 'IDEA', 'LOG', 'MEMO'];
 
+// ── Drawing Preview Component ──
+const DrawingPreview = ({ data, color, onClick }) => {
+  if (!data) return null;
+  return (
+    <div className="k-drawing-preview" style={{ borderColor: `${color}33` }} onClick={onClick}>
+      <div className="k-drawing-icon">
+        <FaPalette style={{ color }} />
+        <span style={{ color }}>Click to Edit Drawing</span>
+      </div>
+    </div>
+  );
+};
+
+// ── Main Drawing Canvas Component ──
+function DrawingCanvas({ data, onChange, color }) {
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    if (data) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = data;
+    }
+  }, [data]);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = color || '#82a1ff';
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    if (canvasRef.current) {
+      onChange(canvasRef.current.toDataURL());
+    }
+  };
+
+  const clearCanvas = (e) => {
+    e.stopPropagation();
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange(null);
+  };
+
+  return (
+    <div className="drawing-canvas-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        onTouchStart={startDrawing}
+        onTouchMove={draw}
+        onTouchEnd={stopDrawing}
+        style={{ cursor: 'crosshair', width: '100%', height: '100%', display: 'block' }}
+      />
+      <button onClick={clearCanvas} style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', border: '1px solid #fff', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '10px', cursor: 'pointer' }}>CLEAR</button>
+    </div>
+  );
+}
+
 const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showProps, setShowProps] = useState(false);
@@ -176,7 +269,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
+        className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
         data-category={note.customCategory || note.category}
         style={{
           '--accent-color': accentColor,
@@ -539,12 +632,14 @@ const DailyNoteApp = () => {
   const [userId, setUserId] = useState(null);
 
   const [viewMode, setViewMode] = useState('canvas'); // 'canvas' or 'kanban'
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectionRect, setSelectionRect] = useState(null);
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
   const currentNotes = allCurrentNotes.filter(n =>
     !n.isDeleted &&
     (n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.content?.toLowerCase().includes(searchQuery.toLowerCase()))
+      n.content?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Default text color based on current app theme
@@ -754,7 +849,7 @@ const DailyNoteApp = () => {
 
   const deleteNote = async (id) => {
     if (!window.confirm("ARE YOU SURE YOU WANT TO HIDE THIS ENTRY?")) return;
-    
+
     // 1. Xóa ngay lập tức khỏi State để người dùng thấy nó biến mất và tránh bị Auto-save ghi đè
     setNotesByDate(prev => ({
       ...prev,
@@ -795,6 +890,79 @@ const DailyNoteApp = () => {
         [dateKey]: updated
       };
     });
+  };
+
+  const deleteSelectedNotes = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`ARE YOU SURE YOU WANT TO HIDE ${selectedIds.length} ENTRIES?`)) return;
+
+    const idsToDelete = [...selectedIds];
+    setSelectedIds([]); // Clear selection
+
+    // 1. Cập nhật State ngay lập tức
+    setNotesByDate(prev => ({
+      ...prev,
+      [dateKey]: (prev[dateKey] || []).map(n => idsToDelete.includes(n.id) ? { ...n, isDeleted: true } : n)
+    }));
+
+    // 2. Gọi API xóa hàng loạt
+    try {
+      setSyncStatus('saving');
+      await Promise.all(idsToDelete.map(id => axiosInstance.delete(`/api/DailyNote/${id}`)));
+      setSyncStatus('saved');
+    } catch (error) {
+      console.error("[ERROR] Failed to delete multiple notes:", error);
+      setSyncStatus('error');
+    }
+  };
+
+  const handleCanvasMouseDown = (e) => {
+    // Nếu nhấn vào input, button hoặc Note card thì không quét khối
+    if (e.target.closest('.daily-note-card-cyber') || 
+        e.target.closest('.kanban-note-card') ||
+        e.target.closest('button') || 
+        e.target.closest('input')) {
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    setSelectionRect({ startX: x, startY: y, endX: x, endY: y, active: true });
+    setSelectedIds([]); // Reset selection khi bắt đầu quét mới
+  };
+
+  const handleCanvasMouseMove = (e) => {
+    if (!selectionRect?.active) return;
+    const container = document.querySelector('.daily-note-app-cyber');
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    setSelectionRect(prev => ({ ...prev, endX: x, endY: y }));
+
+    // Tính toán các Note nằm trong vùng quét
+    const x1 = Math.min(selectionRect.startX, x);
+    const x2 = Math.max(selectionRect.startX, x);
+    const y1 = Math.min(selectionRect.startY, y);
+    const y2 = Math.max(selectionRect.startY, y);
+
+    const ids = currentNotes.filter(n => {
+      const nx = n.x;
+      const ny = n.y;
+      const nw = n.width || 250;
+      const nh = n.height || 200;
+
+      // Kiểm tra va chạm giữa 2 hình chữ nhật
+      return nx < x2 && (nx + nw) > x1 && ny < y2 && (ny + nh) > y1;
+    }).map(n => n.id);
+
+    setSelectedIds(ids);
+  };
+
+  const handleCanvasMouseUp = () => {
+    setSelectionRect(null);
   };
 
   const navigateDate = (days) => {
@@ -916,7 +1084,13 @@ const DailyNoteApp = () => {
   };
 
   return (
-    <div className={`daily-note-app-container-cyber theme-${theme} ${showGrid ? 'show-grid' : ''}`}>
+    <div
+      className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''}`}
+      onMouseDown={handleCanvasMouseDown}
+      onMouseMove={handleCanvasMouseMove}
+      onMouseUp={handleCanvasMouseUp}
+      onMouseLeave={handleCanvasMouseUp}
+    >
       <header className="app-toolbar-cyber">
         <div className="date-navigator">
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
@@ -935,6 +1109,11 @@ const DailyNoteApp = () => {
         </div>
 
         <div className="toolbar-actions">
+          {selectedIds.length > 0 && (
+            <button className="nav-btn delete-btn" onClick={deleteSelectedNotes} title="Delete Selected">
+              <FaTrash /> DELETE_SELECTED ({selectedIds.length})
+            </button>
+          )}
           <div className="search-box-cyber">
             <FaSearch className="search-icon" />
             <input
@@ -948,7 +1127,7 @@ const DailyNoteApp = () => {
           <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
             {theme === 'dark' ? <FaSun /> : <FaMoon />}
           </button>
-          
+
           <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
             {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
           </button>
@@ -977,7 +1156,7 @@ const DailyNoteApp = () => {
 
       <main className="note-canvas-cyber" onContextMenu={handleContextMenu}>
         {viewMode === 'canvas' ? (
-          <>
+          <div className="notes-canvas">
             {renderNoteLinks()}
             {currentNotes.length === 0 && !loading ? (
               <div className="empty-state-cyber">
@@ -989,7 +1168,7 @@ const DailyNoteApp = () => {
               currentNotes.map(note => (
                 <Note
                   key={note.id}
-                  note={note}
+                  note={{ ...note, isSelected: selectedIds.includes(note.id) }}
                   onUpdate={updateNote}
                   onDelete={deleteNote}
                   onFocus={focusNote}
@@ -997,6 +1176,20 @@ const DailyNoteApp = () => {
                 />
               ))
             )}
+
+            {/* Selection Box Rect */}
+            {selectionRect && selectionRect.active && (
+              <div
+                className="selection-marquee"
+                style={{
+                  left: Math.min(selectionRect.startX, selectionRect.endX),
+                  top: Math.min(selectionRect.startY, selectionRect.endY),
+                  width: Math.abs(selectionRect.startX - selectionRect.endX),
+                  height: Math.abs(selectionRect.startY - selectionRect.endY)
+                }}
+              />
+            )}
+
             <div style={{
               position: 'absolute',
               top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500,
@@ -1006,7 +1199,7 @@ const DailyNoteApp = () => {
               opacity: 0,
               pointerEvents: 'none'
             }} />
-          </>
+          </div>
         ) : (
           <KanbanBoard notes={currentNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
         )}
@@ -1017,7 +1210,7 @@ const DailyNoteApp = () => {
 
 const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
   const categories = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
-  
+
   return (
     <div className="kanban-container-cyber">
       {categories.map(cat => (
@@ -1034,13 +1227,13 @@ const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
               .filter(n => (n.customCategory || n.category) === cat)
               .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
               .map(note => (
-                <KanbanNote 
-                  key={note.id} 
-                  note={note} 
-                  onUpdate={onUpdate} 
-                  onDelete={onDelete} 
-                  onFocus={onFocus} 
-                  appTheme={appTheme} 
+                <KanbanNote
+                  key={note.id}
+                  note={note}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  onFocus={onFocus}
+                  appTheme={appTheme}
                 />
               ))}
           </div>
@@ -1056,10 +1249,10 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
   const category = note.customCategory || note.category || 'MEMO';
-  
+
   return (
-    <div 
-      className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')} ${showDrawing ? 'is-drawing' : ''}`}
+    <div
+      className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')} ${showDrawing ? 'is-drawing' : ''} ${note.isSelected ? 'is-selected' : ''}`}
       style={{ '--accent-color': accentColor }}
       onClick={() => onFocus(note.id)}
     >
@@ -1070,12 +1263,12 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       <div className="k-note-header">
         <span className="k-time">[ {note.timestamp} ]</span>
         <div className="k-actions">
-          <button 
+          <button
             className={showDrawing ? 'active' : ''}
-            onClick={(e) => { 
-              e.stopPropagation(); 
+            onClick={(e) => {
+              e.stopPropagation();
               setShowDrawing(!showDrawing);
-            }} 
+            }}
             title="Toggle Drawing"
           >
             <FaPalette />
@@ -1085,9 +1278,9 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           </button>
         </div>
       </div>
-      
+
       <div className="k-note-body">
-        <input 
+        <input
           className="k-title-input"
           value={note.title || ''}
           onChange={(e) => onUpdate(note.id, { title: e.target.value })}
@@ -1097,7 +1290,7 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         <div className="k-content-wrap">
           {showDrawing ? (
             <div className="k-drawing-container" onClick={(e) => e.stopPropagation()}>
-              <DrawingCanvas 
+              <DrawingCanvas
                 data={note.drawingData}
                 onChange={(data) => onUpdate(note.id, { drawingData: data })}
                 color={accentColor}
@@ -1113,12 +1306,12 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                   </div>
                 </div>
               )}
-              <div 
+              <div
                 className="k-markdown"
                 onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
               >
                 {isEditing ? (
-                  <textarea 
+                  <textarea
                     autoFocus
                     value={note.content || ''}
                     onChange={(e) => onUpdate(note.id, { content: e.target.value })}
@@ -1132,97 +1325,6 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           )}
         </div>
       </div>
-    </div>
-  );
-};
-
-export const DrawingCanvas = ({ data, onChange, color }) => {
-  const canvasRef = React.useRef(null);
-  const [isDrawing, setIsDrawing] = React.useState(false);
-
-  // Khởi tạo Canvas từ dữ liệu cũ (Base64)
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Set size thực tế cho canvas
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-
-    if (data) {
-      const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0);
-      img.src = data;
-    }
-  }, [data]);
-
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = color || '#82a1ff';
-    setIsDrawing(true);
-  };
-
-  const draw = (e) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
-    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    const canvas = canvasRef.current;
-    onChange(canvas.toDataURL()); // Lưu lại dưới dạng Base64
-  };
-
-  const clearCanvas = (e) => {
-    e.stopPropagation();
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    onChange(null);
-  };
-
-  return (
-    <div className="drawing-canvas-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <canvas
-        ref={canvasRef}
-        onMouseDown={startDrawing}
-        onMouseMove={draw}
-        onMouseUp={stopDrawing}
-        onMouseLeave={stopDrawing}
-        onTouchStart={startDrawing}
-        onTouchMove={draw}
-        onTouchEnd={stopDrawing}
-        style={{ cursor: 'crosshair', width: '100%', height: '100%', display: 'block' }}
-      />
-      <button 
-        onClick={clearCanvas}
-        style={{
-          position: 'absolute', bottom: '10px', right: '10px',
-          background: 'rgba(0,0,0,0.5)', border: '1px solid #fff',
-          color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '10px', cursor: 'pointer'
-        }}
-      >
-        CLEAR
-      </button>
     </div>
   );
 };
