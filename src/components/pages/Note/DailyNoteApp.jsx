@@ -1052,19 +1052,37 @@ const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
 
 const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDrawing, setShowDrawing] = useState(false);
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
+  const category = note.customCategory || note.category || 'MEMO';
   
   return (
     <div 
-      className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
+      className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')} ${showDrawing ? 'is-drawing' : ''}`}
       style={{ '--accent-color': accentColor }}
       onClick={() => onFocus(note.id)}
     >
+      <div className="k-category-tab" style={{ backgroundColor: accentColor }}>
+        {category}
+      </div>
+
       <div className="k-note-header">
-        <span className="k-time">{note.timestamp}</span>
+        <span className="k-time">[ {note.timestamp} ]</span>
         <div className="k-actions">
-          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }}><FaTimes /></button>
+          <button 
+            className={showDrawing ? 'active' : ''}
+            onClick={(e) => { 
+              e.stopPropagation(); 
+              setShowDrawing(!showDrawing);
+            }} 
+            title="Toggle Drawing"
+          >
+            <FaPalette />
+          </button>
+          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }} title="Hide Note">
+            <FaTimes />
+          </button>
         </div>
       </div>
       
@@ -1075,21 +1093,136 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           onChange={(e) => onUpdate(note.id, { title: e.target.value })}
           placeholder="UNTITLED"
         />
-        <div className="k-content-wrap" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
-          {isEditing ? (
-            <textarea 
-              autoFocus
-              value={note.content || ''}
-              onChange={(e) => onUpdate(note.id, { content: e.target.value })}
-              onBlur={() => setIsEditing(false)}
-            />
-          ) : (
-            <div className="k-markdown">
-              <ReactMarkdown>{note.content || '> empty'}</ReactMarkdown>
+
+        <div className="k-content-wrap">
+          {showDrawing ? (
+            <div className="k-drawing-container" onClick={(e) => e.stopPropagation()}>
+              <DrawingCanvas 
+                data={note.drawingData}
+                onChange={(data) => onUpdate(note.id, { drawingData: data })}
+                color={accentColor}
+              />
             </div>
+          ) : (
+            <>
+              {note.drawingData && (
+                <div className="k-drawing-preview" onClick={() => setShowDrawing(true)}>
+                  <div className="k-drawing-icon">
+                    <i className="ri-palette-line" style={{ color: accentColor }}></i>
+                    <span style={{ color: accentColor }}>Click to Edit Drawing</span>
+                  </div>
+                </div>
+              )}
+              <div 
+                className="k-markdown"
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+              >
+                {isEditing ? (
+                  <textarea 
+                    autoFocus
+                    value={note.content || ''}
+                    onChange={(e) => onUpdate(note.id, { content: e.target.value })}
+                    onBlur={() => setIsEditing(false)}
+                  />
+                ) : (
+                  <ReactMarkdown>{note.content || '> waiting for input...'}</ReactMarkdown>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
+    </div>
+  );
+};
+
+export const DrawingCanvas = ({ data, onChange, color }) => {
+  const canvasRef = React.useRef(null);
+  const [isDrawing, setIsDrawing] = React.useState(false);
+
+  // Khởi tạo Canvas từ dữ liệu cũ (Base64)
+  React.useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Set size thực tế cho canvas
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width;
+    canvas.height = rect.height;
+
+    if (data) {
+      const img = new Image();
+      img.onload = () => ctx.drawImage(img, 0, 0);
+      img.src = data;
+    }
+  }, [data]);
+
+  const startDrawing = (e) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = color || '#82a1ff';
+    setIsDrawing(true);
+  };
+
+  const draw = (e) => {
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+    const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopDrawing = () => {
+    if (!isDrawing) return;
+    setIsDrawing(false);
+    const canvas = canvasRef.current;
+    onChange(canvas.toDataURL()); // Lưu lại dưới dạng Base64
+  };
+
+  const clearCanvas = (e) => {
+    e.stopPropagation();
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    onChange(null);
+  };
+
+  return (
+    <div className="drawing-canvas-wrapper" style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <canvas
+        ref={canvasRef}
+        onMouseDown={startDrawing}
+        onMouseMove={draw}
+        onMouseUp={stopDrawing}
+        onMouseLeave={stopDrawing}
+        onTouchStart={startDrawing}
+        onTouchMove={draw}
+        onTouchEnd={stopDrawing}
+        style={{ cursor: 'crosshair', width: '100%', height: '100%', display: 'block' }}
+      />
+      <button 
+        onClick={clearCanvas}
+        style={{
+          position: 'absolute', bottom: '10px', right: '10px',
+          background: 'rgba(0,0,0,0.5)', border: '1px solid #fff',
+          color: '#fff', borderRadius: '4px', padding: '2px 8px', fontSize: '10px', cursor: 'pointer'
+        }}
+      >
+        CLEAR
+      </button>
     </div>
   );
 };

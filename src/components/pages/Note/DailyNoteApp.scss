@@ -379,18 +379,17 @@
           flex: 1;
 
         }
-      }
-    }
-
-    .kanban-note-card {
+          .kanban-note-card {
       background: rgba(30, 41, 59, 0.5);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-left: 4px solid var(--accent-color);
       border-radius: 8px;
-      padding: 1.2rem;
+      padding: 1.5rem 1.2rem 1.2rem; // Tăng padding top cho Tab
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       cursor: pointer;
       margin-bottom: 0.5rem;
+      position: relative;
+      overflow: visible; // Để hiện Tab nhô ra
 
       &:hover {
         background: rgba(30, 41, 59, 0.8);
@@ -399,22 +398,25 @@
         border-color: rgba(255, 255, 255, 0.2);
       }
 
-      &.note-theme-light {
-        background: #fff;
-        border-color: #e2e8f0;
+      &.note-theme-light { background: #fff; border-color: #e2e8f0; .k-title-input, .k-markdown { color: #1e293b; } }
+      &.note-theme-sticky { background: #fffcf0; border-color: #fef3c7; .k-title-input, .k-markdown { color: #000; } }
 
-        .k-title-input,
-        .k-markdown {
-          color: #1e293b;
-        }
-      }
-
-      &.note-theme-sticky {
-        background: #fffcf0;
-        border-color: #fef3c7;
-
-        .k-title-input,
-        .k-markdown {
+      // Category Tab - Đồng bộ Note Canvas
+      .k-category-tab {
+        position: absolute;
+        top: -12px;
+        left: 15px;
+        padding: 2px 10px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: #fff;
+        border-radius: 4px 4px 0 0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+        z-index: 10;
+        
+        .note-theme-light &, .note-theme-sticky & {
           color: #000;
         }
       }
@@ -422,23 +424,64 @@
       .k-note-header {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 0.8rem;
+        align-items: center;
+        margin-bottom: 1rem;
+        
+        .k-time { 
+          font-size: 0.65rem; 
+          color: var(--text-muted); 
+          font-family: 'JetBrains Mono', monospace;
+          background: rgba(0,0,0,0.2);
+          padding: 2px 8px;
+          border-radius: 4px;
+        }
+        
+        .k-actions button {
+          background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1rem;
+          display: flex; align-items: center; justify-content: center;
+          &:hover { color: #ff5370; transform: scale(1.1); }
+        }
+      }
 
-        .k-time {
-          font-size: 0.65rem;
-          color: var(--text-muted);
-          font-family: monospace;
+      .k-drawing-container {
+        margin: 0.5rem 0 1rem;
+        height: 300px;
+        background: #fff;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid var(--accent-color);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        
+        // Đảm bảo Tldraw board hiển thị tốt trong khung nhỏ
+        .tl-canvas {
+          background-color: #fff;
+        }
+      }
+
+      .k-drawing-preview {
+        margin: 0.5rem 0 1rem;
+        background: rgba(0, 0, 0, 0.15);
+        border: 1px dashed rgba(255, 255, 255, 0.1);
+        border-radius: 6px;
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        .k-drawing-icon {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          opacity: 0.6;
+          
+          i { font-size: 1.5rem; }
+          span { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         }
 
-        .k-actions button {
-          background: none;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-
-          &:hover {
-            color: #ff5370;
-          }
+        .theme-light & {
+          background: rgba(0, 0, 0, 0.03);
+          border-color: rgba(0, 0, 0, 0.1);
         }
       }
 
@@ -449,39 +492,47 @@
           border: none;
           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
           color: #fff;
-          font-weight: 700;
+          font-size: 0.95rem;
+          font-weight: 800;
           margin-bottom: 0.8rem;
-          padding-bottom: 4px;
-
-          &:focus {
-            outline: none;
-            border-bottom-color: var(--accent-color);
-          }
+          padding-bottom: 6px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          
+          &:focus { outline: none; border-bottom-color: var(--accent-color); }
+          .theme-light &, .theme-sticky & { color: #1e293b; border-bottom-color: rgba(0,0,0,0.1); }
         }
 
         .k-markdown {
           font-size: 0.85rem;
-          line-height: 1.5;
+          line-height: 1.6;
           color: #94a3b8;
-          max-height: 150px;
+          max-height: 200px;
           overflow: hidden;
           display: -webkit-box;
-          -webkit-line-clamp: 5;
+          -webkit-line-clamp: 6;
           -webkit-box-orient: vertical;
+          
+          .theme-light &, .theme-sticky & { color: #334155; }
+          
+          p { margin: 0; }
         }
 
         textarea {
           width: 100%;
-          background: rgba(0, 0, 0, 0.2);
+          background: rgba(0,0,0,0.2);
           border: 1px solid var(--accent-color);
           color: #fff;
-          padding: 8px;
-          border-radius: 4px;
-          min-height: 100px;
+          padding: 10px;
+          border-radius: 6px;
+          min-height: 120px;
           font-family: inherit;
           font-size: 0.85rem;
+          resize: vertical;
         }
       }
+    }
+  }
     }
   }
 }
