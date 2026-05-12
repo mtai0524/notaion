@@ -15,6 +15,7 @@ import {
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
   FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain
 } from 'react-icons/fa';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
@@ -1227,49 +1228,138 @@ const CATEGORY_ACCENTS = {
   SYSTEM: { color: '#ff5370', rgb: '255, 83, 112' },
 };
 
+const sortByKanbanOrder = (a, b) => {
+  const ao = typeof a.kanbanOrder === 'number' ? a.kanbanOrder : Number.MAX_SAFE_INTEGER;
+  const bo = typeof b.kanbanOrder === 'number' ? b.kanbanOrder : Number.MAX_SAFE_INTEGER;
+  if (ao !== bo) return ao - bo;
+  return (a.timestamp || '').localeCompare(b.timestamp || '');
+};
+
 const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
   const categories = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
 
+  const grouped = React.useMemo(() => {
+    const map = {};
+    categories.forEach(c => { map[c] = []; });
+    notes.forEach(n => {
+      const cat = n.customCategory || n.category || 'MEMO';
+      const bucket = map[cat] || (map[cat] = []);
+      bucket.push(n);
+    });
+    Object.keys(map).forEach(k => map[k].sort(sortByKanbanOrder));
+    return map;
+  }, [notes]);
+
+  const handleDragEnd = (result) => {
+    const { source, destination, draggableId } = result;
+    if (!destination) return;
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+
+    const sourceList = (grouped[source.droppableId] || []).slice();
+    const destList = source.droppableId === destination.droppableId
+      ? sourceList
+      : (grouped[destination.droppableId] || []).slice();
+
+    const moving = sourceList.find(n => n.id === draggableId);
+    if (!moving) return;
+
+    if (source.droppableId === destination.droppableId) {
+      sourceList.splice(source.index, 1);
+      sourceList.splice(destination.index, 0, moving);
+      sourceList.forEach((n, idx) => {
+        if (n.kanbanOrder !== idx) {
+          onUpdate(n.id, { kanbanOrder: idx });
+        }
+      });
+    } else {
+      sourceList.splice(source.index, 1);
+      destList.splice(destination.index, 0, moving);
+
+      onUpdate(moving.id, {
+        customCategory: destination.droppableId,
+        category: destination.droppableId,
+        kanbanOrder: destination.index
+      });
+
+      sourceList.forEach((n, idx) => {
+        if (n.id !== moving.id && n.kanbanOrder !== idx) {
+          onUpdate(n.id, { kanbanOrder: idx });
+        }
+      });
+      destList.forEach((n, idx) => {
+        if (n.id !== moving.id && n.kanbanOrder !== idx) {
+          onUpdate(n.id, { kanbanOrder: idx });
+        }
+      });
+    }
+  };
+
   return (
-    <div className="kanban-container-cyber">
-      {categories.map(cat => {
-        const accent = CATEGORY_ACCENTS[cat];
-        return (
-          <div
-            key={cat}
-            className="kanban-column"
-            style={{ '--accent-color': accent.color, '--accent-rgb': accent.rgb }}
-          >
-            <div className="column-header">
-              <div className="header-main">
-                <span className="cat-dot" />
-                <span className="cat-name">{cat}</span>
+    <DragDropContext onDragEnd={handleDragEnd}>
+      <div className="kanban-container-cyber">
+        {categories.map(cat => {
+          const accent = CATEGORY_ACCENTS[cat];
+          const colNotes = grouped[cat] || [];
+          return (
+            <div
+              key={cat}
+              className="kanban-column"
+              style={{ '--accent-color': accent.color, '--accent-rgb': accent.rgb }}
+            >
+              <div className="column-header">
+                <div className="header-main">
+                  <span className="cat-dot" />
+                  <span className="cat-name">{cat}</span>
+                </div>
+                <span className="cat-count">{colNotes.length}</span>
               </div>
-              <span className="cat-count">{notes.filter(n => (n.customCategory || n.category) === cat).length}</span>
+              <Droppable droppableId={cat}>
+                {(provided, snapshot) => (
+                  <div
+                    ref={provided.innerRef}
+                    {...provided.droppableProps}
+                    className={`column-content ${snapshot.isDraggingOver ? 'is-drag-over' : ''}`}
+                  >
+                    {colNotes.length === 0 && !snapshot.isDraggingOver && (
+                      <div className="column-empty">
+                        <span className="empty-bracket">[</span>
+                        <span className="empty-text">DROP HERE</span>
+                        <span className="empty-bracket">]</span>
+                      </div>
+                    )}
+                    {colNotes.map((note, index) => (
+                      <Draggable key={note.id} draggableId={String(note.id)} index={index}>
+                        {(dragProvided, dragSnapshot) => (
+                          <div
+                            ref={dragProvided.innerRef}
+                            {...dragProvided.draggableProps}
+                            className={`kanban-draggable ${dragSnapshot.isDragging ? 'is-dragging' : ''}`}
+                          >
+                            <KanbanNote
+                              note={note}
+                              onUpdate={onUpdate}
+                              onDelete={onDelete}
+                              onFocus={onFocus}
+                              appTheme={appTheme}
+                              dragHandleProps={dragProvided.dragHandleProps}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
+                  </div>
+                )}
+              </Droppable>
             </div>
-            <div className="column-content">
-              {notes
-                .filter(n => (n.customCategory || n.category) === cat)
-                .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
-                .map(note => (
-                  <KanbanNote
-                    key={note.id}
-                    note={note}
-                    onUpdate={onUpdate}
-                    onDelete={onDelete}
-                    onFocus={onFocus}
-                    appTheme={appTheme}
-                  />
-                ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+    </DragDropContext>
   );
 };
 
-const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
+const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme, dragHandleProps }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showDrawing, setShowDrawing] = useState(false);
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
@@ -1287,7 +1377,8 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         {category}
       </div>
 
-      <div className="k-note-header">
+      <div className="k-note-header" {...(dragHandleProps || {})}>
+        <span className="k-drag-handle" title="Drag to reorder">⠿</span>
         <span className="k-time">[ {note.timestamp} ]</span>
         <div className="k-actions">
           <button
