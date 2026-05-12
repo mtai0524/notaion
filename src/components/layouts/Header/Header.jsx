@@ -457,65 +457,65 @@ const Header = () => {
 
   const friendList = (
     notifications.length === 0 ? (
-      <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
-        <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
-          <div className="flex flex-col">
-            <Empty description={false}></Empty>
-            <span>Empty friend notifications</span>
-          </div>
-        </div>
+      <div className="noti-empty">
+        <Empty description={false} />
+        <span>No friend notifications</span>
       </div>
     ) : (
-      notifications.map((notification, index) => (
-        <div
-          key={index}
-          className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
-          style={{ minWidth: '200px', position: 'relative' }}
-          onClick={() => handleNotificationClick(notification.id)}
-        >
-          {!notification.isRead && (
-            <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full" style={{ zIndex: 1 }}></div>
-          )}
-          <Image
-            className="rounded-full mr-3"
-            style={{ width: '60px', height: '60px' }}
-            src={notification.senderAvatar || avatar}
-            alt="Avatar"
-          />
-          <div className="flex-1">
-            <p className="font-medium text-gray-800 text-sm mb-1">
-              <span className="font-bold">{notification.senderName}</span>
-            </p>
-            <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-              {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
-            </p>
-            {!notification.isFriend && (
-              <div className="flex space-x-1 justify-end mt-2">
-                <button className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold">
-                  Decline
-                </button>
-                <button
-                  onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
-                  className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
-                >
-                  Agree
-                </button>
+      <div className="noti-list">
+        {notifications.map((notification, index) => (
+          <div
+            key={index}
+            className={`noti-item ${notification.isRead ? "is-read" : "is-unread"}`}
+            onClick={() => handleNotificationClick(notification.id)}
+          >
+            {!notification.isRead && <span className="unread-dot" />}
+            <div className="noti-avatar">
+              <Image
+                preview={false}
+                src={notification.senderAvatar || avatar}
+                alt="Avatar"
+              />
+            </div>
+            <div className="noti-body">
+              <div className="noti-line-1">
+                <span className="noti-name" title={notification.senderName}>{notification.senderName}</span>
+                <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={["click"]}>
+                  <button className="noti-more" onClick={(e) => e.stopPropagation()} title="More">
+                    <FontAwesomeIcon icon={faEllipsis} />
+                  </button>
+                </Dropdown>
               </div>
-            )}
+              <p className="noti-text">
+                {notification.isFriend ? "đã đồng ý kết nghĩa 👋" : "muốn kết nghĩa với bạn"}
+              </p>
+              {!notification.isFriend && (
+                <div className="noti-actions-row">
+                  <button className="btn-pixel btn-pixel-ghost" onClick={(e) => e.stopPropagation()}>
+                    Decline
+                  </button>
+                  <button
+                    className="btn-pixel btn-pixel-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index);
+                    }}
+                  >
+                    Agree
+                  </button>
+                </div>
+              )}
+            </div>
             <button
-              onClick={() => removeNotification(notification.id, index)}
-              className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
+              className="noti-close"
+              onClick={(e) => { e.stopPropagation(); removeNotification(notification.id, index); }}
+              title="Remove"
             >
               <FontAwesomeIcon icon={faClose} />
             </button>
-            <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
-              <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
-                <FontAwesomeIcon icon={faEllipsis} />
-              </button>
-            </Dropdown>
           </div>
-        </div>
-      ))
+        ))}
+      </div>
     )
   );
 
@@ -533,92 +533,89 @@ const Header = () => {
 
   const messageList = (
     messageNotifs.length === 0 ? (
-      <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
-        <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
-          <div className="flex flex-col">
-            <Empty description={false}></Empty>
-            <span>Empty message notifications</span>
-          </div>
-        </div>
+      <div className="noti-empty">
+        <Empty description={false} />
+        <span>No message notifications</span>
       </div>
     ) : (
-      messageNotifs.map((notif) => {
-        const preview = (notif.content || "")
-          .replace(/^\/bot\s*/i, "")
-          .replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
-          .replace(/\[📎\s[^\]]*\]\([^)]+\)/g, "[file]")
-          .slice(0, 90);
-        return (
-          <div
-            key={notif.id}
-            className={`bg-white rounded p-2 max-w-xs flex items-start border-2 !border-gray-950 mt-2 cursor-pointer ${notif.isRead ? 'bg-gray-200' : ''}`}
-            style={{ minWidth: '200px', position: 'relative' }}
-            onClick={() => markMessageRead(notif.id)}
-          >
-            {!notif.isRead && (
-              <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full" style={{ zIndex: 1 }}></div>
-            )}
-            <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-gray-900 flex items-center justify-center mr-2 flex-shrink-0">
-              <FontAwesomeIcon icon={faComment} className="text-indigo-700 text-sm" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <p className="font-bold text-gray-900 text-xs truncate" title={notif.userName}>
-                  {notif.userName}
-                </p>
-                <span className="text-[10px] text-gray-500 ml-2 flex-shrink-0">{formatRelative(notif.time)}</span>
-              </div>
-              <p className="text-xs text-gray-700 font-medium truncate" style={{ marginTop: '2px' }} title={preview}>
-                {preview || "[trống]"}
-              </p>
-            </div>
-            <button
-              onClick={(e) => { e.stopPropagation(); removeMessageNotif(notif.id); }}
-              className="ml-1 text-gray-300 hover:text-red-600 transition flex-shrink-0"
-              title="Remove"
+      <div className="noti-list">
+        {messageNotifs.map((notif) => {
+          const preview = (notif.content || "")
+            .replace(/^\/bot\s*/i, "")
+            .replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
+            .replace(/\[📎\s[^\]]*\]\([^)]+\)/g, "[file]")
+            .slice(0, 90);
+          const initial = (notif.userName || "?").charAt(0).toUpperCase();
+          const isBot = notif.userName === "Chatbot";
+          return (
+            <div
+              key={notif.id}
+              className={`noti-item noti-item-message ${notif.isRead ? "is-read" : "is-unread"}`}
+              onClick={() => markMessageRead(notif.id)}
             >
-              <FontAwesomeIcon icon={faClose} />
-            </button>
-          </div>
-        );
-      })
+              {!notif.isRead && <span className="unread-dot" />}
+              <div className={`noti-avatar noti-avatar-letter ${isBot ? "is-bot" : ""}`}>
+                {isBot ? <FontAwesomeIcon icon={faComment} /> : initial}
+              </div>
+              <div className="noti-body">
+                <div className="noti-line-1">
+                  <span className="noti-name" title={notif.userName}>{notif.userName}</span>
+                  <span className="noti-time">{formatRelative(notif.time)}</span>
+                </div>
+                <p className="noti-text noti-text-snippet" title={preview}>
+                  {preview || "[trống]"}
+                </p>
+              </div>
+              <button
+                className="noti-close"
+                onClick={(e) => { e.stopPropagation(); removeMessageNotif(notif.id); }}
+                title="Remove"
+              >
+                <FontAwesomeIcon icon={faClose} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     )
   );
 
   const content = (
-    <div className="container-noti mr-2 !min-h-20">
-      <div className="noti-tabs flex border-b-2 border-gray-900 sticky top-0 bg-white z-10">
+    <div className="noti-panel">
+      <div className="noti-tabs">
         <button
           onClick={() => setActiveNotiTab("friend")}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider ${activeNotiTab === "friend" ? "bg-yellow-200 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
+          className={`noti-tab ${activeNotiTab === "friend" ? "is-active" : ""}`}
         >
-          <FontAwesomeIcon icon={faUserPlus} className="mr-1" />
-          Friend {unreadFriendCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">{unreadFriendCount}</span>}
+          <FontAwesomeIcon icon={faUserPlus} />
+          <span>Friend</span>
+          {unreadFriendCount > 0 && <span className="noti-tab-badge">{unreadFriendCount}</span>}
         </button>
         <button
           onClick={() => setActiveNotiTab("message")}
-          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider border-l-2 border-gray-900 ${activeNotiTab === "message" ? "bg-yellow-200 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
+          className={`noti-tab ${activeNotiTab === "message" ? "is-active" : ""}`}
         >
-          <FontAwesomeIcon icon={faComment} className="mr-1" />
-          Message {unreadMessageCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">{unreadMessageCount}</span>}
+          <FontAwesomeIcon icon={faComment} />
+          <span>Message</span>
+          {unreadMessageCount > 0 && <span className="noti-tab-badge">{unreadMessageCount}</span>}
         </button>
       </div>
 
       {activeNotiTab === "friend" && notifications.length > 0 && (
-        <div className="flex justify-end gap-2 px-1 pt-1">
-          <button onClick={clearNotifications} className="text-[10px] text-red-600 font-bold uppercase hover:underline">
-            <FontAwesomeIcon icon={faTrashCan} className="mr-1" />
+        <div className="noti-actions">
+          <button onClick={clearNotifications} className="noti-action-btn is-danger">
+            <FontAwesomeIcon icon={faTrashCan} />
             Clear
           </button>
         </div>
       )}
       {activeNotiTab === "message" && messageNotifs.length > 0 && (
-        <div className="flex justify-end gap-2 px-1 pt-1">
-          <button onClick={markAllMessagesRead} className="text-[10px] text-blue-600 font-bold uppercase hover:underline">
+        <div className="noti-actions">
+          <button onClick={markAllMessagesRead} className="noti-action-btn">
             Mark all read
           </button>
-          <button onClick={clearMessageNotifs} className="text-[10px] text-red-600 font-bold uppercase hover:underline">
-            <FontAwesomeIcon icon={faTrashCan} className="mr-1" />
+          <button onClick={clearMessageNotifs} className="noti-action-btn is-danger">
+            <FontAwesomeIcon icon={faTrashCan} />
             Clear
           </button>
         </div>
