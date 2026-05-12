@@ -162,6 +162,31 @@ const ChatBox = ({ onClose }) => {
   // User-filter sidebar
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [userFilter, setUserFilter] = useState(null);
+  const [allParticipants, setAllParticipants] = useState([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+
+  const fetchParticipants = useCallback(async () => {
+    setParticipantsLoading(true);
+    try {
+      const res = await axiosInstance.get("/api/Chat/participants");
+      if (Array.isArray(res.data)) setAllParticipants(res.data);
+    } catch (err) {
+      console.error("Fetch participants failed", err);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (showUserPanel) fetchParticipants();
+  }, [showUserPanel, fetchParticipants]);
+
+  // Refresh participants khi có tin mới (debounce nhẹ)
+  useEffect(() => {
+    if (!showUserPanel) return;
+    const t = setTimeout(fetchParticipants, 800);
+    return () => clearTimeout(t);
+  }, [messages.length, showUserPanel, fetchParticipants]);
 
   // Attachment upload state
   const [uploading, setUploading] = useState(false);
@@ -698,21 +723,49 @@ const ChatBox = ({ onClose }) => {
 
 
   const userStats = useMemo(() => {
-    const map = new Map();
+    // Snippet map từ messages đã load (chỉ để hiển thị preview, không ảnh hưởng count/total)
+    const snippetByName = new Map();
     for (const m of messages) {
       const name = m.userName || "anonymous";
-      const prev = map.get(name);
       const ts = m.sentDate ? new Date(m.sentDate).getTime() : 0;
       const last = (m.content || "").replace(/^\/bot\s*/i, "").replace(/!\[[^\]]*\]\([^)]+\)/g, "[image]");
-      if (prev) {
-        prev.count += 1;
-        if (ts > prev.lastTs) { prev.lastTs = ts; prev.lastSnippet = last; }
-      } else {
-        map.set(name, { name, count: 1, lastTs: ts, lastSnippet: last });
-      }
+      const prev = snippetByName.get(name);
+      if (!prev || ts > prev.ts) snippetByName.set(name, { ts, text: last });
     }
-    return Array.from(map.values()).sort((a, b) => b.lastTs - a.lastTs);
-  }, [messages]);
+
+    // Nguồn chính: server allParticipants (count + lastMessageAt cho toàn bộ DB).
+    // Fallback: derive từ messages khi panel chưa fetch xong.
+    let rows;
+    if (allParticipants.length > 0) {
+      rows = allParticipants.map((p) => {
+        const ts = p.lastMessageAt ? new Date(p.lastMessageAt).getTime() : 0;
+        const snip = snippetByName.get(p.userName);
+        return {
+          name: p.userName,
+          count: p.messageCount,
+          lastTs: ts,
+          lastSnippet: snip?.text || ""
+        };
+      });
+    } else {
+      const map = new Map();
+      for (const m of messages) {
+        const name = m.userName || "anonymous";
+        const ts = m.sentDate ? new Date(m.sentDate).getTime() : 0;
+        const prev = map.get(name);
+        if (prev) {
+          prev.count += 1;
+          if (ts > prev.lastTs) prev.lastTs = ts;
+        } else {
+          const snip = snippetByName.get(name);
+          map.set(name, { name, count: 1, lastTs: ts, lastSnippet: snip?.text || "" });
+        }
+      }
+      rows = Array.from(map.values());
+    }
+
+    return rows.sort((a, b) => b.lastTs - a.lastTs);
+  }, [messages, allParticipants]);
 
   const checkMark = (active) => (
     <FontAwesomeIcon icon={faCheck} style={{ opacity: active ? 1 : 0.15 }} />
@@ -903,6 +956,7 @@ const ChatBox = ({ onClose }) => {
             <header className="user-panel-head">
               <FontAwesomeIcon icon={faUsers} />
               <span>Participants ({userStats.length})</span>
+              {participantsLoading && <l-cardio size="12" stroke="1.5" speed="0.8" color="#504cd6" />}
             </header>
             <div className="user-panel-list">
               <button
