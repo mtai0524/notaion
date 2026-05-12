@@ -13,7 +13,7 @@ import {
   FaSun as FaGlow, FaCloud as FaBlur, FaAlignLeft, FaAlignCenter, FaAlignRight, FaCog,
   FaLink, FaUnlink, FaEye, FaEyeSlash, FaSyncAlt, FaRulerCombined, FaFont,
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
-  FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt
+  FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain
 } from 'react-icons/fa';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
@@ -110,6 +110,23 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       newLinks = [...currentLinks, targetId];
     }
     onUpdate(note.id, { linkedNoteIds: newLinks.join(',') });
+  };
+
+  const teachAI = async () => {
+    if (!note.content) {
+      alert("Note content is empty!");
+      return;
+    }
+    try {
+      await axiosInstance.post('/api/Chat/update-ai-memory', {
+        content: `[USER_NOTE]: ${note.title || 'Untitled'}\n${note.content}`,
+        userName: 'minhtai'
+      });
+      alert("AI has learned this note content!");
+    } catch (err) {
+      console.error("[TEACH-AI-ERROR]", err);
+      alert("Failed to teach AI. Ensure you have the required permissions.");
+    }
   };
 
   const getTitleAlign = (val) => {
@@ -435,9 +452,12 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                     </div>
                   </section>
                   <div className="ins-actions-footer">
+                    <button className="ins-footer-btn secondary" onClick={teachAI} style={{ width: '100%', border: '1px solid var(--accent-color)', color: 'var(--accent-color)', background: 'rgba(var(--accent-rgb), 0.05)', marginBottom: '10px' }}>
+                      <FaBrain /> TEACH_AI_THIS
+                    </button>
                     <div className="ins-footer-grid">
                       <button className="ins-footer-btn secondary" onClick={() => onUpdate(note.id, { rotation: 0, opacity: 1, borderWidth: 1, borderRadius: 0, blur: 0, glow: false, customTextColor: null, customTextColorHex: null })}>
-                        <FaSyncAlt /> RESET_STYLE
+                        <FaSyncAlt /> RESET
                       </button>
                       <button className="ins-footer-btn danger" onClick={() => onDelete(note.id)}>
                         <FaTrashAlt /> DESTROY
