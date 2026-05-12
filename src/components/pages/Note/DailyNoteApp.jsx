@@ -38,6 +38,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState('STYLE');
 
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
@@ -49,8 +50,8 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       ? accentColor
       : (note.customTextColor && note.customTextColor !== 'null' && note.customTextColor !== null
         ? note.customTextColor
-        : (note.noteTheme === 1
-          ? '#0f172a'                                        // light note → near black
+        : (note.noteTheme === 1 || note.noteTheme === 2
+          ? '#000000'                                        // light/sticky note → black
           : (appTheme === 'light' ? '#0f172a' : '#a6accd')  // follow app theme
         )
       )
@@ -158,7 +159,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div
-        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : 'dark'}`}
+        className={`daily-note-card-cyber ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
         data-category={note.customCategory || note.category}
         style={{
           '--accent-color': accentColor,
@@ -203,353 +204,248 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         {showProps && (
           <div className="cyber-inspector-popup" onClick={(e) => e.stopPropagation()}>
             <div className="inspector-header">
-              <FaTerminal className="term-icon" />
-              <span>PROPERTY_INSPECTOR v2.0</span>
+              <div className="header-left-group">
+                <FaCog className="term-icon" />
+                <span>INSPECTOR_V2</span>
+              </div>
               <FaTimes className="close-icon" onClick={() => setShowProps(false)} />
             </div>
 
+            {/* ── TAB NAVIGATION ── */}
+            <div className="inspector-tabs">
+              {['STYLE', 'TEXT', 'LAYOUT', 'MISC'].map(tab => (
+                <button
+                  key={tab}
+                  className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
             <div className="inspector-content">
-
-              {/* ── TYPOGRAPHY ── */}
-              <section className="ins-section">
-                <div className="ins-label">TYPOGRAPHY</div>
-                <div className="ins-row">
-                  <div className="ins-field">
-                    <label><FaTextHeight /> FONT_SIZE</label>
-                    <div className="ins-toggle-group">
-                      {['0.7rem', '0.85rem', '1.0rem', '1.2rem'].map((sz, i) => (
-                        <button key={sz} className={`ins-toggle ${note.fontSize === sz ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontSize: sz })}>
-                          {['XS', 'S', 'M', 'L'][i]}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label><FaFont /> FONT_FAMILY</label>
-                  <div className="ins-toggle-group full-width">
-                    {[
-                      { label: 'MONO', val: "'JetBrains Mono', monospace" },
-                      { label: 'SANS', val: "'Inter', sans-serif" },
-                      { label: 'SERIF', val: "'Georgia', serif" },
-                      { label: 'CODE', val: "'Fira Code', monospace" },
-                    ].map(f => (
-                      <button key={f.label} className={`ins-toggle ${note.fontFamily === f.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontFamily: f.val })}>
-                        {f.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ins-row mt-2">
-                  <div className="ins-field">
-                    <label>TITLE_ALIGN</label>
-                    <div className="ins-toggle-group">
-                      <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'left' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 0 })}><FaAlignLeft /></button>
-                      <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'center' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 1 })}><FaAlignCenter /></button>
-                      <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'right' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 2 })}><FaAlignRight /></button>
-                    </div>
-                  </div>
-                  <div className="ins-field">
-                    <label>LINE_HEIGHT</label>
-                    <div className="ins-toggle-group">
-                      {[{ label: 'TIGHT', val: 1.2 }, { label: 'NRM', val: 1.6 }, { label: 'WIDE', val: 2.0 }].map(lh => (
-                        <button key={lh.val} className={`ins-toggle ${(note.lineHeight || 1.6) === lh.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { lineHeight: lh.val })}>
-                          {lh.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* ── APPEARANCE ── */}
-              <section className="ins-section">
-                <div className="ins-label">APPEARANCE</div>
-                <div className="ins-grid ins-grid-5">
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { noteTheme: note.noteTheme === 0 ? 1 : 0 })}>
-                    <FaMoon className={note.noteTheme === 0 ? 'active-icon' : ''} />
-                    <span>{note.noteTheme === 0 ? 'DARK' : 'LIGHT'}</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { glow: !note.glow })}>
-                    <FaGlow className={note.glow ? 'active-icon' : ''} />
-                    <span>GLOW</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { blur: note.blur ? 0 : 1 })}>
-                    <FaBlur className={note.blur ? 'active-icon' : ''} />
-                    <span>GLASS</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { borderStyle: getBorderStyle(note.borderStyle) === 'dashed' ? 0 : 1 })}>
-                    <FaBorderNone className={getBorderStyle(note.borderStyle) === 'dashed' ? 'active-icon' : ''} />
-                    <span>DASHED</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { hideHeader: !note.hideHeader })}>
-                    {note.hideHeader ? <FaEyeSlash className="active-icon" /> : <FaEye />}
-                    <span>HEADER</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
-                    <FaCheckCircle className={note.isCompleted ? 'active-icon' : ''} />
-                    <span>DONE</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { locked: !note.locked })}>
-                    {note.locked ? <FaLock className="active-icon" /> : <FaUnlock />}
-                    <span>LOCK</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { pinned: !note.pinned })}>
-                    <FaDrawPolygon className={note.pinned ? 'active-icon' : ''} />
-                    <span>PIN</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { highlighted: !note.highlighted })}>
-                    <FaHighlighter className={note.highlighted ? 'active-icon' : ''} />
-                    <span>HL</span>
-                  </div>
-                  <div className="ins-control" onClick={() => onUpdate(note.id, { compact: !note.compact })}>
-                    <FaCompressArrowsAlt className={note.compact ? 'active-icon' : ''} />
-                    <span>COMPACT</span>
-                  </div>
-                </div>
-
-                {note.blur > 0 && (
-                  <div className="ins-field mt-2">
-                    <label><FaBlur /> BLUR_INTENSITY: {(note.blurIntensity || 5)}px</label>
-                    <input
-                      type="range" min="1" max="20" step="1"
-                      value={note.blurIntensity || 5}
-                      className="ins-slider"
-                      onChange={(e) => onUpdate(note.id, { blurIntensity: Number(e.target.value) })}
-                    />
-                  </div>
-                )}
-
-                {note.glow && (
-                  <div className="ins-field mt-2">
-                    <label><FaGlow /> GLOW_RADIUS: {note.glowRadius || 20}px</label>
-                    <input
-                      type="range" min="5" max="60" step="5"
-                      value={note.glowRadius || 20}
-                      className="ins-slider"
-                      onChange={(e) => onUpdate(note.id, { glowRadius: Number(e.target.value) })}
-                    />
-                  </div>
-                )}
-              </section>
-
-              {/* ── SLIDERS ── */}
-              <section className="ins-section">
-                <div className="ins-label">VISUAL_PARAMS</div>
-
-                <div className="ins-field">
-                  <label><FaEye /> OPACITY: {Math.round((note.opacity || 1) * 100)}%</label>
-                  <input
-                    type="range" min="0.1" max="1" step="0.05"
-                    value={note.opacity || 1}
-                    className="ins-slider"
-                    onChange={(e) => onUpdate(note.id, { opacity: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label><FaRulerCombined /> BORDER_WIDTH: {note.borderWidth || 1}px</label>
-                  <input
-                    type="range" min="1" max="6" step="1"
-                    value={note.borderWidth || 1}
-                    className="ins-slider"
-                    onChange={(e) => onUpdate(note.id, { borderWidth: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label><FaSlidersH /> BORDER_RADIUS: {note.borderRadius || 0}px</label>
-                  <input
-                    type="range" min="0" max="24" step="2"
-                    value={note.borderRadius || 0}
-                    className="ins-slider"
-                    onChange={(e) => onUpdate(note.id, { borderRadius: Number(e.target.value) })}
-                  />
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label>ROTATION: {note.rotation || 0}°</label>
-                  <input
-                    type="range" min="-15" max="15" step="1"
-                    value={note.rotation || 0}
-                    className="ins-slider"
-                    onChange={(e) => onUpdate(note.id, { rotation: Number(e.target.value) })}
-                  />
-                  {(note.rotation || 0) !== 0 && (
-                    <button className="ins-reset-btn" onClick={() => onUpdate(note.id, { rotation: 0 })}>
-                      <FaSyncAlt /> RESET
-                    </button>
-                  )}
-                </div>
-              </section>
-
-              {/* ── COLORS ── */}
-              <section className="ins-section">
-                <div className="ins-label">COLOR_CONTROL</div>
-
-                <div className="ins-field">
-                  <label>ACCENT_PRESET</label>
-                  <div className="ins-color-swatches">
-                    {COLORS.map(c => (
-                      <button
-                        key={c.id}
-                        className={`swatch ${note.color === c.id && !note.customColor ? 'active' : ''}`}
-                        style={{ background: c.color }}
-                        onClick={() => onUpdate(note.id, { color: c.id, customColor: null, customRgb: null })}
-                        title={c.id.toUpperCase()}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label>TEXT_COLOR</label>
-                  <div className="ins-toggle-group full-width">
-                    {[
-                      { label: 'AUTO', val: null },
-                      { label: 'WHITE', val: '#ffffff' },
-                      { label: 'BLACK', val: '#000000' },
-                      { label: 'ACCENT', val: 'accent' }
-                    ].map(tc => (
-                      <button key={tc.label} className={`ins-toggle ${note.customTextColor === tc.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customTextColor: tc.val, customTextColorHex: null })}>
-                        {tc.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ins-field mt-2">
-                  <label>PATTERN</label>
-                  <div className="ins-toggle-group full-width">
-                    {[
-                      { label: 'NONE', val: 0 },
-                      { label: 'DOTS', val: 1 },
-                      { label: 'LINES', val: 2 },
-                      { label: 'GRID', val: 3 },
-                      { label: 'CROSS', val: 4 },
-                    ].map(p => (
-                      <button key={p.val} className={`ins-toggle ${note.pattern === p.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { pattern: p.val })}>
-                        {p.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ins-row mt-2">
-                  <div className="ins-field">
-                    <label><FaPalette /> CUSTOM_ACCENT</label>
-                    <div className="ins-color-input-row">
-                      <input
-                        type="color"
-                        className="ins-color-picker"
-                        value={note.customColor || accentColor}
-                        onChange={(e) => {
-                          const hex = e.target.value;
-                          const r = parseInt(hex.slice(1, 3), 16);
-                          const g = parseInt(hex.slice(3, 5), 16);
-                          const b = parseInt(hex.slice(5, 7), 16);
-                          onUpdate(note.id, { customColor: hex, customRgb: `${r}, ${g}, ${b}` });
-                        }}
-                      />
-                      <input
-                        className="ins-input"
-                        value={note.customColor || ''}
-                        onChange={(e) => {
-                          const hex = e.target.value;
-                          if (/^#[0-9a-fA-F]{6}$/.test(hex)) {
-                            const r = parseInt(hex.slice(1, 3), 16);
-                            const g = parseInt(hex.slice(3, 5), 16);
-                            const b = parseInt(hex.slice(5, 7), 16);
-                            onUpdate(note.id, { customColor: hex, customRgb: `${r}, ${g}, ${b}` });
-                          } else {
-                            onUpdate(note.id, { customColor: hex });
-                          }
-                        }}
-                        placeholder="#HEX"
-                        style={{ flex: 1 }}
-                      />
-                    </div>
-                  </div>
-                  <div className="ins-field">
-                    <label>CUSTOM_TEXT</label>
-                    <div className="ins-color-input-row">
-                      <input
-                        type="color"
-                        className="ins-color-picker"
-                        value={note.customTextColorHex || '#a6accd'}
-                        onChange={(e) => onUpdate(note.id, { customTextColor: e.target.value, customTextColorHex: e.target.value })}
-                      />
-                      <input
-                        className="ins-input"
-                        value={note.customTextColorHex || ''}
-                        onChange={(e) => onUpdate(note.id, { customTextColor: e.target.value, customTextColorHex: e.target.value })}
-                        placeholder="#HEX"
-                        style={{ flex: 1 }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* ── CATEGORY & LABEL ── */}
-              <section className="ins-section">
-                <div className="ins-label">IDENTITY</div>
-                <div className="ins-field">
-                  <label>CATEGORY</label>
-                  <div className="ins-cat-grid">
-                    {CATEGORIES.map(cat => (
-                      <button
-                        key={cat}
-                        className={`cat-option ${(note.customCategory || note.category) === cat ? 'active' : ''}`}
-                        onClick={() => onUpdate(note.id, { customCategory: cat, category: cat })}
-                      >
-                        {cat}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="prop-input-wrap mt-1">
-                  <FaTag className="input-icon" />
-                  <input
-                    className="ins-input"
-                    value={note.customCategory || ''}
-                    onChange={(e) => onUpdate(note.id, { customCategory: e.target.value.toUpperCase() })}
-                    placeholder="CUSTOM_LABEL..."
-                  />
-                </div>
-              </section>
-
-              {/* ── CONNECTIVITY ── */}
-              <section className="ins-section">
-                <div className="ins-label">CONNECTIVITY</div>
-                <div className="ins-field">
-                  <label><FaLink /> LINK_TO_NOTE</label>
-                  <div className="link-scroll">
-                    {window.allCurrentNotesGlobal?.filter(n => n.id !== note.id).map(n => (
-                      <div key={n.id} className={`link-item ${(note.linkedNoteIds || '').split(',').includes(n.id) ? 'linked' : ''}`} onClick={() => toggleLink(n.id)}>
-                        <span className="dot" /> {n.title || 'Untitled Entry'}
+              {/* ── STYLE TAB ── */}
+              {activeTab === 'STYLE' && (
+                <>
+                  <section className="ins-section">
+                    <div className="ins-label">THEME_&_EFFECTS</div>
+                    <div className="ins-grid ins-grid-5">
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { noteTheme: note.noteTheme === 0 ? 1 : (note.noteTheme === 1 ? 2 : 0) })}>
+                        {note.noteTheme === 0 ? <FaMoon className="active-icon" /> : (note.noteTheme === 1 ? <FaSun /> : <FaFileAlt />)}
+                        <span>{note.noteTheme === 0 ? 'DARK' : (note.noteTheme === 1 ? 'LIGHT' : 'STICKY')}</span>
                       </div>
-                    ))}
-                    {(!window.allCurrentNotesGlobal || window.allCurrentNotesGlobal.filter(n => n.id !== note.id).length === 0) && (
-                      <div className="link-item" style={{ opacity: 0.4, cursor: 'default' }}>No other notes on this date</div>
-                    )}
-                  </div>
-                </div>
-              </section>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { glow: !note.glow })}>
+                        <FaGlow className={note.glow ? 'active-icon' : ''} />
+                        <span>GLOW</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { blur: note.blur ? 0 : 1 })}>
+                        <FaBlur className={note.blur ? 'active-icon' : ''} />
+                        <span>GLASS</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { borderStyle: getBorderStyle(note.borderStyle) === 'dashed' ? 0 : 1 })}>
+                        <FaBorderNone className={getBorderStyle(note.borderStyle) === 'dashed' ? 'active-icon' : ''} />
+                        <span>DASHED</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { highlighted: !note.highlighted })}>
+                        <FaHighlighter className={note.highlighted ? 'active-icon' : ''} />
+                        <span>HL</span>
+                      </div>
+                    </div>
 
-              {/* ── ACTIONS ── */}
-              <div className="ins-actions-footer">
-                <div className="ins-footer-grid">
-                  <button className="ins-footer-btn secondary" onClick={() => onUpdate(note.id, { rotation: 0, opacity: 1, borderWidth: 1, borderRadius: 0, blur: 0, glow: false, customTextColor: null, customTextColorHex: null })}>
-                    <FaSyncAlt /> RESET_STYLE
-                  </button>
-                  <button className="ins-footer-btn danger" onClick={() => onDelete(note.id)}>
-                    <FaTrashAlt /> DESTROY
-                  </button>
-                </div>
-              </div>
+                    {(note.blur > 0 || note.glow) && (
+                      <div className="ins-field mt-2">
+                        {note.blur > 0 && (
+                          <div className="slider-row">
+                            <label><FaBlur /> GLASS: {(note.blurIntensity || 5)}px</label>
+                            <input type="range" min="1" max="20" step="1" value={note.blurIntensity || 5} className="ins-slider" onChange={(e) => onUpdate(note.id, { blurIntensity: Number(e.target.value) })} />
+                          </div>
+                        )}
+                        {note.glow && (
+                          <div className="slider-row mt-1">
+                            <label><FaGlow /> GLOW: {note.glowRadius || 20}px</label>
+                            <input type="range" min="5" max="60" step="5" value={note.glowRadius || 20} className="ins-slider" onChange={(e) => onUpdate(note.id, { glowRadius: Number(e.target.value) })} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="ins-section">
+                    <div className="ins-label">COLORS_&_PATTERNS</div>
+                    <div className="ins-field">
+                      <label>ACCENT_PRESET</label>
+                      <div className="ins-color-swatches">
+                        {COLORS.map(c => (
+                          <button key={c.id} className={`swatch ${note.color === c.id && !note.customColor ? 'active' : ''}`} style={{ background: c.color }} onClick={() => onUpdate(note.id, { color: c.id, customColor: null, customRgb: null })} />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label>PATTERN_OVERLAY</label>
+                      <div className="ins-toggle-group full-width">
+                        {['NONE', 'DOTS', 'LINES', 'GRID', 'CROSS'].map((p, i) => (
+                          <button key={p} className={`ins-toggle ${note.pattern === i ? 'active' : ''}`} onClick={() => onUpdate(note.id, { pattern: i })}>{p}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="ins-row mt-2">
+                      <div className="ins-field">
+                        <label>CUSTOM_ACCENT</label>
+                        <div className="ins-color-input-row">
+                          <input type="color" className="ins-color-picker" value={note.customColor || accentColor} onChange={(e) => { const hex = e.target.value; const r = parseInt(hex.slice(1, 3), 16); const g = parseInt(hex.slice(3, 5), 16); const b = parseInt(hex.slice(5, 7), 16); onUpdate(note.id, { customColor: hex, customRgb: `${r}, ${g}, ${b}` }); }} />
+                          <input className="ins-input" value={note.customColor || ''} onChange={(e) => onUpdate(note.id, { customColor: e.target.value })} placeholder="#HEX" />
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {/* ── TEXT TAB ── */}
+              {activeTab === 'TEXT' && (
+                <>
+                  <section className="ins-section">
+                    <div className="ins-label">TYPOGRAPHY</div>
+                    <div className="ins-field">
+                      <label><FaFont /> FONT_FAMILY</label>
+                      <div className="ins-toggle-group full-width">
+                        {[{ label: 'MONO', val: "'JetBrains Mono', monospace" }, { label: 'SANS', val: "'Inter', sans-serif" }, { label: 'SERIF', val: "'Georgia', serif" }, { label: 'CODE', val: "'Fira Code', monospace" }].map(f => (
+                          <button key={f.label} className={`ins-toggle ${note.fontFamily === f.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontFamily: f.val })}>{f.label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="ins-row mt-2">
+                      <div className="ins-field">
+                        <label>FONT_SIZE</label>
+                        <div className="ins-toggle-group">
+                          {['0.7rem', '0.85rem', '1.0rem', '1.2rem'].map((sz, i) => (
+                            <button key={sz} className={`ins-toggle ${note.fontSize === sz ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontSize: sz })}>{['XS', 'S', 'M', 'L'][i]}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="ins-field">
+                        <label>ALIGN</label>
+                        <div className="ins-toggle-group">
+                          <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'left' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 0 })}><FaAlignLeft /></button>
+                          <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'center' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 1 })}><FaAlignCenter /></button>
+                          <button className={`ins-toggle ${getTitleAlign(note.titleAlign) === 'right' ? 'active' : ''}`} onClick={() => onUpdate(note.id, { titleAlign: 2 })}><FaAlignRight /></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label>LINE_HEIGHT: {note.lineHeight || 1.6}</label>
+                      <input type="range" min="1.0" max="2.4" step="0.1" value={note.lineHeight || 1.6} className="ins-slider" onChange={(e) => onUpdate(note.id, { lineHeight: Number(e.target.value) })} />
+                    </div>
+                  </section>
+                  <section className="ins-section">
+                    <div className="ins-label">TEXT_COLOR</div>
+                    <div className="ins-toggle-group full-width">
+                      {[{ label: 'AUTO', val: null }, { label: 'WHITE', val: '#ffffff' }, { label: 'BLACK', val: '#000000' }, { label: 'ACCENT', val: 'accent' }].map(tc => (
+                        <button key={tc.label} className={`ins-toggle ${note.customTextColor === tc.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customTextColor: tc.val, customTextColorHex: null })}>{tc.label}</button>
+                      ))}
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label>CUSTOM_COLOR</label>
+                      <div className="ins-color-input-row">
+                        <input type="color" className="ins-color-picker" value={note.customTextColorHex || '#ffffff'} onChange={(e) => onUpdate(note.id, { customTextColor: e.target.value, customTextColorHex: e.target.value })} />
+                        <input className="ins-input" value={note.customTextColorHex || ''} onChange={(e) => onUpdate(note.id, { customTextColor: e.target.value, customTextColorHex: e.target.value })} placeholder="#HEX" />
+                      </div>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {/* ── LAYOUT TAB ── */}
+              {activeTab === 'LAYOUT' && (
+                <>
+                  <section className="ins-section">
+                    <div className="ins-label">TRANSFORM_&_VISUALS</div>
+                    <div className="ins-field">
+                      <label><FaEye /> OPACITY: {Math.round((note.opacity || 1) * 100)}%</label>
+                      <input type="range" min="0.1" max="1" step="0.05" value={note.opacity || 1} className="ins-slider" onChange={(e) => onUpdate(note.id, { opacity: Number(e.target.value) })} />
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label><FaRulerCombined /> BORDER_WIDTH: {note.borderWidth || 1}px</label>
+                      <input type="range" min="1" max="6" step="1" value={note.borderWidth || 1} className="ins-slider" onChange={(e) => onUpdate(note.id, { borderWidth: Number(e.target.value) })} />
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label><FaSlidersH /> CORNER_RADIUS: {note.borderRadius || 0}px</label>
+                      <input type="range" min="0" max="24" step="2" value={note.borderRadius || 0} className="ins-slider" onChange={(e) => onUpdate(note.id, { borderRadius: Number(e.target.value) })} />
+                    </div>
+                    <div className="ins-field mt-2">
+                      <label>ROTATION: {note.rotation || 0}°</label>
+                      <input type="range" min="-15" max="15" step="1" value={note.rotation || 0} className="ins-slider" onChange={(e) => onUpdate(note.id, { rotation: Number(e.target.value) })} />
+                    </div>
+                  </section>
+                  <section className="ins-section">
+                    <div className="ins-label">BEHAVIOR</div>
+                    <div className="ins-grid ins-grid-5">
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { hideHeader: !note.hideHeader })}>
+                        {note.hideHeader ? <FaEyeSlash className="active-icon" /> : <FaEye />}
+                        <span>HEADER</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
+                        <FaCheckCircle className={note.isCompleted ? 'active-icon' : ''} />
+                        <span>DONE</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { locked: !note.locked })}>
+                        {note.locked ? <FaLock className="active-icon" /> : <FaUnlock />}
+                        <span>LOCK</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { pinned: !note.pinned })}>
+                        <FaDrawPolygon className={note.pinned ? 'active-icon' : ''} />
+                        <span>PIN</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { compact: !note.compact })}>
+                        <FaCompressArrowsAlt className={note.compact ? 'active-icon' : ''} />
+                        <span>COMPACT</span>
+                      </div>
+                    </div>
+                  </section>
+                </>
+              )}
+
+              {/* ── MISC TAB ── */}
+              {activeTab === 'MISC' && (
+                <>
+                  <section className="ins-section">
+                    <div className="ins-label">IDENTITY</div>
+                    <div className="ins-field">
+                      <label>CATEGORY_PRESETS</label>
+                      <div className="ins-cat-grid">
+                        {CATEGORIES.map(cat => (
+                          <button key={cat} className={`cat-option ${(note.customCategory || note.category) === cat ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customCategory: cat, category: cat })}>{cat}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="prop-input-wrap mt-1">
+                      <FaTag className="input-icon" />
+                      <input className="ins-input" value={note.customCategory || ''} onChange={(e) => onUpdate(note.id, { customCategory: e.target.value.toUpperCase() })} placeholder="CUSTOM_LABEL..." />
+                    </div>
+                  </section>
+                  <section className="ins-section">
+                    <div className="ins-label">CONNECTIVITY</div>
+                    <div className="link-scroll">
+                      {window.allCurrentNotesGlobal?.filter(n => n.id !== note.id).map(n => (
+                        <div key={n.id} className={`link-item ${(note.linkedNoteIds || '').split(',').includes(n.id) ? 'linked' : ''}`} onClick={() => toggleLink(n.id)}>
+                          <span className="dot" /> {n.title || 'Untitled Entry'}
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                  <div className="ins-actions-footer">
+                    <div className="ins-footer-grid">
+                      <button className="ins-footer-btn secondary" onClick={() => onUpdate(note.id, { rotation: 0, opacity: 1, borderWidth: 1, borderRadius: 0, blur: 0, glow: false, customTextColor: null, customTextColorHex: null })}>
+                        <FaSyncAlt /> RESET_STYLE
+                      </button>
+                      <button className="ins-footer-btn danger" onClick={() => onDelete(note.id)}>
+                        <FaTrashAlt /> DESTROY
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
