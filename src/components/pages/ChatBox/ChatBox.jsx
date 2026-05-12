@@ -5,8 +5,8 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faBold, faItalic, faCode } from "@fortawesome/free-solid-svg-icons";
-import { faPaperPlane, faSmile } from "@fortawesome/free-regular-svg-icons";
+import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import axiosInstance from "../../../axiosConfig";
@@ -152,22 +152,72 @@ const ChatBox = ({ onClose }) => {
   // UX enhancements state
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [showEmoji, setShowEmoji] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [copiedKey, setCopiedKey] = useState(null);
   const isAtBottomRef = useRef(true);
   useEffect(() => { isAtBottomRef.current = isAtBottom; }, [isAtBottom]);
 
-  const QUICK_PROMPTS = [
-    { label: "📝 Tóm tắt nội dung", text: "Tóm tắt ngắn gọn các ý chính sau đây:\n\n" },
-    { label: "💡 Giải thích code", text: "Giải thích đoạn code này từng dòng:\n\n```\n\n```" },
-    { label: "🐛 Tìm bug", text: "Tìm và sửa bug trong đoạn code sau:\n\n```\n\n```" },
-    { label: "🌐 Dịch sang tiếng Anh", text: "Dịch sang tiếng Anh tự nhiên:\n\n" },
-    { label: "✨ Viết lại hay hơn", text: "Viết lại đoạn văn sau cho rõ ràng và súc tích hơn:\n\n" },
-  ];
+  // Chat preferences (persisted)
+  const [compactMode, setCompactMode] = useState(() => localStorage.getItem("chatCompactMode") === "true");
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("chatSoundEnabled") === "true");
+  const [autoScroll, setAutoScroll] = useState(() => {
+    const v = localStorage.getItem("chatAutoScroll");
+    return v === null ? true : v === "true";
+  });
+  const autoScrollRef = useRef(autoScroll);
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => { autoScrollRef.current = autoScroll; }, [autoScroll]);
+  useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
 
-  const EMOJIS = ['😀','😂','🤣','😊','😍','🥰','😘','😎','🤔','😴','🙃','😭','😡','🥺','👍','👎','👏','🙏','💪','🔥','✨','💯','❤️','💔','🎉','🎊','🚀','⚡','✅','❌','⭐','💡','📌','📝','🤖','👀','😅','😬','🥳','🤯'];
+  const togglePref = useCallback((key, current, setter) => {
+    const next = !current;
+    setter(next);
+    localStorage.setItem(key, String(next));
+  }, []);
+
+  const playPing = useCallback(() => {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(540, ctx.currentTime + 0.12);
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+      setTimeout(() => ctx.close().catch(() => {}), 400);
+    } catch (e) {
+      /* ignore */
+    }
+  }, []);
+
+  const exportChat = useCallback(() => {
+    if (!messages || messages.length === 0) {
+      notification.info({ message: "Không có tin nhắn để export", duration: 2 });
+      return;
+    }
+    const lines = messages.map((m) => {
+      const ts = m.sentDate ? new Date(m.sentDate).toLocaleString("en-GB") : "";
+      const who = m.userName || "anonymous";
+      const body = (m.content || "").replace(/^\/bot\s*/i, "");
+      return `### ${who} — ${ts}\n\n${body}\n`;
+    });
+    const blob = new Blob([`# Chat export\n\n${lines.join("\n---\n\n")}`], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `chat-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [messages]);
 
   // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
   useEffect(() => {
@@ -185,7 +235,8 @@ const ChatBox = ({ onClose }) => {
             sentDate: new Date().toISOString(),
           },
         ]);
-        if (isAtBottomRef.current) {
+        if (soundEnabledRef.current) playPing();
+        if (autoScrollRef.current && isAtBottomRef.current) {
           setLatestMessageFromUser(true);
         } else {
           setUnreadCount((c) => c + 1);
@@ -446,44 +497,6 @@ const ChatBox = ({ onClose }) => {
     }
   }, []);
 
-  const insertAtCursor = useCallback((insertion) => {
-    const ta = textareaRef.current;
-    if (!ta) {
-      setMessage((m) => m + insertion);
-      return;
-    }
-    const start = ta.selectionStart ?? message.length;
-    const end = ta.selectionEnd ?? message.length;
-    const next = message.slice(0, start) + insertion + message.slice(end);
-    setMessage(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      const pos = start + insertion.length;
-      ta.setSelectionRange(pos, pos);
-      ta.style.height = "auto";
-      ta.style.height = `${ta.scrollHeight}px`;
-    });
-  }, [message]);
-
-  const wrapSelection = useCallback((prefix, suffix = prefix, placeholder = "") => {
-    const ta = textareaRef.current;
-    if (!ta) {
-      setMessage((m) => `${m}${prefix}${placeholder}${suffix}`);
-      return;
-    }
-    const start = ta.selectionStart ?? message.length;
-    const end = ta.selectionEnd ?? message.length;
-    const selected = message.slice(start, end) || placeholder;
-    const next = message.slice(0, start) + prefix + selected + suffix + message.slice(end);
-    setMessage(next);
-    requestAnimationFrame(() => {
-      ta.focus();
-      const pos = start + prefix.length + selected.length + suffix.length;
-      ta.setSelectionRange(start + prefix.length, pos - suffix.length);
-      ta.style.height = "auto";
-      ta.style.height = `${ta.scrollHeight}px`;
-    });
-  }, [message]);
 
   const handleChange = (e) => {
     setMessage(e.target.value);
@@ -497,19 +510,28 @@ const ChatBox = ({ onClose }) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
-      return;
-    }
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
-      const k = e.key.toLowerCase();
-      if (k === "b") { e.preventDefault(); wrapSelection("**", "**", "bold"); }
-      else if (k === "i") { e.preventDefault(); wrapSelection("*", "*", "italic"); }
-      else if (k === "k") { e.preventDefault(); wrapSelection("`", "`", "code"); }
     }
   };
 
   const handleMenuClick = async (e) => {
+    switch (e.key) {
+      case "compact":
+        togglePref("chatCompactMode", compactMode, setCompactMode);
+        return;
+      case "sound":
+        togglePref("chatSoundEnabled", soundEnabled, setSoundEnabled);
+        return;
+      case "autoscroll":
+        togglePref("chatAutoScroll", autoScroll, setAutoScroll);
+        return;
+      case "export":
+        exportChat();
+        return;
+      default:
+        break;
+    }
+
     if (messages.length === 0) {
-      // messages trống, không cần xóa
       Modal.info({
         title: "No messages to clear",
         okText: "OK",
@@ -588,8 +610,29 @@ const ChatBox = ({ onClose }) => {
   };
 
 
+  const checkMark = (active) => (
+    <FontAwesomeIcon icon={faCheck} style={{ opacity: active ? 1 : 0.15 }} />
+  );
+
   const menuProfile = (
-    <Menu onClick={handleMenuClick} className="custom-dropdown-menu">
+    <Menu onClick={handleMenuClick} className="custom-dropdown-menu chatbox-settings-menu">
+      <Menu.Item key="compact" icon={checkMark(compactMode)}>
+        <FontAwesomeIcon icon={compactMode ? faCompressArrowsAlt : faExpandArrowsAlt} style={{ marginRight: 8 }} />
+        Compact mode
+      </Menu.Item>
+      <Menu.Item key="sound" icon={checkMark(soundEnabled)}>
+        <FontAwesomeIcon icon={soundEnabled ? faVolumeHigh : faVolumeXmark} style={{ marginRight: 8 }} />
+        Sound on new message
+      </Menu.Item>
+      <Menu.Item key="autoscroll" icon={checkMark(autoScroll)}>
+        <FontAwesomeIcon icon={faArrowDown} style={{ marginRight: 8 }} />
+        Auto-scroll
+      </Menu.Item>
+      <Menu.Divider />
+      <Menu.Item key="export" icon={<FontAwesomeIcon icon={faDownload} />}>
+        Export chat (.md)
+      </Menu.Item>
+      <Menu.Divider />
       <Menu.Item key="clear-me" icon={<FontAwesomeIcon icon={faEraser} />}>
         Clear my chats
       </Menu.Item>
@@ -682,7 +725,7 @@ const ChatBox = ({ onClose }) => {
 
 
   return (
-    <div className={`chat-box ${isExpanded ? "expanded" : ""}`}>
+    <div className={`chat-box ${isExpanded ? "expanded" : ""} ${compactMode ? "compact" : ""}`}>
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
@@ -864,64 +907,6 @@ const ChatBox = ({ onClose }) => {
           </button>
         )}
       </div>
-
-      {aiMode && !message.trim() && (
-        <div className="quick-prompts">
-          {QUICK_PROMPTS.map((p) => (
-            <button
-              key={p.label}
-              className="quick-prompt-chip"
-              onClick={() => {
-                setMessage(p.text);
-                requestAnimationFrame(() => {
-                  const ta = textareaRef.current;
-                  if (ta) {
-                    ta.focus();
-                    ta.style.height = "auto";
-                    ta.style.height = `${ta.scrollHeight}px`;
-                  }
-                });
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <div className="chat-toolbar">
-        <button onClick={() => wrapSelection("**", "**", "bold")} title="Bold (Ctrl+B)">
-          <FontAwesomeIcon icon={faBold} />
-        </button>
-        <button onClick={() => wrapSelection("*", "*", "italic")} title="Italic (Ctrl+I)">
-          <FontAwesomeIcon icon={faItalic} />
-        </button>
-        <button onClick={() => wrapSelection("`", "`", "code")} title="Inline code (Ctrl+K)">
-          <FontAwesomeIcon icon={faCode} />
-        </button>
-        <button
-          onClick={() => setShowEmoji((s) => !s)}
-          className={showEmoji ? "active-tool" : ""}
-          title="Emoji"
-        >
-          <FontAwesomeIcon icon={faSmile} />
-        </button>
-        <span className="char-counter">{message.length}</span>
-      </div>
-
-      {showEmoji && (
-        <div className="emoji-picker">
-          {EMOJIS.map((e) => (
-            <button
-              key={e}
-              className="emoji-btn"
-              onClick={() => { insertAtCursor(e); setShowEmoji(false); }}
-            >
-              {e}
-            </button>
-          ))}
-        </div>
-      )}
 
       <div className="chat-input">
         <textarea
