@@ -634,6 +634,7 @@ const DailyNoteApp = () => {
   const [viewMode, setViewMode] = useState('canvas'); // 'canvas' or 'kanban'
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectionRect, setSelectionRect] = useState(null);
+  const canvasRef = React.useRef(null);
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
   const currentNotes = allCurrentNotes.filter(n =>
@@ -916,45 +917,51 @@ const DailyNoteApp = () => {
     }
   };
 
+  const getCanvasPoint = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: e.clientX - rect.left + canvas.scrollLeft,
+      y: e.clientY - rect.top + canvas.scrollTop,
+    };
+  };
+
   const handleCanvasMouseDown = (e) => {
-    // Nếu nhấn vào input, button hoặc Note card thì không quét khối
-    if (e.target.closest('.daily-note-card-cyber') || 
-        e.target.closest('.kanban-note-card') ||
-        e.target.closest('button') || 
-        e.target.closest('input')) {
+    if (viewMode !== 'canvas') return;
+    // Only start marquee when clicking the empty canvas — not a note, button, input, or marquee itself
+    if (e.target.closest('.daily-note-card-cyber') ||
+        e.target.closest('button') ||
+        e.target.closest('input') ||
+        e.target.closest('textarea') ||
+        e.target.closest('.selection-marquee')) {
       return;
     }
 
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    setSelectionRect({ startX: x, startY: y, endX: x, endY: y, active: true });
-    setSelectedIds([]); // Reset selection khi bắt đầu quét mới
+    const pt = getCanvasPoint(e);
+    if (!pt) return;
+    setSelectionRect({ startX: pt.x, startY: pt.y, endX: pt.x, endY: pt.y, active: true });
+    setSelectedIds([]);
   };
 
   const handleCanvasMouseMove = (e) => {
     if (!selectionRect?.active) return;
-    const container = document.querySelector('.daily-note-app-cyber');
-    if (!container) return;
-    const rect = container.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const pt = getCanvasPoint(e);
+    if (!pt) return;
 
-    setSelectionRect(prev => ({ ...prev, endX: x, endY: y }));
+    setSelectionRect(prev => ({ ...prev, endX: pt.x, endY: pt.y }));
 
-    // Tính toán các Note nằm trong vùng quét
-    const x1 = Math.min(selectionRect.startX, x);
-    const x2 = Math.max(selectionRect.startX, x);
-    const y1 = Math.min(selectionRect.startY, y);
-    const y2 = Math.max(selectionRect.startY, y);
+    const x1 = Math.min(selectionRect.startX, pt.x);
+    const x2 = Math.max(selectionRect.startX, pt.x);
+    const y1 = Math.min(selectionRect.startY, pt.y);
+    const y2 = Math.max(selectionRect.startY, pt.y);
 
     const ids = currentNotes.filter(n => {
       const nx = n.x;
       const ny = n.y;
       const nw = n.width || 250;
-      const nh = n.height || 200;
-
-      // Kiểm tra va chạm giữa 2 hình chữ nhật
+      const nh = n.isMinimized ? 40 : (n.height || 200);
+      // AABB intersection
       return nx < x2 && (nx + nw) > x1 && ny < y2 && (ny + nh) > y1;
     }).map(n => n.id);
 
@@ -1086,10 +1093,6 @@ const DailyNoteApp = () => {
   return (
     <div
       className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''}`}
-      onMouseDown={handleCanvasMouseDown}
-      onMouseMove={handleCanvasMouseMove}
-      onMouseUp={handleCanvasMouseUp}
-      onMouseLeave={handleCanvasMouseUp}
     >
       <header className="app-toolbar-cyber">
         <div className="date-navigator">
@@ -1110,8 +1113,8 @@ const DailyNoteApp = () => {
 
         <div className="toolbar-actions">
           {selectedIds.length > 0 && (
-            <button className="nav-btn delete-btn" onClick={deleteSelectedNotes} title="Delete Selected">
-              <FaTrash /> DELETE_SELECTED ({selectedIds.length})
+            <button className="nav-btn delete-selected-btn" onClick={deleteSelectedNotes} title="Delete Selected">
+              <FaTrashAlt /> DELETE_SELECTED ({selectedIds.length})
             </button>
           )}
           <div className="search-box-cyber">
@@ -1154,7 +1157,15 @@ const DailyNoteApp = () => {
         </div>
       </header>
 
-      <main className="note-canvas-cyber" onContextMenu={handleContextMenu}>
+      <main
+        className="note-canvas-cyber"
+        ref={canvasRef}
+        onContextMenu={handleContextMenu}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasMouseMove}
+        onMouseUp={handleCanvasMouseUp}
+        onMouseLeave={handleCanvasMouseUp}
+      >
         {viewMode === 'canvas' ? (
           <div className="notes-canvas">
             {renderNoteLinks()}
@@ -1208,37 +1219,52 @@ const DailyNoteApp = () => {
   );
 };
 
+const CATEGORY_ACCENTS = {
+  TASK: { color: '#c3e88d', rgb: '195, 232, 141' },
+  IDEA: { color: '#c792ea', rgb: '199, 146, 234' },
+  LOG: { color: '#89ddff', rgb: '137, 221, 255' },
+  MEMO: { color: '#ffcb6b', rgb: '255, 203, 107' },
+  SYSTEM: { color: '#ff5370', rgb: '255, 83, 112' },
+};
+
 const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
   const categories = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
 
   return (
     <div className="kanban-container-cyber">
-      {categories.map(cat => (
-        <div key={cat} className="kanban-column">
-          <div className="column-header">
-            <div className="header-main">
-              <span className="cat-dot" style={{ backgroundColor: `var(--accent-color)` }} />
-              <span className="cat-name">{cat}</span>
+      {categories.map(cat => {
+        const accent = CATEGORY_ACCENTS[cat];
+        return (
+          <div
+            key={cat}
+            className="kanban-column"
+            style={{ '--accent-color': accent.color, '--accent-rgb': accent.rgb }}
+          >
+            <div className="column-header">
+              <div className="header-main">
+                <span className="cat-dot" />
+                <span className="cat-name">{cat}</span>
+              </div>
+              <span className="cat-count">{notes.filter(n => (n.customCategory || n.category) === cat).length}</span>
             </div>
-            <span className="cat-count">{notes.filter(n => (n.customCategory || n.category) === cat).length}</span>
+            <div className="column-content">
+              {notes
+                .filter(n => (n.customCategory || n.category) === cat)
+                .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
+                .map(note => (
+                  <KanbanNote
+                    key={note.id}
+                    note={note}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                    onFocus={onFocus}
+                    appTheme={appTheme}
+                  />
+                ))}
+            </div>
           </div>
-          <div className="column-content">
-            {notes
-              .filter(n => (n.customCategory || n.category) === cat)
-              .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
-              .map(note => (
-                <KanbanNote
-                  key={note.id}
-                  note={note}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                  onFocus={onFocus}
-                  appTheme={appTheme}
-                />
-              ))}
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 };
@@ -1248,15 +1274,16 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [showDrawing, setShowDrawing] = useState(false);
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
+  const accentRgb = note.customRgb || theme.rgb;
   const category = note.customCategory || note.category || 'MEMO';
 
   return (
     <div
       className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')} ${showDrawing ? 'is-drawing' : ''} ${note.isSelected ? 'is-selected' : ''}`}
-      style={{ '--accent-color': accentColor }}
+      style={{ '--accent-color': accentColor, '--accent-rgb': accentRgb }}
       onClick={() => onFocus(note.id)}
     >
-      <div className="k-category-tab" style={{ backgroundColor: accentColor }}>
+      <div className="k-category-tab">
         {category}
       </div>
 
@@ -1301,8 +1328,8 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
               {note.drawingData && (
                 <div className="k-drawing-preview" onClick={() => setShowDrawing(true)}>
                   <div className="k-drawing-icon">
-                    <i className="ri-palette-line" style={{ color: accentColor }}></i>
-                    <span style={{ color: accentColor }}>Click to Edit Drawing</span>
+                    <FaPalette style={{ color: accentColor }} />
+                    <span style={{ color: accentColor }}>EDIT DRAWING</span>
                   </div>
                 </div>
               )}

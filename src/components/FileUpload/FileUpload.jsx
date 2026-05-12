@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { uploadFiles } from '../../services/fileService';
+import { uploadFiles, uploadFilesToCloudinary } from '../../services/fileService';
 import { message as antdMessage } from 'antd';
 
 const FileUpload = ({ onUploadSuccess }) => {
@@ -7,6 +7,7 @@ const FileUpload = ({ onUploadSuccess }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [storageMode, setStorageMode] = useState('local');
   const fileInputRef = useRef(null);
 
   const handleDrag = (e) => {
@@ -58,11 +59,16 @@ const FileUpload = ({ onUploadSuccess }) => {
     setProgress(0);
 
     try {
-      const uploadedMetadata = await uploadFiles(selectedFiles, (percent) => {
+      const uploader = storageMode === 'cloudinary' ? uploadFilesToCloudinary : uploadFiles;
+      const uploadedMetadata = await uploader(selectedFiles, (percent) => {
         setProgress(percent);
       });
-      
-      antdMessage.success('Files uploaded successfully!');
+
+      antdMessage.success(
+        storageMode === 'cloudinary'
+          ? 'Đã upload lên Cloudinary!'
+          : 'Files uploaded successfully!'
+      );
       setSelectedFiles([]);
       if (onUploadSuccess) {
         onUploadSuccess(uploadedMetadata);
@@ -76,7 +82,7 @@ const FileUpload = ({ onUploadSuccess }) => {
   };
 
   return (
-    <div 
+    <div
       className="w-full max-w-2xl mx-auto p-6 bg-white font-['Mali']"
       style={{
         border: 'var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, black)',
@@ -84,7 +90,39 @@ const FileUpload = ({ onUploadSuccess }) => {
         borderRadius: 'var(--global-border-radius, 0px)'
       }}
     >
-      <div 
+      <div className="mb-4 flex items-center justify-between">
+        <span className="text-xs font-black uppercase tracking-widest">Storage</span>
+        <div
+          role="tablist"
+          aria-label="Chọn nơi lưu trữ"
+          className="inline-flex bg-gray-50"
+          style={{
+            border: '2px solid var(--global-border-color, black)',
+            borderRadius: 'calc(var(--global-border-radius, 0px) * 0.5)'
+          }}
+        >
+          {[
+            { value: 'local', label: 'Local' },
+            { value: 'cloudinary', label: 'Cloudinary' }
+          ].map((opt, idx) => (
+            <button
+              key={opt.value}
+              type="button"
+              role="tab"
+              aria-selected={storageMode === opt.value}
+              onClick={() => setStorageMode(opt.value)}
+              disabled={uploading}
+              className={`px-3 py-1 text-xs font-black uppercase tracking-widest transition-colors ${
+                storageMode === opt.value ? 'bg-yellow-200 text-black' : 'bg-white text-gray-500 hover:bg-yellow-50'
+              } ${idx === 0 ? 'border-r-2 border-black' : ''}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
         className={`relative border-2 border-dashed border-black p-8 text-center transition-all duration-200 ${
           dragActive 
             ? "bg-yellow-50 translate-x-1 -translate-y-1 shadow-[-4px_4px_0px_0px_#111827]" 
@@ -225,7 +263,9 @@ const FileUpload = ({ onUploadSuccess }) => {
                 borderRadius: 'var(--global-border-radius, 0px)'
               }}
             >
-              {uploading ? "Wait..." : `Push ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'}`}
+              {uploading
+                ? "Wait..."
+                : `Push ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'} → ${storageMode === 'cloudinary' ? 'Cloudinary' : 'Local'}`}
             </button>
           </div>
         </div>

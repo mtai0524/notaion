@@ -12,7 +12,7 @@ import axiosInstance from '../axiosConfig';
 
 /**
  * Upload files to the server
- * @param {File[]} files 
+ * @param {File[]} files
  * @param {Function} onProgress
  * @returns {Promise<FileMetadata[]>}
  */
@@ -37,6 +37,32 @@ export const uploadFiles = async (files, onProgress) => {
 };
 
 /**
+ * Upload files to Cloudinary (via backend)
+ * @param {File[]} files
+ * @param {Function} onProgress
+ * @returns {Promise<FileMetadata[]>}
+ */
+export const uploadFilesToCloudinary = async (files, onProgress) => {
+  const formData = new FormData();
+  files.forEach(file => {
+    formData.append('files', file);
+  });
+
+  const response = await axiosInstance.post('/api/files/upload/cloudinary', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    },
+    onUploadProgress: (progressEvent) => {
+      if (onProgress) {
+        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        onProgress(percentCompleted);
+      }
+    }
+  });
+  return response.data;
+};
+
+/**
  * Get all files from the server
  * @returns {Promise<FileMetadata[]>}
  */
@@ -46,11 +72,25 @@ export const getAllFiles = async () => {
 };
 
 /**
- * Download a file from the server
- * @param {string} savedName 
- * @param {string} originalName 
+ * Download a file. Nếu là file Cloudinary (có cloudUrl) thì mở trực tiếp,
+ * còn không thì gọi backend như cũ.
+ * @param {string} savedName
+ * @param {string} originalName
+ * @param {string} [cloudUrl]
  */
-export const downloadFile = async (savedName, originalName) => {
+export const downloadFile = async (savedName, originalName, cloudUrl) => {
+  if (cloudUrl) {
+    const link = document.createElement('a');
+    link.href = cloudUrl;
+    link.setAttribute('download', originalName);
+    link.setAttribute('target', '_blank');
+    link.setAttribute('rel', 'noopener noreferrer');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    return;
+  }
+
   const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
     responseType: 'blob'
   });

@@ -84,6 +84,14 @@ const FileList = ({ files, onDelete }) => {
                     <span className="text-sm font-bold text-black truncate max-w-[150px] sm:max-w-[250px]" title={file.originalName}>
                       {file.originalName}
                     </span>
+                    {file.cloudUrl && (
+                      <span
+                        className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 bg-sky-200 border-2 border-black"
+                        title="Lưu trên Cloudinary"
+                      >
+                        Cloud
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 text-xs font-bold text-gray-500 italic">
@@ -94,7 +102,7 @@ const FileList = ({ files, onDelete }) => {
                 </td>
                 <td className="px-6 py-4 text-right space-x-2">
                   <button
-                    onClick={() => downloadFile(file.savedName, file.originalName)}
+                    onClick={() => downloadFile(file.savedName, file.originalName, file.cloudUrl)}
                     className="p-2 border-2 bg-white hover:bg-blue-100 transition-all active:translate-x-0.5 active:-translate-y-0.5 active:shadow-none"
                     style={{
                       borderColor: 'var(--global-border-color, black)',
