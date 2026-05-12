@@ -79,23 +79,22 @@ export const getAllFiles = async () => {
  * @param {string} [cloudUrl]
  */
 export const downloadFile = async (savedName, originalName, cloudUrl) => {
+  let blob;
+
   if (cloudUrl) {
-    const link = document.createElement('a');
-    link.href = cloudUrl;
-    link.setAttribute('download', originalName);
-    link.setAttribute('target', '_blank');
-    link.setAttribute('rel', 'noopener noreferrer');
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
-    return;
+    const response = await fetch(cloudUrl, { mode: 'cors' });
+    if (!response.ok) {
+      throw new Error(`Tải file từ Cloudinary thất bại (${response.status})`);
+    }
+    blob = await response.blob();
+  } else {
+    const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
+      responseType: 'blob'
+    });
+    blob = new Blob([response.data]);
   }
 
-  const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
-    responseType: 'blob'
-  });
-
-  const url = window.URL.createObjectURL(new Blob([response.data]));
+  const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.setAttribute('download', originalName);
