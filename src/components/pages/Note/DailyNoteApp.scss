@@ -363,25 +363,26 @@
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
 
     .note-header {
-      background: rgba(var(--accent-rgb), 0.18);
-      border-bottom: 2px solid var(--accent-color);
+      background: rgba(var(--accent-rgb), 0.1);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+
+      &:hover {
+        background: rgba(var(--accent-rgb), 0.2);
+      }
 
       .timestamp {
         color: #000000 !important;
         text-shadow: none;
-        background: rgba(var(--accent-rgb), 0.3);
+        background: rgba(var(--accent-rgb), 0.2);
         padding: 2px 8px;
         border-radius: 4px;
         font-weight: 900;
-        border: 1px solid rgba(0, 0, 0, 0.15);
+        border: 1px solid rgba(0, 0, 0, 0.1);
       }
 
       .action-btn {
-        color: #374151;
-
-        &:hover {
-          color: var(--accent-color);
-        }
+        color: #4b5563;
+        &:hover { color: var(--accent-color); }
       }
     }
 
@@ -601,6 +602,19 @@
     padding: 0 12px;
     border-bottom: 1px solid var(--accent-color);
     background: rgba(var(--accent-rgb), 0.15);
+
+    &.header-hidden {
+      height: 6px;
+      background: transparent;
+      border-bottom: none;
+      padding: 0;
+      .header-left, .header-actions { display: none; }
+      &:hover {
+        background: rgba(var(--accent-rgb), 0.3);
+        height: 10px;
+        box-shadow: 0 0 10px var(--accent-color);
+      }
+    }
 
     .header-left {
       .timestamp {

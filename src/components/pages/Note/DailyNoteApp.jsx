@@ -195,7 +195,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         onClick={() => onFocus(note.id)}
         onContextMenu={handleContextMenu}
       >
-        <div className="note-header">
+        <div className={`note-header ${note.hideHeader ? 'header-hidden' : ''}`}>
           <div className="header-left">
             {!note.hideHeader && <span className="timestamp">[ {note.timestamp} ]</span>}
           </div>
