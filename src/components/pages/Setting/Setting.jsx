@@ -3,6 +3,17 @@ import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette } from "@fortawesome/free-solid-svg-icons";
+import { applyGlobalSettings } from "../../../utils/applyGlobalSettings";
+
+const broadcastSettingsChange = () => {
+  applyGlobalSettings();
+  window.dispatchEvent(new Event('notaion:settings-changed'));
+};
+
+const persist = (key, value) => {
+  localStorage.setItem(key, value);
+  broadcastSettingsChange();
+};
 
 const Setting = () => {
   const [bubble, setBubble] = useState(localStorage.getItem("isBubbleMenuVisible") === "true");
@@ -25,131 +36,44 @@ const Setting = () => {
   const [globalShadowY, setGlobalShadowY] = useState(localStorage.getItem("globalShadowY") || "4px");
 
   useEffect(() => {
-    // Eye Protection
-    if (eyeProtection) {
-      document.body.classList.add("eye-protection-active");
-    } else {
-      document.body.classList.remove("eye-protection-active");
-    }
-
-    // Dark Mode
-    if (darkMode) {
-      document.body.classList.add("dark-mode-active");
-    } else {
-      document.body.classList.remove("dark-mode-active");
-    }
-
-    // Focus Mode
-    if (focusMode) {
-      document.body.classList.add("focus-mode-active");
-    } else {
-      document.body.classList.remove("focus-mode-active");
-    }
-    // Hacker Mode
-    if (hackerMode) {
-      document.body.classList.add("hacker-mode-active");
-    } else {
-      document.body.classList.remove("hacker-mode-active");
-    }
-
-    // Party Mode
-    if (partyMode) {
-      document.body.classList.add("party-mode-active");
-    } else {
-      document.body.classList.remove("party-mode-active");
-    }
-
-    // Horror Mode
-    if (horrorMode) {
-      document.body.classList.add("horror-mode-active");
-    } else {
-      document.body.classList.remove("horror-mode-active");
-    }
-
-    document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
-    document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
-    document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
-    document.documentElement.style.setProperty('--global-border-radius', globalBorderRadius);
-
-    document.body.classList.remove("theme-dots", "theme-grid", "theme-paper", "theme-blueprint", "theme-cross", "theme-waves", "theme-notebook", "theme-none", "bg-scope-all", "bg-scope-base");
-    if (globalBgTheme && globalBgTheme !== "theme-none") {
-      document.body.classList.add(globalBgTheme);
-      document.body.classList.add(`bg-scope-${globalBgScope}`);
-    }
-
-    document.documentElement.style.setProperty('--global-shadow-x', globalShadowX);
-    document.documentElement.style.setProperty('--global-shadow-y', globalShadowY);
+    applyGlobalSettings();
   }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalShadowX, globalShadowY, globalBgTheme, globalBgScope]);
 
+  const SWITCH_MAP = {
+    bubble:         { storageKey: "isBubbleMenuVisible",  setter: setBubble },
+    controls:       { storageKey: "isControlsMenuVisible", setter: setControls },
+    force:          { storageKey: "forceDelete",           setter: setForce },
+    eyeProtection:  { storageKey: "eyeProtection",         setter: setEyeProtection },
+    darkMode:       { storageKey: "darkMode",              setter: setDarkMode },
+    focusMode:      { storageKey: "focusMode",             setter: setFocusMode },
+    partyMode:      { storageKey: "partyMode",             setter: setPartyMode },
+    hackerMode:     { storageKey: "hackerMode",            setter: setHackerMode },
+    horrorMode:     { storageKey: "horrorMode",            setter: setHorrorMode }
+  };
+
+  const STYLE_MAP = {
+    borderColor:  { storageKey: "globalBorderColor",  setter: setGlobalBorderColor },
+    borderStyle:  { storageKey: "globalBorderStyle",  setter: setGlobalBorderStyle },
+    borderWidth:  { storageKey: "globalBorderWidth",  setter: setGlobalBorderWidth },
+    borderRadius: { storageKey: "globalBorderRadius", setter: setGlobalBorderRadius },
+    bgTheme:      { storageKey: "globalBgTheme",      setter: setGlobalBgTheme },
+    bgScope:      { storageKey: "globalBgScope",      setter: setGlobalBgScope },
+    shadowX:      { storageKey: "globalShadowX",      setter: setGlobalShadowX },
+    shadowY:      { storageKey: "globalShadowY",      setter: setGlobalShadowY }
+  };
+
   const handleSwitchChange = (key, value) => {
-    switch (key) {
-      case "bubble":
-        setBubble(value);
-        localStorage.setItem("isBubbleMenuVisible", value);
-        break;
-      case "controls":
-        setControls(value);
-        localStorage.setItem("isControlsMenuVisible", value);
-        break;
-      case "force":
-        setForce(value);
-        localStorage.setItem("forceDelete", value);
-        break;
-      case "eyeProtection":
-        setEyeProtection(value);
-        localStorage.setItem("eyeProtection", value);
-        break;
-      case "darkMode":
-        setDarkMode(value);
-        localStorage.setItem("darkMode", value);
-        break;
-      case "focusMode":
-        setFocusMode(value);
-        localStorage.setItem("focusMode", value);
-        break;
-      case "partyMode":
-        setPartyMode(value);
-        localStorage.setItem("partyMode", value);
-        break;
-      case "hackerMode":
-        setHackerMode(value);
-        localStorage.setItem("hackerMode", value);
-        break;
-      case "horrorMode":
-        setHorrorMode(value);
-        localStorage.setItem("horrorMode", value);
-        break;
-      default:
-        break;
-    }
+    const entry = SWITCH_MAP[key];
+    if (!entry) return;
+    entry.setter(value);
+    persist(entry.storageKey, value);
   };
 
   const handleStyleChange = (key, value) => {
-    if (key === 'borderColor') {
-      setGlobalBorderColor(value);
-      localStorage.setItem("globalBorderColor", value);
-    } else if (key === 'borderStyle') {
-      setGlobalBorderStyle(value);
-      localStorage.setItem("globalBorderStyle", value);
-    } else if (key === 'borderWidth') {
-      setGlobalBorderWidth(value);
-      localStorage.setItem("globalBorderWidth", value);
-    } else if (key === 'borderRadius') {
-      setGlobalBorderRadius(value);
-      localStorage.setItem("globalBorderRadius", value);
-    } else if (key === 'bgTheme') {
-      setGlobalBgTheme(value);
-      localStorage.setItem("globalBgTheme", value);
-    } else if (key === 'bgScope') {
-      setGlobalBgScope(value);
-      localStorage.setItem("globalBgScope", value);
-    } else if (key === 'shadowX') {
-      setGlobalShadowX(value);
-      localStorage.setItem("globalShadowX", value);
-    } else if (key === 'shadowY') {
-      setGlobalShadowY(value);
-      localStorage.setItem("globalShadowY", value);
-    }
+    const entry = STYLE_MAP[key];
+    if (!entry) return;
+    entry.setter(value);
+    persist(entry.storageKey, value);
   };
 
   const applyPreset = (preset) => {

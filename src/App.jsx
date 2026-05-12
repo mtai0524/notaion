@@ -28,6 +28,7 @@ import useTracking from "./hooks/useTracking";
 import FilesPage from "./pages/FilesPage";
 import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
 import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
+import { applyGlobalSettings } from "./utils/applyGlobalSettings";
 
 
 const App = () => {
@@ -73,26 +74,15 @@ const MainApp = () => {
 
 
   useEffect(() => {
-    const globalBorderColor = localStorage.getItem("globalBorderColor") || "#111827";
-    const globalBorderStyle = localStorage.getItem("globalBorderStyle") || "solid";
-    const globalBorderWidth = localStorage.getItem("globalBorderWidth") || "2px";
-    const globalBorderRadius = localStorage.getItem("globalBorderRadius") || "0px";
-    const globalShadowX = localStorage.getItem("globalShadowX") || "-4px";
-    const globalShadowY = localStorage.getItem("globalShadowY") || "4px";
+    applyGlobalSettings();
 
-    document.documentElement.style.setProperty('--global-border-color', globalBorderColor);
-    document.documentElement.style.setProperty('--global-border-style', globalBorderStyle);
-    document.documentElement.style.setProperty('--global-border-width', globalBorderWidth);
-    document.documentElement.style.setProperty('--global-border-radius', globalBorderRadius);
-    document.documentElement.style.setProperty('--global-shadow-x', globalShadowX);
-    document.documentElement.style.setProperty('--global-shadow-y', globalShadowY);
-
-    const globalBgTheme = localStorage.getItem("globalBgTheme") || "theme-none";
-    const globalBgScope = localStorage.getItem("globalBgScope") || "all";
-    if (globalBgTheme !== "theme-none") {
-      document.body.classList.add(globalBgTheme);
-      document.body.classList.add(`bg-scope-${globalBgScope}`);
-    }
+    const onSettingsChange = () => applyGlobalSettings();
+    window.addEventListener('notaion:settings-changed', onSettingsChange);
+    window.addEventListener('storage', onSettingsChange);
+    return () => {
+      window.removeEventListener('notaion:settings-changed', onSettingsChange);
+      window.removeEventListener('storage', onSettingsChange);
+    };
   }, []);
 
   useEffect(() => {
