@@ -113,31 +113,29 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     }, [currentUserId]);
 
     useEffect(() => {
-        if (connection) {
-            connection.on('ReceiveMessagePrivate', (senderId, receiverId, message, currentUsername, friendUsername) => {
-                if (senderId !== currentUserId) {
-                    if (receiverId === currentUserId && chatUserId === senderId) {
-                        setChatMessages(prev => [
-                            ...prev,
-                            { senderId, receiverId, content: message, currentUserName: currentUsername, sentDate: new Date().toISOString() }
-                        ]);
-                    }
-                    if (receiverId === currentUserId) {
-                        const updatedFriends = friends.map(f => {
-                            if (f.senderId === senderId || f.receiverId === senderId) {
-                                return { ...f, newMessageCount: f.newMessageCount + 1 };
-                            }
-                            return f;
-                        });
-                        setFriends(updatedFriends);
-                    }
+        if (!connection) return;
+        const handler = (senderId, receiverId, message, currentUsername, friendUsername) => {
+            if (senderId !== currentUserId) {
+                if (receiverId === currentUserId && chatUserId === senderId) {
+                    setChatMessages(prev => [
+                        ...prev,
+                        { senderId, receiverId, content: message, currentUserName: currentUsername, sentDate: new Date().toISOString() }
+                    ]);
                 }
-            });
-        }
-        return () => {
-            if (connection) {
-                connection.off('ReceiveMessagePrivate');
+                if (receiverId === currentUserId) {
+                    const updatedFriends = friends.map(f => {
+                        if (f.senderId === senderId || f.receiverId === senderId) {
+                            return { ...f, newMessageCount: f.newMessageCount + 1 };
+                        }
+                        return f;
+                    });
+                    setFriends(updatedFriends);
+                }
             }
+        };
+        connection.on('ReceiveMessagePrivate', handler);
+        return () => {
+            connection.off('ReceiveMessagePrivate', handler);
         };
     }, [connection, currentUserId, friends, chatUserId]);
 

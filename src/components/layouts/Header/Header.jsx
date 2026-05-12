@@ -59,6 +59,14 @@ const Header = () => {
     } catch { return null; }
   })();
 
+  const currentUserIdFromToken = (() => {
+    try {
+      const t = Cookies.get("token");
+      if (!t) return null;
+      return jwt_decode(t)["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"];
+    } catch { return null; }
+  })();
+
   useEffect(() => {
     try {
       sessionStorage.setItem("headerMsgNotifs", JSON.stringify(messageNotifs.slice(0, 50)));
@@ -84,8 +92,12 @@ const Header = () => {
     };
 
     const handlerPrivate = (event) => {
-      const { senderId, senderUserName, message, sentAt } = event.detail || {};
+      const { senderId, receiverId, senderUserName, message, sentAt } = event.detail || {};
       if (!senderId || !message) return;
+      // BE dùng Clients.All → mọi client đều nhận. Chỉ giữ message gửi cho mình.
+      if (currentUserIdFromToken && receiverId && receiverId !== currentUserIdFromToken) return;
+      // Bỏ qua tin nhắn do chính mình gửi
+      if (currentUserIdFromToken && senderId === currentUserIdFromToken) return;
       if (currentUserName && senderUserName === currentUserName) return;
       setMessageNotifs((prev) => [
         {
@@ -107,7 +119,7 @@ const Header = () => {
       window.removeEventListener("new-signalr-message", handlerPublic);
       window.removeEventListener("new-signalr-private-message", handlerPrivate);
     };
-  }, [currentUserName]);
+  }, [currentUserName, currentUserIdFromToken]);
 
   const unreadFriendCount = notifications.filter((n) => !n.isRead).length;
   const unreadMessageCount = messageNotifs.filter((n) => !n.isRead).length;

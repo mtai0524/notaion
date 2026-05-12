@@ -57,8 +57,10 @@ export const SignalRProvider = ({ children }) => {
         });
 
         // Private messages broadcast — Header + các listener khác có thể subscribe
-        connect.on("ReceiveMessagePrivate", (senderId, receiverId, message, receiverUserName, senderUserName) => {
-            console.log(`[Global-SignalR] Private from ${senderUserName} → ${receiverUserName}: ${message}`);
+        // BE param order (ChatPrivateController.AddChat):
+        //   senderId, receiverId, content, senderUserName(currentUser), receiverUserName(friendUser)
+        connect.on("ReceiveMessagePrivate", (senderId, receiverId, message, senderUserName, receiverUserName) => {
+            console.log(`[Global-SignalR] Private ${senderUserName}(${senderId}) → ${receiverUserName}(${receiverId}): ${message}`);
             const event = new CustomEvent("new-signalr-private-message", {
                 detail: { senderId, receiverId, message, senderUserName, receiverUserName, sentAt: new Date().toISOString() }
             });
