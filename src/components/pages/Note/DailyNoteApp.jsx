@@ -538,11 +538,13 @@ const DailyNoteApp = () => {
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
+  const [viewMode, setViewMode] = useState('canvas'); // 'canvas' or 'kanban'
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
   const currentNotes = allCurrentNotes.filter(n =>
-    n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    n.content?.toLowerCase().includes(searchQuery.toLowerCase())
+    !n.isDeleted &&
+    (n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    n.content?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   // Default text color based on current app theme
@@ -599,7 +601,13 @@ const DailyNoteApp = () => {
           connection.on("NoteUpdated", (updatedNote) => {
             if (updatedNote.date === dateKey) {
               setNotesByDate(prev => {
-                const updated = (prev[dateKey] || []).map(n => n.id === updatedNote.id ? { ...n, ...updatedNote } : n);
+                const current = prev[dateKey] || [];
+                // Nếu note bị đánh dấu xóa (Soft delete), loại bỏ khỏi state ngay lập tức
+                if (updatedNote.isDeleted) {
+                  return { ...prev, [dateKey]: current.filter(n => n.id !== updatedNote.id) };
+                }
+                // Nếu không thì cập nhật nội dung
+                const updated = current.map(n => n.id === updatedNote.id ? { ...n, ...updatedNote } : n);
                 return { ...prev, [dateKey]: updated };
               });
             }
@@ -745,18 +753,23 @@ const DailyNoteApp = () => {
   };
 
   const deleteNote = async (id) => {
-    updateNote(id, { isDeleting: true });
+    if (!window.confirm("ARE YOU SURE YOU WANT TO HIDE THIS ENTRY?")) return;
+    
+    // 1. Xóa ngay lập tức khỏi State để người dùng thấy nó biến mất và tránh bị Auto-save ghi đè
+    setNotesByDate(prev => ({
+      ...prev,
+      [dateKey]: (prev[dateKey] || []).filter(n => n.id !== id)
+    }));
+
+    // 2. Gọi API DELETE chuyên biệt để Backend xử lý IsDeleted = true
     try {
+      setSyncStatus('saving');
       await axiosInstance.delete(`/api/DailyNote/${id}`);
-      setTimeout(() => {
-        setNotesByDate(prev => ({
-          ...prev,
-          [dateKey]: prev[dateKey].filter(n => n.id !== id)
-        }));
-      }, 300);
+      setSyncStatus('saved');
     } catch (error) {
-      console.error("[ERROR] Deletion failed:", error);
-      updateNote(id, { isDeleting: false });
+      console.error("[ERROR] Failed to hide note:", error);
+      setSyncStatus('error');
+      // Nếu lỗi, có thể cân nhắc fetch lại dữ liệu hoặc thông báo cho người dùng
     }
   };
 
@@ -935,6 +948,10 @@ const DailyNoteApp = () => {
           <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
             {theme === 'dark' ? <FaSun /> : <FaMoon />}
           </button>
+          
+          <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
+            {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
+          </button>
 
           <div className="template-actions">
             <button className="tpl-btn" onClick={() => addNote('todo')} title="Add To-do List"><FaListUl /></button>
@@ -959,25 +976,27 @@ const DailyNoteApp = () => {
       </header>
 
       <main className="note-canvas-cyber" onContextMenu={handleContextMenu}>
-        {renderNoteLinks()}
-        {currentNotes.length === 0 && !loading ? (
-          <div className="empty-state-cyber">
-            <div className="empty-icon"><FaTerminal /></div>
-            <h3>NO_DATA_FOUND</h3>
-            <p>Initialize a new entry to begin data logging.</p>
-          </div>
-        ) : (
+        {viewMode === 'canvas' ? (
           <>
-            {currentNotes.map(note => (
-              <Note
-                key={note.id}
-                note={note}
-                onUpdate={updateNote}
-                onDelete={deleteNote}
-                onFocus={focusNote}
-                appTheme={theme}
-              />
-            ))}
+            {renderNoteLinks()}
+            {currentNotes.length === 0 && !loading ? (
+              <div className="empty-state-cyber">
+                <div className="empty-icon"><FaTerminal /></div>
+                <h3>NO_DATA_FOUND</h3>
+                <p>Initialize a new entry to begin data logging.</p>
+              </div>
+            ) : (
+              currentNotes.map(note => (
+                <Note
+                  key={note.id}
+                  note={note}
+                  onUpdate={updateNote}
+                  onDelete={deleteNote}
+                  onFocus={focusNote}
+                  appTheme={theme}
+                />
+              ))
+            )}
             <div style={{
               position: 'absolute',
               top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500,
@@ -988,8 +1007,89 @@ const DailyNoteApp = () => {
               pointerEvents: 'none'
             }} />
           </>
+        ) : (
+          <KanbanBoard notes={currentNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
         )}
       </main>
+    </div>
+  );
+};
+
+const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
+  const categories = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
+  
+  return (
+    <div className="kanban-container-cyber">
+      {categories.map(cat => (
+        <div key={cat} className="kanban-column">
+          <div className="column-header">
+            <div className="header-main">
+              <span className="cat-dot" style={{ backgroundColor: `var(--accent-color)` }} />
+              <span className="cat-name">{cat}</span>
+            </div>
+            <span className="cat-count">{notes.filter(n => (n.customCategory || n.category) === cat).length}</span>
+          </div>
+          <div className="column-content">
+            {notes
+              .filter(n => (n.customCategory || n.category) === cat)
+              .sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''))
+              .map(note => (
+                <KanbanNote 
+                  key={note.id} 
+                  note={note} 
+                  onUpdate={onUpdate} 
+                  onDelete={onDelete} 
+                  onFocus={onFocus} 
+                  appTheme={appTheme} 
+                />
+              ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
+  const [isEditing, setIsEditing] = useState(false);
+  const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
+  const accentColor = note.customColor || theme.color;
+  
+  return (
+    <div 
+      className={`kanban-note-card note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
+      style={{ '--accent-color': accentColor }}
+      onClick={() => onFocus(note.id)}
+    >
+      <div className="k-note-header">
+        <span className="k-time">{note.timestamp}</span>
+        <div className="k-actions">
+          <button onClick={(e) => { e.stopPropagation(); onDelete(note.id); }}><FaTimes /></button>
+        </div>
+      </div>
+      
+      <div className="k-note-body">
+        <input 
+          className="k-title-input"
+          value={note.title || ''}
+          onChange={(e) => onUpdate(note.id, { title: e.target.value })}
+          placeholder="UNTITLED"
+        />
+        <div className="k-content-wrap" onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
+          {isEditing ? (
+            <textarea 
+              autoFocus
+              value={note.content || ''}
+              onChange={(e) => onUpdate(note.id, { content: e.target.value })}
+              onBlur={() => setIsEditing(false)}
+            />
+          ) : (
+            <div className="k-markdown">
+              <ReactMarkdown>{note.content || '> empty'}</ReactMarkdown>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
