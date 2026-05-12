@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { Dropdown, Empty, Menu, Modal, notification } from "antd";
 import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck, faPaperclip } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck, faPaperclip, faUsers, faFilter } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -158,6 +158,10 @@ const ChatBox = ({ onClose }) => {
   const [copiedKey, setCopiedKey] = useState(null);
   const isAtBottomRef = useRef(true);
   useEffect(() => { isAtBottomRef.current = isAtBottom; }, [isAtBottom]);
+
+  // User-filter sidebar
+  const [showUserPanel, setShowUserPanel] = useState(false);
+  const [userFilter, setUserFilter] = useState(null);
 
   // Attachment upload state
   const [uploading, setUploading] = useState(false);
@@ -693,6 +697,23 @@ const ChatBox = ({ onClose }) => {
   };
 
 
+  const userStats = useMemo(() => {
+    const map = new Map();
+    for (const m of messages) {
+      const name = m.userName || "anonymous";
+      const prev = map.get(name);
+      const ts = m.sentDate ? new Date(m.sentDate).getTime() : 0;
+      const last = (m.content || "").replace(/^\/bot\s*/i, "").replace(/!\[[^\]]*\]\([^)]+\)/g, "[image]");
+      if (prev) {
+        prev.count += 1;
+        if (ts > prev.lastTs) { prev.lastTs = ts; prev.lastSnippet = last; }
+      } else {
+        map.set(name, { name, count: 1, lastTs: ts, lastSnippet: last });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => b.lastTs - a.lastTs);
+  }, [messages]);
+
   const checkMark = (active) => (
     <FontAwesomeIcon icon={faCheck} style={{ opacity: active ? 1 : 0.15 }} />
   );
@@ -813,6 +834,13 @@ const ChatBox = ({ onClose }) => {
         <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
           <button
+            className={`p-1 mr-2 ${showUserPanel ? "active-tool" : ""}`}
+            onClick={() => setShowUserPanel((s) => !s)}
+            title="Lọc theo user"
+          >
+            <FontAwesomeIcon icon={faUsers} />
+          </button>
+          <button
             className={`p-1 mr-2 ${showSearch ? "active-tool" : ""}`}
             onClick={() => { setShowSearch((s) => !s); if (showSearch) setSearchQuery(""); }}
             title="Search messages"
@@ -869,7 +897,67 @@ const ChatBox = ({ onClose }) => {
         </div>
       )}
 
+      <div className="chat-body">
+        {showUserPanel && (
+          <aside className="chat-user-panel">
+            <header className="user-panel-head">
+              <FontAwesomeIcon icon={faUsers} />
+              <span>Participants ({userStats.length})</span>
+            </header>
+            <div className="user-panel-list">
+              <button
+                className={`user-row ${userFilter === null ? "active" : ""}`}
+                onClick={() => setUserFilter(null)}
+              >
+                <span className="user-avatar all">∗</span>
+                <span className="user-meta">
+                  <span className="user-name">All users</span>
+                  <span className="user-sub">{messages.length} tin nhắn</span>
+                </span>
+              </button>
+              {userStats.map((u) => {
+                const isOnline = u.name === "Chatbot" || onlineUsers.some((o) => o.userName === u.name);
+                const initial = (u.name || "?").charAt(0).toUpperCase();
+                const isBot = u.name === "Chatbot";
+                const lastTime = u.lastTs ? new Date(u.lastTs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+                return (
+                  <button
+                    key={u.name}
+                    className={`user-row ${userFilter === u.name ? "active" : ""}`}
+                    onClick={() => setUserFilter(userFilter === u.name ? null : u.name)}
+                    title={u.lastSnippet}
+                  >
+                    <span className={`user-avatar ${isBot ? "bot" : ""}`}>
+                      {isBot ? <FontAwesomeIcon icon={faRobot} /> : initial}
+                      <span className={`avatar-dot ${isOnline ? "online" : "offline"}`} />
+                    </span>
+                    <span className="user-meta">
+                      <span className="user-name">
+                        {u.name}
+                        <span className="user-count">{u.count}</span>
+                      </span>
+                      <span className="user-sub">{lastTime} · {u.lastSnippet?.slice(0, 32) || "—"}</span>
+                    </span>
+                  </button>
+                );
+              })}
+              {userStats.length === 0 && (
+                <div className="user-panel-empty">Chưa có ai trong cuộc trò chuyện.</div>
+              )}
+            </div>
+          </aside>
+        )}
+
       <div className="chat-messages-wrap">
+        {userFilter && (
+          <div className="filter-banner">
+            <FontAwesomeIcon icon={faFilter} />
+            <span>Showing only <strong>{userFilter}</strong></span>
+            <button onClick={() => setUserFilter(null)} title="Clear filter">
+              <FontAwesomeIcon icon={faXmark} />
+            </button>
+          </div>
+        )}
         <div className="chat-messages" ref={chatMessagesRef} onScroll={handleScrollInfinite}>
           {isDeleting ? (
             <div className="no-messages">
@@ -886,15 +974,16 @@ const ChatBox = ({ onClose }) => {
             </div>
           ) : (() => {
             const q = searchQuery.trim().toLowerCase();
-            const filtered = q
-              ? messages.filter((m) => (m.content || "").toLowerCase().includes(q) || (m.userName || "").toLowerCase().includes(q))
-              : messages;
+            let filtered = messages;
+            if (userFilter) filtered = filtered.filter((m) => m.userName === userFilter);
+            if (q) filtered = filtered.filter((m) => (m.content || "").toLowerCase().includes(q) || (m.userName || "").toLowerCase().includes(q));
 
-            if (q && filtered.length === 0) {
+            if (filtered.length === 0) {
+              const label = userFilter || (q ? `"${searchQuery}"` : "");
               return (
                 <div className="no-messages flex flex-col">
                   <Empty description={false} />
-                  <h1 className="font-semibold">No matches for "{searchQuery}"</h1>
+                  <h1 className="font-semibold">{label ? `No matches for ${label}` : "Empty"}</h1>
                 </div>
               );
             }
@@ -989,6 +1078,7 @@ const ChatBox = ({ onClose }) => {
             {unreadCount > 0 && <span className="unread-pill">+{unreadCount}</span>}
           </button>
         )}
+      </div>
       </div>
 
       {uploading && (
