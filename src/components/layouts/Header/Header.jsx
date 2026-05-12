@@ -17,6 +17,9 @@ import {
   faUser,
   faFolderOpen,
   faColumns,
+  faUserPlus,
+  faComment,
+  faTrashCan,
 } from "@fortawesome/free-solid-svg-icons";
 
 import Cookies from "js-cookie";
@@ -38,6 +41,70 @@ const Header = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const { connection } = useSignalR();
   const location = useLocation();
+
+  // Tabs + Message notifications (realtime, session-persisted)
+  const [activeNotiTab, setActiveNotiTab] = useState("friend"); // 'friend' | 'message'
+  const [messageNotifs, setMessageNotifs] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("headerMsgNotifs");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+
+  const currentUserName = (() => {
+    try {
+      const t = Cookies.get("token");
+      if (!t) return null;
+      return jwt_decode(t)["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name"];
+    } catch { return null; }
+  })();
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("headerMsgNotifs", JSON.stringify(messageNotifs.slice(0, 50)));
+    } catch { /* quota — skip */ }
+  }, [messageNotifs]);
+
+  useEffect(() => {
+    const handler = (event) => {
+      const { user, content } = event.detail || {};
+      if (!user || !content) return;
+      if (currentUserName && user === currentUserName) return;
+      setMessageNotifs((prev) => [
+        {
+          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          userName: user,
+          content: content,
+          time: new Date().toISOString(),
+          isRead: false,
+        },
+        ...prev,
+      ].slice(0, 50));
+    };
+    window.addEventListener("new-signalr-message", handler);
+    return () => window.removeEventListener("new-signalr-message", handler);
+  }, [currentUserName]);
+
+  const unreadFriendCount = notifications.filter((n) => !n.isRead).length;
+  const unreadMessageCount = messageNotifs.filter((n) => !n.isRead).length;
+  const totalUnread = unreadFriendCount + unreadMessageCount;
+
+  const markMessageRead = (id) => {
+    setMessageNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  };
+
+  const removeMessageNotif = (id) => {
+    setMessageNotifs((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const clearMessageNotifs = () => {
+    setMessageNotifs([]);
+    sessionStorage.removeItem("headerMsgNotifs");
+  };
+
+  const markAllMessagesRead = () => {
+    setMessageNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
 
   useEffect(() => {
     const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
@@ -388,73 +455,177 @@ const Header = () => {
     );
   };
 
-  const content = (
-    <div className="container-noti mr-2 !min-h-20">
-      {notifications.length === 0 ? (
-        <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
-          <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
-            <div className="flex flex-col">
-              <Empty description={false}></Empty>
-              <span>Empty notification</span>
-            </div>
+  const friendList = (
+    notifications.length === 0 ? (
+      <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
+        <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
+          <div className="flex flex-col">
+            <Empty description={false}></Empty>
+            <span>Empty friend notifications</span>
           </div>
         </div>
-      ) : (
-        notifications.map((notification, index) => (
+      </div>
+    ) : (
+      notifications.map((notification, index) => (
+        <div
+          key={index}
+          className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
+          style={{ minWidth: '200px', position: 'relative' }}
+          onClick={() => handleNotificationClick(notification.id)}
+        >
+          {!notification.isRead && (
+            <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full" style={{ zIndex: 1 }}></div>
+          )}
+          <Image
+            className="rounded-full mr-3"
+            style={{ width: '60px', height: '60px' }}
+            src={notification.senderAvatar || avatar}
+            alt="Avatar"
+          />
+          <div className="flex-1">
+            <p className="font-medium text-gray-800 text-sm mb-1">
+              <span className="font-bold">{notification.senderName}</span>
+            </p>
+            <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
+              {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
+            </p>
+            {!notification.isFriend && (
+              <div className="flex space-x-1 justify-end mt-2">
+                <button className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold">
+                  Decline
+                </button>
+                <button
+                  onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
+                  className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
+                >
+                  Agree
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => removeNotification(notification.id, index)}
+              className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
+            >
+              <FontAwesomeIcon icon={faClose} />
+            </button>
+            <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
+              <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
+                <FontAwesomeIcon icon={faEllipsis} />
+              </button>
+            </Dropdown>
+          </div>
+        </div>
+      ))
+    )
+  );
+
+  const formatRelative = (iso) => {
+    const ts = new Date(iso).getTime();
+    const diff = Math.max(0, Date.now() - ts);
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return `${sec}s`;
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min}m`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr}h`;
+    return new Date(iso).toLocaleDateString();
+  };
+
+  const messageList = (
+    messageNotifs.length === 0 ? (
+      <div className="bg-white rounded-lg p-3 max-w-xs flex items-center flex-col" style={{ minWidth: '240px', textAlign: 'center' }}>
+        <div className="text-gray-600 w-full !min-h-20 flex items-center justify-center font-medium">
+          <div className="flex flex-col">
+            <Empty description={false}></Empty>
+            <span>Empty message notifications</span>
+          </div>
+        </div>
+      </div>
+    ) : (
+      messageNotifs.map((notif) => {
+        const preview = (notif.content || "")
+          .replace(/^\/bot\s*/i, "")
+          .replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
+          .replace(/\[📎\s[^\]]*\]\([^)]+\)/g, "[file]")
+          .slice(0, 90);
+        return (
           <div
-            key={index}
-            className={`bg-white rounded p-3 max-w-xs flex items-center border-2 !border-gray-950 mt-2 ${notification.isRead ? 'bg-gray-200' : ''}`}
+            key={notif.id}
+            className={`bg-white rounded p-2 max-w-xs flex items-start border-2 !border-gray-950 mt-2 cursor-pointer ${notif.isRead ? 'bg-gray-200' : ''}`}
             style={{ minWidth: '200px', position: 'relative' }}
-            onClick={() => handleNotificationClick(notification.id)} // Click to set read status
+            onClick={() => markMessageRead(notif.id)}
           >
-            {!notification.isRead && (
+            {!notif.isRead && (
               <div className="absolute top-1 left-1 w-2.5 h-2.5 bg-green-400 rounded-full" style={{ zIndex: 1 }}></div>
             )}
-            <Image
-              className="rounded-full mr-3"
-              style={{ width: '60px', height: '60px' }}
-              src={notification.senderAvatar || avatar}
-              alt="Avatar"
-            />
-            <div className="flex-1">
-              <p className="font-medium text-gray-800 text-sm mb-1">
-                <span className="font-bold">{notification.senderName}</span>
-              </p>
-              <p className="text-xs text-gray-600 font-semibold" style={{ marginTop: '5px' }}>
-                {notification.isFriend ? 'đã đồng ý kết nghĩa 👋' : 'muốn kết nghĩa với bạn'}
-              </p>
-              {!notification.isFriend && (
-                <div className="flex space-x-1 justify-end mt-2">
-                  <button
-                    className="bg-gray-200 text-gray-600 px-2 py-1 text-xs rounded hover:bg-gray-300 transition font-bold"
-                  >
-                    Decline
-                  </button>
-                  <button
-                    onClick={() => handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index)}
-                    className="bg-zinc-700 text-white px-2 py-1 text-xs hover:bg-zinc-800 rounded transition font-medium"
-                  >
-                    Agree
-                  </button>
-                </div>
-              )}
-              <button
-                onClick={() => removeNotification(notification.id, index)}
-                className="btn-close-noti ml-2 text-red-300 hover:text-red-700 transition"
-              >
-                <FontAwesomeIcon icon={faClose} />
-              </button>
-              <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={['click']}>
-                <button className="absolute bottom-[-3px] opacity-60 right-[8px] z-50" onClick={(e) => e.stopPropagation()}>
-                  <FontAwesomeIcon icon={faEllipsis} />
-                </button>
-              </Dropdown>
+            <div className="w-8 h-8 rounded-full bg-indigo-100 border-2 border-gray-900 flex items-center justify-center mr-2 flex-shrink-0">
+              <FontAwesomeIcon icon={faComment} className="text-indigo-700 text-sm" />
             </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="font-bold text-gray-900 text-xs truncate" title={notif.userName}>
+                  {notif.userName}
+                </p>
+                <span className="text-[10px] text-gray-500 ml-2 flex-shrink-0">{formatRelative(notif.time)}</span>
+              </div>
+              <p className="text-xs text-gray-700 font-medium truncate" style={{ marginTop: '2px' }} title={preview}>
+                {preview || "[trống]"}
+              </p>
+            </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); removeMessageNotif(notif.id); }}
+              className="ml-1 text-gray-300 hover:text-red-600 transition flex-shrink-0"
+              title="Remove"
+            >
+              <FontAwesomeIcon icon={faClose} />
+            </button>
           </div>
-        ))
-      )}
-    </div>
+        );
+      })
+    )
+  );
 
+  const content = (
+    <div className="container-noti mr-2 !min-h-20">
+      <div className="noti-tabs flex border-b-2 border-gray-900 sticky top-0 bg-white z-10">
+        <button
+          onClick={() => setActiveNotiTab("friend")}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider ${activeNotiTab === "friend" ? "bg-yellow-200 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
+        >
+          <FontAwesomeIcon icon={faUserPlus} className="mr-1" />
+          Friend {unreadFriendCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">{unreadFriendCount}</span>}
+        </button>
+        <button
+          onClick={() => setActiveNotiTab("message")}
+          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider border-l-2 border-gray-900 ${activeNotiTab === "message" ? "bg-yellow-200 text-gray-900" : "text-gray-500 hover:bg-gray-50"}`}
+        >
+          <FontAwesomeIcon icon={faComment} className="mr-1" />
+          Message {unreadMessageCount > 0 && <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white rounded-full text-[10px]">{unreadMessageCount}</span>}
+        </button>
+      </div>
+
+      {activeNotiTab === "friend" && notifications.length > 0 && (
+        <div className="flex justify-end gap-2 px-1 pt-1">
+          <button onClick={clearNotifications} className="text-[10px] text-red-600 font-bold uppercase hover:underline">
+            <FontAwesomeIcon icon={faTrashCan} className="mr-1" />
+            Clear
+          </button>
+        </div>
+      )}
+      {activeNotiTab === "message" && messageNotifs.length > 0 && (
+        <div className="flex justify-end gap-2 px-1 pt-1">
+          <button onClick={markAllMessagesRead} className="text-[10px] text-blue-600 font-bold uppercase hover:underline">
+            Mark all read
+          </button>
+          <button onClick={clearMessageNotifs} className="text-[10px] text-red-600 font-bold uppercase hover:underline">
+            <FontAwesomeIcon icon={faTrashCan} className="mr-1" />
+            Clear
+          </button>
+        </div>
+      )}
+
+      {activeNotiTab === "friend" ? friendList : messageList}
+    </div>
   );
 
   const ref1 = useRef(null);
@@ -558,23 +729,6 @@ const Header = () => {
               title={
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Notification</span>
-                  {notifications.length > 0 && (
-                    <button
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        marginRight: '11px'
-                      }}
-                      onClick={clearNotifications}
-                    >
-                      <span className="text-red-500">
-                        clear
-                      </span>
-                    </button>
-                  )}
                 </div>
               }
               trigger="click"
@@ -593,7 +747,7 @@ const Header = () => {
                     ref={ref2}
 
                   />
-                  {notificationCount > 0 && (
+                  {totalUnread > 0 && (
                     <span
                       style={{
                         position: 'absolute',
@@ -610,7 +764,7 @@ const Header = () => {
                         fontSize: '12px',
                       }}
                     >
-                      {notificationCount}
+                      {totalUnread}
                     </span>
                   )}
                 </div>
