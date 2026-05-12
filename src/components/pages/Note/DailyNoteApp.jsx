@@ -34,7 +34,7 @@ const COLORS = [
 
 const CATEGORIES = ['SYSTEM', 'TASK', 'IDEA', 'LOG', 'MEMO'];
 
-const Note = ({ note, onUpdate, onDelete, onFocus }) => {
+const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -42,6 +42,19 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
   const accentRgb = note.customRgb || theme.rgb;
+
+  // Resolve text color: customTextColorHex > accent > customTextColor preset > theme default
+  const resolvedTextColor = note.customTextColorHex
+    || (note.customTextColor === 'accent'
+      ? accentColor
+      : (note.customTextColor && note.customTextColor !== 'null' && note.customTextColor !== null
+        ? note.customTextColor
+        : (note.noteTheme === 1
+          ? '#0f172a'                                        // light note → near black
+          : (appTheme === 'light' ? '#0f172a' : '#a6accd')  // follow app theme
+        )
+      )
+    );
 
   const cycleColor = (e) => {
     e.stopPropagation();
@@ -63,13 +76,9 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
 
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === 'Escape') {
-        setShowProps(false);
-      }
+      if (e.key === 'Escape') setShowProps(false);
     };
-    if (showProps) {
-      window.addEventListener('keydown', handleEsc);
-    }
+    if (showProps) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [showProps]);
 
@@ -157,7 +166,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
           '--note-font-size': note.fontSize || '0.85rem',
           '--note-opacity': note.opacity || 1,
           '--note-blur': `${(note.blurIntensity || 5) * (note.blur || 0)}px`,
-          '--custom-text-color': note.customTextColorHex || (note.customTextColor === 'accent' ? accentColor : (note.customTextColor || (note.noteTheme === 1 ? '#000000' : '#ffffff'))),
+          '--custom-text-color': resolvedTextColor,
           '--note-border-width': `${note.borderWidth || 1}px`,
           '--note-border-radius': `${note.borderRadius || 0}px`,
           '--note-line-height': note.lineHeight || 1.6,
@@ -301,7 +310,6 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                   </div>
                 </div>
 
-                {/* Blur intensity — only when glass is on */}
                 {note.blur > 0 && (
                   <div className="ins-field mt-2">
                     <label><FaBlur /> BLUR_INTENSITY: {(note.blurIntensity || 5)}px</label>
@@ -314,7 +322,6 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                   </div>
                 )}
 
-                {/* Glow intensity — only when glow is on */}
                 {note.glow && (
                   <div className="ins-field mt-2">
                     <label><FaGlow /> GLOW_RADIUS: {note.glowRadius || 20}px</label>
@@ -406,7 +413,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
                       { label: 'BLACK', val: '#000000' },
                       { label: 'ACCENT', val: 'accent' }
                     ].map(tc => (
-                      <button key={tc.label} className={`ins-toggle ${note.customTextColor === tc.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customTextColor: tc.val })}>
+                      <button key={tc.label} className={`ins-toggle ${note.customTextColor === tc.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customTextColor: tc.val, customTextColorHex: null })}>
                         {tc.label}
                       </button>
                     ))}
@@ -535,7 +542,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
               {/* ── ACTIONS ── */}
               <div className="ins-actions-footer">
                 <div className="ins-footer-grid">
-                  <button className="ins-footer-btn secondary" onClick={() => onUpdate(note.id, { rotation: 0, opacity: 1, borderWidth: 1, borderRadius: 0, blur: 0, glow: false })}>
+                  <button className="ins-footer-btn secondary" onClick={() => onUpdate(note.id, { rotation: 0, opacity: 1, borderWidth: 1, borderRadius: 0, blur: 0, glow: false, customTextColor: null, customTextColorHex: null })}>
                     <FaSyncAlt /> RESET_STYLE
                   </button>
                   <button className="ins-footer-btn danger" onClick={() => onDelete(note.id)}>
@@ -588,7 +595,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus }) => {
 const DailyNoteApp = () => {
   const [searchParams] = useSearchParams();
   const urlDateStr = searchParams.get('date');
-  
+
   const [currentDate, setCurrentDate] = useState(() => {
     if (urlDateStr) {
       const parsed = new Date(urlDateStr);
@@ -600,9 +607,7 @@ const DailyNoteApp = () => {
   useEffect(() => {
     if (urlDateStr) {
       const parsed = new Date(urlDateStr);
-      if (!isNaN(parsed)) {
-        setCurrentDate(parsed);
-      }
+      if (!isNaN(parsed)) setCurrentDate(parsed);
     }
   }, [urlDateStr]);
 
@@ -624,7 +629,9 @@ const DailyNoteApp = () => {
     n.content?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Initialize Connection and Auth
+  // Default text color based on current app theme
+  const defaultTextColor = (t) => t === 'light' ? '#0f172a' : '#a6accd';
+
   useEffect(() => {
     const token = Cookies.get('token');
     let uId = 'anonymous';
@@ -656,7 +663,6 @@ const DailyNoteApp = () => {
     localStorage.setItem('daily-note-theme', newTheme);
   };
 
-  // Handle SignalR listeners
   useEffect(() => {
     if (connection && userId) {
       connection.start()
@@ -789,7 +795,9 @@ const DailyNoteApp = () => {
       opacity: 1,
       fontSize: '0.85rem',
       borderStyle: 0,
-      isCompleted: false
+      isCompleted: false,
+      // ✅ Set text color theo app theme hiện tại
+      customTextColor: defaultTextColor(theme),
     };
 
     setTopZIndex(prev => prev + 1);
@@ -909,19 +917,15 @@ const DailyNoteApp = () => {
     }
   };
 
-  useEffect(() => {
-    // No global context menu listener needed anymore for note props
-  }, []);
-
   window.allCurrentNotesGlobal = allCurrentNotes;
 
   const getAnchorPoints = (n) => {
     const h = n.isMinimized ? 40 : n.height;
     return [
-      { x: n.x + n.width / 2, y: n.y, side: 'top' },           // Top mid
-      { x: n.x + n.width / 2, y: n.y + h, side: 'bottom' },    // Bottom mid
-      { x: n.x, y: n.y + h / 2, side: 'left' },               // Left mid
-      { x: n.x + n.width, y: n.y + h / 2, side: 'right' }      // Right mid
+      { x: n.x + n.width / 2, y: n.y, side: 'top' },
+      { x: n.x + n.width / 2, y: n.y + h, side: 'bottom' },
+      { x: n.x, y: n.y + h / 2, side: 'left' },
+      { x: n.x + n.width, y: n.y + h / 2, side: 'right' }
     ];
   };
 
@@ -1055,9 +1059,9 @@ const DailyNoteApp = () => {
                 onUpdate={updateNote}
                 onDelete={deleteNote}
                 onFocus={focusNote}
+                appTheme={theme}
               />
             ))}
-            {/* Dynamic scroll anchor to ensure there is always space below the lowest note */}
             <div style={{
               position: 'absolute',
               top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500,
