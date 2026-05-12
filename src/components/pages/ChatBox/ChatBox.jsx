@@ -5,11 +5,12 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck, faPaperclip } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import axiosInstance from "../../../axiosConfig";
+import { uploadFilesToCloudinary } from "../../../services/fileService";
 import { cardio } from 'ldrs'
 import ReactMarkdown from 'react-markdown';
 cardio.register()
@@ -157,6 +158,12 @@ const ChatBox = ({ onClose }) => {
   const [copiedKey, setCopiedKey] = useState(null);
   const isAtBottomRef = useRef(true);
   useEffect(() => { isAtBottomRef.current = isAtBottom; }, [isAtBottom]);
+
+  // Attachment upload state
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Chat preferences (persisted)
   const [compactMode, setCompactMode] = useState(() => localStorage.getItem("chatCompactMode") === "true");
@@ -464,6 +471,82 @@ const ChatBox = ({ onClose }) => {
       );
     }
   }, [aiMode, connection, isStudyMode, setIsAiThinking, setMessages, userId, username]);
+
+  const appendToMessage = useCallback((snippet) => {
+    setMessage((prev) => {
+      if (!prev) return snippet;
+      const sep = prev.endsWith("\n") || prev.endsWith(" ") ? "" : "\n";
+      return prev + sep + snippet;
+    });
+    requestAnimationFrame(() => {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus();
+        ta.style.height = "auto";
+        ta.style.height = `${ta.scrollHeight}px`;
+      }
+    });
+  }, []);
+
+  const handleUploadFiles = useCallback(async (filesArray) => {
+    const files = Array.from(filesArray || []).filter((f) => f && f.size > 0);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress(0);
+    try {
+      const uploaded = await uploadFilesToCloudinary(files, (pct) => setUploadProgress(pct));
+      if (!Array.isArray(uploaded) || uploaded.length === 0) {
+        throw new Error("Upload trả về rỗng");
+      }
+      const snippets = uploaded.map((meta) => {
+        const url = meta.cloudUrl;
+        const name = meta.originalName || "attachment";
+        if (!url) return "";
+        const isImage = (meta.contentType || "").startsWith("image/");
+        return isImage ? `![${name}](${url})` : `[📎 ${name}](${url})`;
+      }).filter(Boolean).join("\n");
+
+      if (snippets) appendToMessage(snippets);
+      notification.success({
+        message: `Đã tải lên ${uploaded.length} file`,
+        duration: 1.5
+      });
+    } catch (err) {
+      console.error("Upload failed", err);
+      notification.error({
+        message: "Upload thất bại",
+        description: err?.response?.data?.title || err?.message || "Không xác định",
+        duration: 3
+      });
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
+  }, [appendToMessage]);
+
+  const handlePaste = useCallback((e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.kind === "file") {
+        const f = item.getAsFile();
+        if (f) files.push(f);
+      }
+    }
+    if (files.length > 0) {
+      e.preventDefault();
+      handleUploadFiles(files);
+    }
+  }, [handleUploadFiles]);
+
+  const handleDrop = useCallback((e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) handleUploadFiles(files);
+  }, [handleUploadFiles]);
 
   const handleSendMessage = useCallback(async () => {
     if (!message.trim()) return;
@@ -908,14 +991,43 @@ const ChatBox = ({ onClose }) => {
         )}
       </div>
 
-      <div className="chat-input">
+      {uploading && (
+        <div className="chat-upload-bar">
+          <span className="upload-label">Đang tải lên... {uploadProgress}%</span>
+          <div className="upload-track">
+            <div className="upload-fill" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        </div>
+      )}
+
+      <div
+        className={`chat-input ${dragOver ? "drag-over" : ""}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          style={{ display: "none" }}
+          onChange={(e) => { handleUploadFiles(e.target.files); e.target.value = ""; }}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          title="Đính kèm ảnh / file (hoặc paste / drag-drop)"
+          disabled={uploading}
+        >
+          <FontAwesomeIcon icon={faPaperclip} />
+        </button>
         <textarea
           className="chatbox-input"
           ref={textareaRef}
           value={message}
           onChange={handleChange}
           onKeyPress={handleKeyPress}
-          placeholder={aiMode ? "Hỏi AI bất cứ điều gì... (Shift+Enter để xuống dòng)" : "Type a message"}
+          onPaste={handlePaste}
+          placeholder={aiMode ? "Hỏi AI bất cứ điều gì... (Shift+Enter để xuống dòng)" : "Type a message — paste/drop ảnh để gửi"}
           rows={1}
           style={{ overflow: "hidden", resize: "none" }}
         />
@@ -925,9 +1037,10 @@ const ChatBox = ({ onClose }) => {
             style={{ color: aiMode ? "#504cd6" : "#4c4c4c" }}
           />
         </button>
-        <button onClick={handleSendMessage} title="Send (Enter)" disabled={!message.trim()}>
+        <button onClick={handleSendMessage} title="Send (Enter)" disabled={!message.trim() || uploading}>
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
+        {dragOver && <div className="drag-overlay">Thả file vào đây để upload</div>}
       </div>
     </div>
   );

@@ -424,6 +424,77 @@ iframe {
   }
 }
 
+/* ── Upload progress bar ── */
+.chat-upload-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #eef2ff;
+  border-top: 1px dashed #c7d2fe;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca;
+
+  .upload-label {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .upload-track {
+    flex: 1;
+    height: 4px;
+    background: #e0e7ff;
+    border-radius: 2px;
+    overflow: hidden;
+
+    .upload-fill {
+      height: 100%;
+      background: #504cd6;
+      transition: width 0.15s ease;
+    }
+  }
+}
+
+/* ── Drag & drop overlay ── */
+.chat-input {
+  position: relative;
+
+  &.drag-over {
+    background: rgba(80, 76, 214, 0.05) !important;
+    outline: 2px dashed #504cd6;
+    outline-offset: -4px;
+  }
+
+  .drag-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.85);
+    color: #504cd6;
+    font-weight: 800;
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  button[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* Image inside chat-text — keep tidy */
+.chat-text {
+  .image-container img {
+    max-width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+  }
+}
+
 /* ── Settings menu polish ── */
 .chatbox-settings-menu {
   min-width: 220px;
