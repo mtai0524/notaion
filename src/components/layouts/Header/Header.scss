@@ -7,11 +7,18 @@
 .navbar {
   box-shadow: var(--box-shadow-sm) !important;
   border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  background-color: var(--container-bg);
+  color: var(--text-color);
   max-width: 700px;
   width: 80vw;
   height: 60px;
   margin: 20px;
   border-radius: var(--global-border-radius, 6px);
+  transition: background-color 0.3s ease, color 0.3s ease;
+
+  a, .text-black {
+    color: var(--text-color) !important;
+  }
 }
 
 .nav-eye-protection {
@@ -118,4 +125,94 @@
 .ant-tour-header {
   border-radius: var(--global-border-radius, 5px) !important;
 
+}
+
+/* ─── Dark Mode overrides for Header ─── */
+body.dark-mode-active {
+  .navbar {
+    a,
+    .text-black {
+      color: var(--text-color) !important;
+    }
+
+    /* Round-icon buttons in nav use inline backgroundColor: #faf8f7 — override */
+    .anticon,
+    svg.svg-inline--fa {
+      background-color: var(--container-bg) !important;
+      color: var(--text-color) !important;
+    }
+  }
+
+  /* Notification card content inside popover */
+  .container-noti {
+    .bg-white {
+      background-color: var(--container-bg) !important;
+      color: var(--text-color);
+    }
+
+    .text-gray-600,
+    .text-gray-800 {
+      color: var(--text-muted) !important;
+    }
+
+    .bg-gray-200 {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      color: var(--text-color) !important;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.15) !important;
+      }
+    }
+
+    .bg-zinc-700 {
+      background-color: var(--accent-color) !important;
+
+      &:hover {
+        background-color: var(--accent-color) !important;
+        filter: brightness(1.1);
+      }
+    }
+  }
+
+  /* Popover surface */
+  .ant-popover-inner {
+    background-color: var(--container-bg) !important;
+    color: var(--text-color);
+  }
+
+  .ant-popover-title,
+  .ant-popover-inner-content {
+    color: var(--text-color) !important;
+  }
+
+  .ant-popover-arrow::before {
+    background-color: var(--container-bg) !important;
+  }
+
+  /* Dropdown menu */
+  .custom-dropdown-menu {
+    background-color: var(--container-bg) !important;
+    color: var(--text-color);
+
+    .ant-dropdown-menu-item {
+      color: var(--text-color) !important;
+
+      &:hover,
+      &.ant-dropdown-menu-item-active {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+      }
+    }
+  }
+
+  /* Tour popover */
+  .ant-tour,
+  .ant-tour-inner {
+    background-color: var(--container-bg) !important;
+    color: var(--text-color) !important;
+  }
+
+  .ant-tour-title,
+  .ant-tour-description {
+    color: var(--text-color) !important;
+  }
 }
