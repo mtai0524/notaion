@@ -66,23 +66,47 @@ const Header = () => {
   }, [messageNotifs]);
 
   useEffect(() => {
-    const handler = (event) => {
+    const handlerPublic = (event) => {
       const { user, content } = event.detail || {};
       if (!user || !content) return;
       if (currentUserName && user === currentUserName) return;
       setMessageNotifs((prev) => [
         {
           id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "public",
           userName: user,
-          content: content,
+          content,
           time: new Date().toISOString(),
           isRead: false,
         },
         ...prev,
       ].slice(0, 50));
     };
-    window.addEventListener("new-signalr-message", handler);
-    return () => window.removeEventListener("new-signalr-message", handler);
+
+    const handlerPrivate = (event) => {
+      const { senderId, senderUserName, message, sentAt } = event.detail || {};
+      if (!senderId || !message) return;
+      if (currentUserName && senderUserName === currentUserName) return;
+      setMessageNotifs((prev) => [
+        {
+          id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          type: "private",
+          userName: senderUserName || "Unknown",
+          senderId,
+          content: message,
+          time: sentAt || new Date().toISOString(),
+          isRead: false,
+        },
+        ...prev,
+      ].slice(0, 50));
+    };
+
+    window.addEventListener("new-signalr-message", handlerPublic);
+    window.addEventListener("new-signalr-private-message", handlerPrivate);
+    return () => {
+      window.removeEventListener("new-signalr-message", handlerPublic);
+      window.removeEventListener("new-signalr-private-message", handlerPrivate);
+    };
   }, [currentUserName]);
 
   const unreadFriendCount = notifications.filter((n) => !n.isRead).length;
@@ -455,6 +479,51 @@ const Header = () => {
     );
   };
 
+  const openChatFromNotif = (notif) => {
+    if (notif.type === "private") {
+      window.dispatchEvent(new CustomEvent("notaion:open-chat-private", {
+        detail: { senderId: notif.senderId, senderName: notif.userName, content: notif.content, time: notif.time }
+      }));
+    } else {
+      window.dispatchEvent(new CustomEvent("notaion:open-chat-public", {
+        detail: { senderName: notif.userName, content: notif.content, time: notif.time }
+      }));
+    }
+    markMessageRead(notif.id);
+  };
+
+  const buildMessageNotifMenu = (notif) => (
+    <Menu>
+      <Menu.Item key="open" onClick={() => openChatFromNotif(notif)}>
+        <span className="font-semibold">Mở tin nhắn</span>
+      </Menu.Item>
+      {!notif.isRead && (
+        <Menu.Item key="read" onClick={() => markMessageRead(notif.id)}>
+          <span className="font-semibold">Đánh dấu đã đọc</span>
+        </Menu.Item>
+      )}
+      <Menu.Item key="delete" danger onClick={() => removeMessageNotif(notif.id)}>
+        <span className="font-semibold">Xóa</span>
+      </Menu.Item>
+    </Menu>
+  );
+
+  const buildFriendNotifMenu = (notification, index) => (
+    <Menu>
+      <Menu.Item key="profile" onClick={() => showProfile(notification.senderName)}>
+        <span className="font-semibold">Xem profile</span>
+      </Menu.Item>
+      {!notification.isRead && (
+        <Menu.Item key="read" onClick={() => markAsRead(notification.id)}>
+          <span className="font-semibold">Đánh dấu đã đọc</span>
+        </Menu.Item>
+      )}
+      <Menu.Item key="delete" danger onClick={() => removeNotification(notification.id, index)}>
+        <span className="font-semibold">Xóa</span>
+      </Menu.Item>
+    </Menu>
+  );
+
   const friendList = (
     notifications.length === 0 ? (
       <div className="noti-empty">
@@ -464,56 +533,50 @@ const Header = () => {
     ) : (
       <div className="noti-list">
         {notifications.map((notification, index) => (
-          <div
+          <Dropdown
             key={index}
-            className={`noti-item ${notification.isRead ? "is-read" : "is-unread"}`}
-            onClick={() => handleNotificationClick(notification.id)}
+            overlay={buildFriendNotifMenu(notification, index)}
+            trigger={["contextMenu"]}
           >
-            {!notification.isRead && <span className="unread-dot" />}
-            <div className="noti-avatar">
-              <Image
-                preview={false}
-                src={notification.senderAvatar || avatar}
-                alt="Avatar"
-              />
-            </div>
-            <div className="noti-body">
-              <div className="noti-line-1">
-                <span className="noti-name" title={notification.senderName}>{notification.senderName}</span>
-                <Dropdown overlay={renderMenuNoti(notification.senderName)} trigger={["click"]}>
-                  <button className="noti-more" onClick={(e) => e.stopPropagation()} title="More">
-                    <FontAwesomeIcon icon={faEllipsis} />
-                  </button>
-                </Dropdown>
-              </div>
-              <p className="noti-text">
-                {notification.isFriend ? "đã đồng ý kết nghĩa 👋" : "muốn kết nghĩa với bạn"}
-              </p>
-              {!notification.isFriend && (
-                <div className="noti-actions-row">
-                  <button className="btn-pixel btn-pixel-ghost" onClick={(e) => e.stopPropagation()}>
-                    Decline
-                  </button>
-                  <button
-                    className="btn-pixel btn-pixel-primary"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index);
-                    }}
-                  >
-                    Agree
-                  </button>
-                </div>
-              )}
-            </div>
-            <button
-              className="noti-close"
-              onClick={(e) => { e.stopPropagation(); removeNotification(notification.id, index); }}
-              title="Remove"
+            <div
+              className={`noti-item ${notification.isRead ? "is-read" : "is-unread"}`}
+              onClick={() => handleNotificationClick(notification.id)}
+              title="Right-click để mở menu"
             >
-              <FontAwesomeIcon icon={faClose} />
-            </button>
-          </div>
+              {!notification.isRead && <span className="unread-dot" />}
+              <div className="noti-avatar">
+                <Image
+                  preview={false}
+                  src={notification.senderAvatar || avatar}
+                  alt="Avatar"
+                />
+              </div>
+              <div className="noti-body">
+                <div className="noti-line-1">
+                  <span className="noti-name" title={notification.senderName}>{notification.senderName}</span>
+                </div>
+                <p className="noti-text">
+                  {notification.isFriend ? "đã đồng ý kết nghĩa 👋" : "muốn kết nghĩa với bạn"}
+                </p>
+                {!notification.isFriend && (
+                  <div className="noti-actions-row">
+                    <button className="btn-pixel btn-pixel-ghost" onClick={(e) => e.stopPropagation()}>
+                      Decline
+                    </button>
+                    <button
+                      className="btn-pixel btn-pixel-primary"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAcceptFriendRequest(notification.senderId, notification.receiverId, notification.id, index);
+                      }}
+                    >
+                      Agree
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </Dropdown>
         ))}
       </div>
     )
@@ -547,33 +610,36 @@ const Header = () => {
             .slice(0, 90);
           const initial = (notif.userName || "?").charAt(0).toUpperCase();
           const isBot = notif.userName === "Chatbot";
+          const isPrivate = notif.type === "private";
           return (
-            <div
+            <Dropdown
               key={notif.id}
-              className={`noti-item noti-item-message ${notif.isRead ? "is-read" : "is-unread"}`}
-              onClick={() => markMessageRead(notif.id)}
+              overlay={buildMessageNotifMenu(notif)}
+              trigger={["contextMenu"]}
             >
-              {!notif.isRead && <span className="unread-dot" />}
-              <div className={`noti-avatar noti-avatar-letter ${isBot ? "is-bot" : ""}`}>
-                {isBot ? <FontAwesomeIcon icon={faComment} /> : initial}
-              </div>
-              <div className="noti-body">
-                <div className="noti-line-1">
-                  <span className="noti-name" title={notif.userName}>{notif.userName}</span>
-                  <span className="noti-time">{formatRelative(notif.time)}</span>
-                </div>
-                <p className="noti-text noti-text-snippet" title={preview}>
-                  {preview || "[trống]"}
-                </p>
-              </div>
-              <button
-                className="noti-close"
-                onClick={(e) => { e.stopPropagation(); removeMessageNotif(notif.id); }}
-                title="Remove"
+              <div
+                className={`noti-item noti-item-message ${notif.isRead ? "is-read" : "is-unread"} ${isPrivate ? "is-private" : ""}`}
+                onClick={() => openChatFromNotif(notif)}
+                title="Click để mở · Right-click để hiện menu"
               >
-                <FontAwesomeIcon icon={faClose} />
-              </button>
-            </div>
+                {!notif.isRead && <span className="unread-dot" />}
+                <div className={`noti-avatar noti-avatar-letter ${isBot ? "is-bot" : ""} ${isPrivate ? "is-private" : ""}`}>
+                  {isBot ? <FontAwesomeIcon icon={faComment} /> : initial}
+                </div>
+                <div className="noti-body">
+                  <div className="noti-line-1">
+                    <span className="noti-name" title={notif.userName}>
+                      {notif.userName}
+                      {isPrivate && <span className="noti-tag-private">DM</span>}
+                    </span>
+                    <span className="noti-time">{formatRelative(notif.time)}</span>
+                  </div>
+                  <p className="noti-text noti-text-snippet" title={preview}>
+                    {preview || "[trống]"}
+                  </p>
+                </div>
+              </div>
+            </Dropdown>
           );
         })}
       </div>

@@ -234,6 +234,17 @@ iframe {
   border: 1px solid #d6d9ff !important;
 }
 
+@keyframes noti-flash {
+  0%   { background-color: #fef3c7; box-shadow: -3px 3px 0 0 #f59e0b; }
+  60%  { background-color: #fef3c7; box-shadow: -3px 3px 0 0 #f59e0b; }
+  100% { background-color: transparent; box-shadow: none; }
+}
+
+.chat-message.is-highlighted {
+  animation: noti-flash 2.5s ease-out;
+  border-color: #f59e0b !important;
+}
+
 .thinking-animation {
   display: flex;
   align-items: center;

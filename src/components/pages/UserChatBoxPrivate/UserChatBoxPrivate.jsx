@@ -78,6 +78,27 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         fetchFriends,
+        openChatWithUser: async (senderId) => {
+            if (!senderId) return;
+            let list = friends;
+            if (!list || list.length === 0) {
+                try {
+                    const response = await axiosInstance.get(`/api/FriendShip/get-friends/${currentUserId}`);
+                    list = response.data;
+                    setFriends(list);
+                } catch (err) {
+                    console.error('Failed to load friends for openChat:', err);
+                    return;
+                }
+            }
+            const friend = list.find(
+                (f) => f.senderId === senderId || f.receiverId === senderId
+            );
+            if (!friend) return;
+            const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
+            const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
+            toggleChat(friend.id, friendUserName, friendId);
+        },
     }));
 
     useEffect(() => {

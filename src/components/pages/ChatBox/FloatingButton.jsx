@@ -47,6 +47,25 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
 
   const [tabPosition, setTabPosition] = useState('top');
   const [username, setUsername] = useState('');
+  const [activeTabKey, setActiveTabKey] = useState('1');
+
+  useEffect(() => {
+    const handler = (e) => {
+      const { senderId } = e.detail || {};
+      setOpen(true);
+      setActiveTabKey('3');
+      setTimeout(async () => {
+        if (userChatBoxRef.current?.fetchFriends) {
+          await userChatBoxRef.current.fetchFriends();
+        }
+        if (userChatBoxRef.current?.openChatWithUser && senderId) {
+          userChatBoxRef.current.openChatWithUser(senderId);
+        }
+      }, 200);
+    };
+    window.addEventListener('notaion:open-chat-private', handler);
+    return () => window.removeEventListener('notaion:open-chat-private', handler);
+  }, []);
 
   useEffect(() => {
     const fetchUserAndNotifications = async () => {
@@ -236,6 +255,8 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
       >
         <Tabs
           tabPosition={tabPosition}
+          activeKey={activeTabKey}
+          onChange={setActiveTabKey}
           items={[
             {
               label: "online users",

@@ -85,6 +85,20 @@ const MainApp = () => {
     };
   }, []);
 
+  // Open public ChatBox + forward focus payload to ChatBox listener
+  useEffect(() => {
+    const handler = (event) => {
+      const detail = event.detail || {};
+      setShowChatBox(true);
+      // Defer focus event so ChatBox has time to mount
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('notaion:focus-public-message', { detail }));
+      }, 250);
+    };
+    window.addEventListener('notaion:open-chat-public', handler);
+    return () => window.removeEventListener('notaion:open-chat-public', handler);
+  }, []);
+
   useEffect(() => {
     const handleNewMessage = (event) => {
       const { user, content } = event.detail;

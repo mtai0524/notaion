@@ -159,6 +159,34 @@ const ChatBox = ({ onClose }) => {
   const isAtBottomRef = useRef(true);
   useEffect(() => { isAtBottomRef.current = isAtBottom; }, [isAtBottom]);
 
+  const [highlightKey, setHighlightKey] = useState(null);
+  useEffect(() => {
+    const handler = (e) => {
+      const { senderName, content } = e.detail || {};
+      if (!senderName || !content) return;
+      let foundIdx = -1;
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const m = messages[i];
+        if (m.userName === senderName && (m.content || "").trim() === content.trim()) {
+          foundIdx = i;
+          break;
+        }
+      }
+      if (foundIdx === -1) return;
+      const key = String(messages[foundIdx].id ?? `msg-${foundIdx}`);
+      requestAnimationFrame(() => {
+        const el = document.querySelector(`[data-noti-key="${key}"]`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          setHighlightKey(key);
+          setTimeout(() => setHighlightKey((k) => (k === key ? null : k)), 2500);
+        }
+      });
+    };
+    window.addEventListener("notaion:focus-public-message", handler);
+    return () => window.removeEventListener("notaion:focus-public-message", handler);
+  }, [messages]);
+
   // User-filter sidebar
   const [showUserPanel, setShowUserPanel] = useState(false);
   const [userFilter, setUserFilter] = useState(null);
@@ -1061,8 +1089,8 @@ const ChatBox = ({ onClose }) => {
               return (
                 <div
                   key={msgKey}
-                  className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"
-                    }`}
+                  data-noti-key={String(msgKey)}
+                  className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"} ${highlightKey === String(msgKey) ? "is-highlighted" : ""}`}
                 >
                   <strong className="chat-user">
                     {msg.userName === "Chatbot" && (
