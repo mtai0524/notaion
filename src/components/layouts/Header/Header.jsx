@@ -24,7 +24,7 @@ import {
 
 import Cookies from "js-cookie";
 import { useAuth } from "../../../contexts/AuthContext";
-import { message } from "antd";
+import { message, notification } from "antd";
 import jwt_decode from "jwt-decode";
 import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
@@ -73,14 +73,37 @@ const Header = () => {
     } catch { /* quota — skip */ }
   }, [messageNotifs]);
 
+  const truncate = (s, n = 90) => {
+    const str = (s || "").replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
+      .replace(/\[📎\s[^\]]*\]\([^)]+\)/g, "[file]")
+      .replace(/^\/bot\s*/i, "");
+    return str.length > n ? str.slice(0, n) + "…" : str;
+  };
+
+  const showToast = ({ key, title, description, onClick }) => {
+    notification.open({
+      key,
+      message: title,
+      description,
+      placement: "bottomRight",
+      duration: 4,
+      onClick: () => {
+        if (onClick) onClick();
+        notification.destroy(key);
+      },
+      style: { cursor: onClick ? "pointer" : "default" },
+    });
+  };
+
   useEffect(() => {
     const handlerPublic = (event) => {
       const { user, content } = event.detail || {};
       if (!user || !content) return;
       if (currentUserName && user === currentUserName) return;
+      const id = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setMessageNotifs((prev) => [
         {
-          id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id,
           type: "public",
           userName: user,
           content,
@@ -89,6 +112,16 @@ const Header = () => {
         },
         ...prev,
       ].slice(0, 50));
+      showToast({
+        key: id,
+        title: `${user} · public`,
+        description: truncate(content),
+        onClick: () => {
+          window.dispatchEvent(new CustomEvent("notaion:open-chat-public", {
+            detail: { senderName: user, content, time: new Date().toISOString() },
+          }));
+        },
+      });
     };
 
     const handlerPrivate = (event) => {
@@ -99,9 +132,10 @@ const Header = () => {
       // Bỏ qua tin nhắn do chính mình gửi
       if (currentUserIdFromToken && senderId === currentUserIdFromToken) return;
       if (currentUserName && senderUserName === currentUserName) return;
+      const id = `pm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       setMessageNotifs((prev) => [
         {
-          id: `pm-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+          id,
           type: "private",
           userName: senderUserName || "Unknown",
           senderId,
@@ -111,6 +145,16 @@ const Header = () => {
         },
         ...prev,
       ].slice(0, 50));
+      showToast({
+        key: id,
+        title: `${senderUserName || "Unknown"} · DM`,
+        description: truncate(message),
+        onClick: () => {
+          window.dispatchEvent(new CustomEvent("notaion:open-chat-private", {
+            detail: { senderId, senderName: senderUserName, content: message, time: sentAt },
+          }));
+        },
+      });
     };
 
     window.addEventListener("new-signalr-message", handlerPublic);
@@ -172,6 +216,12 @@ const Header = () => {
               },
             ]);
             setNotificationCount((prevCount) => prevCount + 1); // Update count
+            showToast({
+              key: `fr-${notificationId}`,
+              title: "Lời mời kết bạn",
+              description: `${senderName} muốn kết nghĩa với bạn`,
+              onClick: () => navigate(`/profile/${senderName}`),
+            });
           }
         }
       } catch (error) {
