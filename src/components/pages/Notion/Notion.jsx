@@ -1,15 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import {
-  Dropdown,
-  Menu,
-  Space,
-  Tooltip,
-  Popconfirm,
-  message,
-  Spin,
-  Image,
-} from "antd";
+import { Space, Tooltip, message, Spin, Image } from "antd";
 import {
   DownloadOutlined,
   RotateLeftOutlined,
@@ -19,139 +10,247 @@ import {
   ZoomInOutlined,
   ZoomOutOutlined,
   PlusOutlined,
+  FontSizeOutlined,
+  CodeOutlined,
   FileImageOutlined,
   FileTextOutlined,
   DeleteOutlined,
+  FileOutlined,
+  HolderOutlined,
 } from "@ant-design/icons";
 import "./Notion.scss";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "../../../axiosConfig";
 import debounce from "lodash.debounce";
+
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
   const [removed] = result.splice(startIndex, 1);
   result.splice(endIndex, 0, removed);
-
   return result.map((item, index) => ({ ...item, order: index }));
 };
 
-const generateRandomId = () => {
-  return uuidv4();
+const generateRandomId = () => uuidv4();
+
+// ── Slash command catalog (Notion-style) ─────────────────────────────
+const SLASH_COMMANDS = [
+  {
+    key: "heading-1",
+    label: "Heading 1",
+    desc: "Big section heading",
+    hint: "Ctrl 1",
+    icon: <span className="slash-icon-text">H1</span>,
+    type: "heading",
+  },
+  {
+    key: "heading-2",
+    label: "Heading 2",
+    desc: "Medium section heading",
+    hint: "Ctrl 2",
+    icon: <span className="slash-icon-text">H2</span>,
+    type: "heading",
+  },
+  {
+    key: "heading-3",
+    label: "Heading 3",
+    desc: "Small section heading",
+    hint: "Ctrl 3",
+    icon: <span className="slash-icon-text">H3</span>,
+    type: "heading",
+  },
+  {
+    key: "heading-4",
+    label: "Code block",
+    desc: "Capture a code snippet",
+    hint: "Ctrl 4",
+    icon: <CodeOutlined />,
+    type: "heading",
+  },
+  {
+    key: "text",
+    label: "Plain text",
+    desc: "Reset to a regular text block",
+    icon: <FontSizeOutlined />,
+    type: "heading",
+  },
+  {
+    key: "choose-image",
+    label: "Image",
+    desc: "Upload or embed an image",
+    icon: <FileImageOutlined />,
+    type: "action",
+  },
+  {
+    key: "choose-file",
+    label: "File",
+    desc: "Upload any file attachment",
+    icon: <FileOutlined />,
+    type: "action",
+  },
+  {
+    key: "delete",
+    label: "Delete block",
+    desc: "Remove this block",
+    hint: "Ctrl D",
+    icon: <DeleteOutlined />,
+    type: "action",
+    danger: true,
+  },
+];
+
+const SlashMenu = ({ query, selectedIndex, onSelect, onClose, anchorRef }) => {
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return SLASH_COMMANDS;
+    return SLASH_COMMANDS.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.desc.toLowerCase().includes(q) ||
+        c.key.toLowerCase().includes(q)
+    );
+  }, [query]);
+
+  const listRef = useRef(null);
+
+  useEffect(() => {
+    const el = listRef.current?.querySelector(`[data-idx="${selectedIndex}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [selectedIndex]);
+
+  if (filtered.length === 0) {
+    return (
+      <div className="slash-menu" role="listbox">
+        <div className="slash-empty">No matches for &quot;{query}&quot;</div>
+        <div className="slash-footer">esc to close</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="slash-menu" role="listbox" ref={listRef}>
+      <div className="slash-header">
+        {query ? (
+          <span>
+            Filter: <strong>{query}</strong>
+          </span>
+        ) : (
+          <span>Basic blocks</span>
+        )}
+      </div>
+      <div className="slash-list">
+        {filtered.map((cmd, idx) => (
+          <button
+            type="button"
+            data-idx={idx}
+            key={cmd.key}
+            role="option"
+            aria-selected={idx === selectedIndex}
+            className={`slash-item ${idx === selectedIndex ? "is-selected" : ""} ${cmd.danger ? "is-danger" : ""}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(cmd);
+            }}
+          >
+            <div className="slash-item-icon">{cmd.icon}</div>
+            <div className="slash-item-body">
+              <div className="slash-item-label">{cmd.label}</div>
+              <div className="slash-item-desc">{cmd.desc}</div>
+            </div>
+            {cmd.hint && <kbd className="slash-item-hint">{cmd.hint}</kbd>}
+          </button>
+        ))}
+      </div>
+      <div className="slash-footer">
+        <span>
+          <kbd>↑↓</kbd> navigate
+        </span>
+        <span>
+          <kbd>↵</kbd> select
+        </span>
+        <span>
+          <kbd>esc</kbd> close
+        </span>
+      </div>
+    </div>
+  );
 };
 
 const Notion = () => {
   const [blockId, setBlockId] = useState();
   const [items, setItems] = useState([]);
   const [newContent, setNewContent] = useState({});
-  const [dropdownVisible, setDropdownVisible] = useState({});
-  const [activeDropdown, setActiveDropdown] = useState(null);
   const editTextareaRefs = useRef({});
   const [apiAvailable, setApiAvailable] = useState(true);
   const [loadingImage, setLoadingImage] = useState(null);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [hoveredItemId, setHoveredItemId] = useState(null);
+
+  // Slash menu state
+  const [slashMenuFor, setSlashMenuFor] = useState(null);
+  const [slashQuery, setSlashQuery] = useState("");
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+
+  const filteredSlashLength = useMemo(() => {
+    const q = slashQuery.trim().toLowerCase();
+    if (!q) return SLASH_COMMANDS.length;
+    return SLASH_COMMANDS.filter(
+      (c) =>
+        c.label.toLowerCase().includes(q) ||
+        c.desc.toLowerCase().includes(q) ||
+        c.key.toLowerCase().includes(q)
+    ).length;
+  }, [slashQuery]);
 
   const checkApiConnection = async () => {
     try {
-      await axiosInstance.get("/api/HealthCheck/health-check"); // health check
-      // message.success("Connected server");
+      await axiosInstance.get("/api/HealthCheck/health-check");
       return true;
     } catch (error) {
       message.error("Failed connect server");
       return false;
     }
   };
+
   useEffect(() => {
     const checkConnection = async () => {
       const available = await checkApiConnection();
       setApiAvailable(available);
     };
-
     checkConnection();
   }, []);
-  const menu = (id) => (
-    <Menu
-      onClick={(e) => handleMenuClick(e, id)}
-      className="custom-dropdown-menu"
-    >
-      <Menu.Item key="heading-1">
-        <Tooltip placement="left" title="Apply Heading 1 style">
-          <span>Heading 1</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Item key="heading-2">
-        <Tooltip placement="left" title="Apply Heading 2 style">
-          <span>Heading 2</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Item key="heading-3">
-        <Tooltip placement="left" title="Apply Heading 3 style">
-          <span>Heading 3</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Item key="heading-4">
-        <Tooltip placement="left" title="Apply Code style">
-          <span>Code</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Item key="choose-image">
-        <Tooltip placement="left" title="Choose image">
-          <span>Image</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Item key="choose-file">
-        <Tooltip placement="left" title="Choose file">
-          <span>File</span>
-        </Tooltip>
-      </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="delete" danger>
-        <Tooltip placement="left" title="Delete this item">
-          <span>Delete</span>
-        </Tooltip>
-      </Menu.Item>
-    </Menu>
-  );
-  const handleAction = (text) => {
-    return message.loading(`${text}...`, 0);
-  };
 
   const fetchItems = async () => {
-    const hideLoading = handleAction("Loading");
+    setLoadingItems(true);
     try {
-      await axiosInstance.get("/api/Items").then((response) => {
-        setItems(response.data);
-        // message.success("Loading finished", 1);
-      });
+      const response = await axiosInstance.get("/api/Items");
+      setItems(response.data);
     } catch (error) {
       console.error("Error fetching items:", error);
       message.error("Error fetching items", 1);
     } finally {
-      setTimeout(hideLoading, 1);
+      setLoadingItems(false);
     }
   };
 
   useEffect(() => {
-    // Kiểm tra và thêm item nếu danh sách item rỗng
-    if (items.length === 0) {
+    if (!loadingItems && items.length === 0) {
       const newBlockId = generateRandomId();
       setItems([
         {
           id: newBlockId,
-          placeholder: "Type your content here...",
+          placeholder: "Press '/' for commands, or just type…",
           heading: "",
           order: 0,
         },
       ]);
       setBlockId(newBlockId);
     }
-  }, [items]);
+  }, [items, loadingItems]);
 
   useEffect(() => {
-    // Focus vào textarea mới sau khi items được cập nhật
     if (blockId) {
       const newTextarea = editTextareaRefs.current[blockId];
-      if (newTextarea) {
-        newTextarea.focus();
-      }
+      if (newTextarea) newTextarea.focus();
     }
   }, [blockId]);
 
@@ -159,14 +258,13 @@ const Notion = () => {
     fetchItems();
   }, []);
 
-
   const addItem = (id) => {
     const newBlockId = generateRandomId();
     let index;
     if (id) {
       index = items.findIndex((item) => item.id === id) + 1;
     } else {
-      index = 0; // Thêm vào đầu danh sách
+      index = 0;
     }
     const newItem = {
       id: newBlockId,
@@ -195,15 +293,12 @@ const Notion = () => {
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
-
     const scrollY = window.scrollY;
-
     const reorderedItems = reorder(
       items,
       result.source.index,
       result.destination.index
     );
-
     setItems(() => {
       const updatedItems = reorderedItems.map((item, index) => ({
         ...item,
@@ -212,32 +307,33 @@ const Notion = () => {
       saveItems(updatedItems, true);
       return updatedItems;
     });
-
     window.scrollTo(0, scrollY);
   };
 
-  const handleClickOutside = (event) => {
-    const isClickInsideMenu = event.target.closest(".ant-dropdown");
-    if (!isClickInsideMenu) {
-      setDropdownVisible((prev) =>
-        Object.keys(prev).reduce((acc, id) => ({ ...acc, [id]: false }), {})
-      );
-      setActiveDropdown(null);
-    }
+  // Close slash menu when clicking outside
+  useEffect(() => {
+    const handler = (event) => {
+      if (!slashMenuFor) return;
+      const isInsideMenu = event.target.closest(".slash-menu");
+      const isInsideTextarea = event.target.closest("textarea");
+      if (!isInsideMenu && !isInsideTextarea) {
+        closeSlashMenu();
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [slashMenuFor]);
+
+  const closeSlashMenu = () => {
+    setSlashMenuFor(null);
+    setSlashQuery("");
+    setSlashSelectedIndex(0);
   };
 
-  useEffect(() => {
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const saveNewItems = async (heading, id) => {
-    let updatedItems;
-    setItems((prevItems) => {
-      updatedItems = prevItems.map((item) =>
-        item.id === id ? { ...item, heading } : item
-      );
-    });
+    const updatedItems = items.map((item) =>
+      item.id === id ? { ...item, heading: heading === "text" ? "" : heading } : item
+    );
     setItems(updatedItems);
     await saveItems(updatedItems, false);
   };
@@ -247,7 +343,6 @@ const Notion = () => {
   const handleFileChange = async (e) => {
     const id = editingItemIdRef.current;
     setLoadingImage(id);
-
     const file = e.target.files[0];
     if (!file) return;
 
@@ -255,23 +350,16 @@ const Notion = () => {
     formData.append("files", file);
 
     try {
-      // Use the new files/upload API for better metadata handling if desired, 
-      // but for consistency with existing images we use Items/upload or just handle generic files.
-      // Actually, let's use the new /api/files/upload to get metadata.
       const response = await axiosInstance.post("/api/files/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
       });
-      
-      const fileData = response.data[0]; // Returns array of metadata
+      const fileData = response.data[0];
       const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-      
       if (id) {
-        // If it's an image, we might want to keep using responseDataImage logic
-        // but for general files we just set the content to the download URL
         if (file.type.startsWith("image/")) {
-           responseDataImage({ data: { url: fileUrl } }, e, id);
+          responseDataImage({ data: { url: fileUrl } }, e, id);
         } else {
-           handleChangeContent(id, fileUrl);
+          handleChangeContent(id, fileUrl);
         }
       } else {
         const newBlockId = generateRandomId();
@@ -280,7 +368,7 @@ const Notion = () => {
           heading: "",
           code: "",
           order: items.length,
-          content: fileUrl
+          content: fileUrl,
         };
         const updatedItems = [...items, newItem];
         setItems(updatedItems);
@@ -298,7 +386,7 @@ const Notion = () => {
     const data = response.data;
     const currentContent =
       newContent[id] || items.find((item) => item.id === id)?.content || "";
-    const cursorPosition = e.target.selectionStart;
+    const cursorPosition = e.target?.selectionStart ?? currentContent.length;
     const beforeCursor = currentContent.substring(0, cursorPosition);
     const newContentWithImage = `${beforeCursor}${data.url}`;
     handleChangeContent(id, newContentWithImage);
@@ -311,26 +399,27 @@ const Notion = () => {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const formData = new FormData();
-        formData.append("files", file); // Note: using "files" for multi-upload API
+        formData.append("files", file);
         const newBlockId = generateRandomId();
-
-        // Show loading state
-        setItems(prev => [...prev, { id: newBlockId, heading: "", code: "", order: prev.length, content: "" }]);
+        setItems((prev) => [
+          ...prev,
+          { id: newBlockId, heading: "", code: "", order: prev.length, content: "" },
+        ]);
         setLoadingImage(newBlockId);
-
         try {
           const response = await axiosInstance.post("/api/files/upload", formData);
           const fileData = response.data[0];
           const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-          
-          setItems(prevItems => {
-            const updated = prevItems.map(item => item.id === newBlockId ? { ...item, content: fileUrl } : item);
+          setItems((prevItems) => {
+            const updated = prevItems.map((item) =>
+              item.id === newBlockId ? { ...item, content: fileUrl } : item
+            );
             saveItems(updated, false);
             return updated;
           });
         } catch (error) {
           console.error("Error uploading dropped file:", error);
-          setItems(prev => prev.filter(item => item.id !== newBlockId));
+          setItems((prev) => prev.filter((item) => item.id !== newBlockId));
           message.error("Failed to upload dropped file");
         } finally {
           setLoadingImage(null);
@@ -339,41 +428,90 @@ const Notion = () => {
     }
   };
 
-  const handleGlobalDragOver = (e) => {
-    e.preventDefault();
-  };
+  const handleGlobalDragOver = (e) => e.preventDefault();
 
   const fileInputRef = useRef(null);
-  const handleMenuClick = async (e, id) => {
+
+  const executeSlashCommand = async (cmd, id) => {
     editingItemIdRef.current = id;
     const scrollY = window.scrollY;
-    if (e.key === "choose-image") {
+    closeSlashMenu();
+
+    if (cmd.key === "choose-image") {
       fileInputRef.current.accept = "image/*";
-      fileInputRef.current.click(); 
-    }
-    if (e.key === "choose-file") {
+      fileInputRef.current.click();
+    } else if (cmd.key === "choose-file") {
       fileInputRef.current.accept = "*/*";
       fileInputRef.current.click();
-    }
-    if (e.key === "delete") {
-      setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
+    } else if (cmd.key === "delete") {
+      setItems((prev) => prev.filter((item) => item.id !== id));
       await deleteItem(id, true);
     } else {
-      saveNewItems(e.key, id);
+      saveNewItems(cmd.key, id);
     }
-    setDropdownVisible((prev) => ({ ...prev, [id]: false }));
-    setActiveDropdown(null);
     window.scrollTo(0, scrollY);
   };
+
   const applyHeadingFormat = async (id, heading) => {
     saveNewItems(heading, id);
   };
 
   const handleKeyDown = async (e, id) => {
+    // Slash menu navigation has priority when it's open for this block
+    if (slashMenuFor === id) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSlashSelectedIndex((i) => Math.min(i + 1, filteredSlashLength - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSlashSelectedIndex((i) => Math.max(i - 1, 0));
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        const q = slashQuery.trim().toLowerCase();
+        const list = q
+          ? SLASH_COMMANDS.filter(
+              (c) =>
+                c.label.toLowerCase().includes(q) ||
+                c.desc.toLowerCase().includes(q) ||
+                c.key.toLowerCase().includes(q)
+            )
+          : SLASH_COMMANDS;
+        const target = list[slashSelectedIndex];
+        if (target) executeSlashCommand(target, id);
+        return;
+      }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeSlashMenu();
+        return;
+      }
+      if (e.key === "Backspace") {
+        if (slashQuery.length === 0) {
+          closeSlashMenu();
+          return;
+        }
+        setSlashQuery((q) => q.slice(0, -1));
+        setSlashSelectedIndex(0);
+        e.preventDefault();
+        return;
+      }
+      if (e.key.length === 1) {
+        setSlashQuery((q) => q + e.key);
+        setSlashSelectedIndex(0);
+        e.preventDefault();
+        return;
+      }
+    }
+
     if (e.key === "/") {
-      e.preventDefault(); // Ngăn chặn việc gõ ký tự `/` vào textarea
-      setDropdownVisible((prev) => ({ ...prev, [id]: !prev[id] }));
-      setActiveDropdown(id);
+      e.preventDefault();
+      setSlashMenuFor(id);
+      setSlashQuery("");
+      setSlashSelectedIndex(0);
     } else if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       addItem(id);
@@ -383,26 +521,23 @@ const Notion = () => {
     } else if (e.key === "Backspace") {
       const currentItemIndex = items.findIndex((item) => item.id === id);
       const currentItem = items[currentItemIndex];
-
       if (
         currentItem &&
         (!newContent[id] || !newContent[id].trim()) &&
         (!currentItem.content || !currentItem.content.trim())
       ) {
         e.preventDefault();
-
         const updatedItems = items.filter((item) => item.id !== id);
         setItems(updatedItems);
         if (apiAvailable) {
           deleteItemDebounced(id);
         }
-        // Đặt focus vào item gần nhất phía trên hoặc tạo mới nếu không còn item nào
         if (updatedItems.length === 0) {
           const newBlockId = generateRandomId();
           setItems([
             {
               id: newBlockId,
-              placeholder: "Type your content here...",
+              placeholder: "Press '/' for commands, or just type…",
               heading: "",
               code: "",
               order: 0,
@@ -410,10 +545,7 @@ const Notion = () => {
           ]);
           setBlockId(newBlockId);
           setTimeout(() => {
-            const newTextarea = editTextareaRefs.current[newBlockId];
-            if (newTextarea) {
-              newTextarea.focus();
-            }
+            editTextareaRefs.current[newBlockId]?.focus();
           }, 0);
         } else if (currentItemIndex > 0) {
           const previousItemId = updatedItems[currentItemIndex - 1].id;
@@ -421,7 +553,6 @@ const Notion = () => {
             const previousTextarea = editTextareaRefs.current[previousItemId];
             if (previousTextarea) {
               previousTextarea.focus();
-              // Đặt con trỏ vào cuối nội dung
               previousTextarea.setSelectionRange(
                 previousTextarea.value.length,
                 previousTextarea.value.length
@@ -433,121 +564,64 @@ const Notion = () => {
     }
   };
 
-  // sự kiện tổ hợp phím ctrl + để chọn menu
   const handleKeyDownGlobal = async (e) => {
-    if (e.ctrlKey) {
-      const id = activeDropdown;
-      if (e.key === "1" && id) {
-        e.preventDefault();
-        await applyHeadingFormat(id, "heading-1");
-      } else if (e.key === "2" && id) {
-        e.preventDefault();
-        await applyHeadingFormat(id, "heading-2");
-      } else if (e.key === "3" && id) {
-        e.preventDefault();
-        await applyHeadingFormat(id, "heading-3");
-      } else if (e.key === "d" && id) {
-        e.preventDefault();
-        setItems((prevItems) => prevItems.filter((item) => item.id !== id)); // remove id of item has choose
-        await deleteItem(id, true);
-        if (items.length === 0) {
-          const newBlockId = generateRandomId();
-          setItems([
-            {
-              id: newBlockId,
-              placeholder: "Type your content here...",
-              heading: "",
-              code: "",
-              order: 0,
-            },
-          ]);
-          setBlockId(newBlockId);
-        }
-      } else if (e.key === "4" && id) {
-        e.preventDefault();
-        await applyHeadingFormat(id, "heading-4");
-      }
+    if (!e.ctrlKey) return;
+    const id = slashMenuFor;
+    if (!id) return;
+    if (e.key === "1") {
+      e.preventDefault();
+      await applyHeadingFormat(id, "heading-1");
+      closeSlashMenu();
+    } else if (e.key === "2") {
+      e.preventDefault();
+      await applyHeadingFormat(id, "heading-2");
+      closeSlashMenu();
+    } else if (e.key === "3") {
+      e.preventDefault();
+      await applyHeadingFormat(id, "heading-3");
+      closeSlashMenu();
+    } else if (e.key === "4") {
+      e.preventDefault();
+      await applyHeadingFormat(id, "heading-4");
+      closeSlashMenu();
+    } else if (e.key === "d") {
+      e.preventDefault();
+      setItems((prev) => prev.filter((item) => item.id !== id));
+      await deleteItem(id, true);
+      closeSlashMenu();
     }
   };
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDownGlobal);
     return () => document.removeEventListener("keydown", handleKeyDownGlobal);
-  }, [activeDropdown]);
+  }, [slashMenuFor]);
 
   const deleteItem = async (id, noti) => {
     try {
       await axiosInstance.delete(`/api/Items/delete-item/${id}`);
-      if (noti) {
-        message.success("Deleted", 0.5);
-      }
+      if (noti) message.success("Deleted", 0.5);
       return true;
     } catch (error) {
-      if (noti) {
-        message.error("Error deleting item", 0.5);
-      }
+      if (noti) message.error("Error deleting item", 0.5);
       return false;
     }
   };
+
   const deleteItemDebounced = useCallback(
     debounce(async (id) => {
-      if (apiAvailable) {
-        await deleteItem(id, false);
-      }
+      if (apiAvailable) await deleteItem(id, false);
     }, 500),
     [apiAvailable]
   );
-  const deleteAllItems = async () => {
-    try {
-      const response = await axiosInstance.delete("/api/Items");
-      message.destroy("Delete...", 1);
-      console.log(response.data.message);
-    } catch (error) {
-      console.error(
-        "Error deleting items:",
-        error.response ? error.response.data.message : error.message
-      );
-    }
-  };
-
-  const handleDeleteAll = () => {
-    deleteAllItems();
-    setItems([]);
-    const newBlockId = generateRandomId();
-    setItems([
-      {
-        id: newBlockId,
-        placeholder: "Type your content here...",
-        heading: "",
-        code: "",
-        order: 0,
-      },
-    ]);
-    setBlockId(newBlockId);
-    setTimeout(() => {
-      editTextareaRefs.current[newBlockId]?.focus();
-    }, 0);
-  };
 
   const saveItems = async (updatedItems, showNoti) => {
-    if (!apiAvailable) {
-      return;
-    }
-    const hideLoading = showNoti ? handleAction("Saving") : () => { };
-
+    if (!apiAvailable) return;
     try {
-      console.log("Saving items:", updatedItems);
       await axiosInstance.post("/api/Items/bulk", updatedItems);
-
     } catch (error) {
       console.error("Error saving items:", error);
-      if (showNoti) {
-        message.error("Error saving items", 1);
-      }
-    } finally {
-      if (hideLoading) {
-        setTimeout(hideLoading, 100);
-      }
+      if (showNoti) message.error("Error saving items", 1);
     }
   };
 
@@ -573,26 +647,21 @@ const Notion = () => {
   const handlePaste = async (e, id) => {
     const clipboardItems = e.clipboardData.items;
     let imageFound = false;
-
     for (let i = 0; i < clipboardItems.length; i++) {
-      if (clipboardItems[i].type.indexOf("image") !== -1 || clipboardItems[i].kind === 'file') {
+      if (
+        clipboardItems[i].type.indexOf("image") !== -1 ||
+        clipboardItems[i].kind === "file"
+      ) {
         const file = clipboardItems[i].getAsFile();
         if (!file) continue;
-        
-        imageFound = true; 
+        imageFound = true;
         const formData = new FormData();
         formData.append("files", file);
         setLoadingImage(id);
-
         try {
-          const response = await axiosInstance.post(
-            "/api/files/upload",
-            formData
-          );
-
+          const response = await axiosInstance.post("/api/files/upload", formData);
           const fileData = response.data[0];
           const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-          
           if (file.type.startsWith("image/")) {
             responseDataImage({ data: { url: fileUrl } }, e, id);
           } else {
@@ -603,15 +672,13 @@ const Notion = () => {
         } finally {
           setLoadingImage(null);
         }
-
         e.preventDefault();
         break;
       }
     }
-    if (!imageFound) {
-      setLoadingImage(null);
-    }
+    if (!imageFound) setLoadingImage(null);
   };
+
   const onDownload = (imgUrl) => {
     fetch(imgUrl)
       .then((response) => response.blob())
@@ -626,7 +693,7 @@ const Notion = () => {
         link.remove();
       });
   };
-  
+
   const renderItemContent = (item) => {
     if (
       item.content &&
@@ -637,16 +704,10 @@ const Notion = () => {
           className="image-wrapper"
           onKeyDown={(e) => handleKeyDown(e, item.id)}
           tabIndex={0}
-          style={{ outline: 'none' }}
         >
           <Image
-            width={200}
+            width={220}
             src={item.content}
-            style={{
-              maxWidth: "100%",
-              maxHeight: "200px",
-              border: "2px solid black",
-            }}
             preview={{
               toolbarRender: (
                 _,
@@ -680,135 +741,103 @@ const Notion = () => {
         </div>
       );
     }
-    if (typeof item.content === 'string' && item.content.match(/\bhttps?:\/\/\S+/)) {
-      // Check if it's our uploaded file link
-      if (item.content.includes('/api/files/download/')) {
-         let fileName = "File";
-         let fileExt = "file";
-         try {
-            const url = new URL(item.content);
-            fileName = url.searchParams.get('name') || item.content.split('/').pop();
-            fileExt = fileName.split('.').pop().toLowerCase();
-         } catch(e) {
-            fileName = item.content.split('/').pop();
-            fileExt = fileName.split('.').pop().toLowerCase();
-         }
-
-         const getFileIcon = (ext) => {
-            if (['zip', 'rar', '7z'].includes(ext)) return "📦";
-            if (['pdf', 'doc', 'docx', 'txt'].includes(ext)) return "📑";
-            if (['xls', 'xlsx', 'csv'].includes(ext)) return "📊";
-            if (['mp4', 'mov', 'avi'].includes(ext)) return "🎬";
-            if (['mp3', 'wav', 'ogg'].includes(ext)) return "🎵";
-            return "📄";
-         };
-
-         return (
-           <div className="file-block">
-              <div className="file-icon-box">
-                {getFileIcon(fileExt)}
-              </div>
-              <div className="file-details">
-                <span className="file-name">{fileName}</span>
-                <span className="file-meta">Resource • {fileExt.toUpperCase()}</span>
-              </div>
-              <div className="file-actions">
-                <a 
-                  href={item.content} 
-                  download 
-                  className="download-btn"
-                >
-                  Download
-                </a>
-              </div>
-           </div>
-         );
+    if (typeof item.content === "string" && item.content.match(/\bhttps?:\/\/\S+/)) {
+      if (item.content.includes("/api/files/download/")) {
+        let fileName = "File";
+        let fileExt = "file";
+        try {
+          const url = new URL(item.content);
+          fileName = url.searchParams.get("name") || item.content.split("/").pop();
+          fileExt = fileName.split(".").pop().toLowerCase();
+        } catch (err) {
+          fileName = item.content.split("/").pop();
+          fileExt = fileName.split(".").pop().toLowerCase();
+        }
+        const getFileIcon = (ext) => {
+          if (["zip", "rar", "7z"].includes(ext)) return "📦";
+          if (["pdf", "doc", "docx", "txt"].includes(ext)) return "📑";
+          if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
+          if (["mp4", "mov", "avi"].includes(ext)) return "🎬";
+          if (["mp3", "wav", "ogg"].includes(ext)) return "🎵";
+          return "📄";
+        };
+        return (
+          <div className="file-block">
+            <div className="file-icon-box">{getFileIcon(fileExt)}</div>
+            <div className="file-details">
+              <span className="file-name">{fileName}</span>
+              <span className="file-meta">{fileExt.toUpperCase()} · attachment</span>
+            </div>
+            <div className="file-actions">
+              <a href={item.content} download className="download-btn">
+                Download
+              </a>
+            </div>
+          </div>
+        );
       }
       return convertLinksToEmbedTags(item.content);
     }
   };
 
   const convertLinksToEmbedTags = (text) => {
-  const urlRegex = /(https?:\/\/[^\s]+)/g;
-  const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
-  const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
-  const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
+    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
+    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
+    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
 
-  return (
-    <div>
-      {text.split(urlRegex).map((segment, index) => {
-        if (embedRegex.test(segment)) {
-          return (
-            <div key={index} className="embed-container">
-              <iframe
-                width="560"
-                height="315"
-                src={segment.replace("watch?v=", "embed/")}
-                frameBorder="0"
-                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          );
-        }
+    return (
+      <div>
+        {text.split(urlRegex).map((segment, index) => {
+          if (embedRegex.test(segment)) {
+            return (
+              <div key={index} className="embed-container">
+                <iframe
+                  src={segment.replace("watch?v=", "embed/")}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            );
+          }
+          if (spotifyRegex.test(segment)) {
+            const spotifyEmbedUrl = segment.replace(
+              /(https:\/\/open\.spotify\.com\/)/,
+              "https://open.spotify.com/embed/"
+            );
+            return (
+              <div key={index} className="spotify-container">
+                <iframe
+                  src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
+                  frameBorder="0"
+                  allowFullScreen
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                  loading="lazy"
+                />
+              </div>
+            );
+          }
+          if (imageRegex.test(segment)) {
+            return (
+              <div key={index} className="image-container">
+                <img src={segment} alt="Embedded" />
+              </div>
+            );
+          }
+          if (urlRegex.test(segment)) {
+            return (
+              <div key={index} className="webpage-container">
+                <iframe src={segment} frameBorder="0" title={`Webpage-${index}`} />
+              </div>
+            );
+          }
+          return <span key={index}>{segment}</span>;
+        })}
+      </div>
+    );
+  };
 
-        if (spotifyRegex.test(segment)) {
-          const spotifyEmbedUrl = segment.replace(
-            /(https:\/\/open\.spotify\.com\/)/,
-            "https://open.spotify.com/embed/"
-          );
-          return (
-            <div key={index} className="spotify-container">
-              <iframe
-                style={{ borderRadius: "12px" }}
-                src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
-                width="1060"
-                height="315"
-                frameBorder="0"
-                allowFullScreen
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"
-              />
-            </div>
-          );
-        }
-
-        if (imageRegex.test(segment)) {
-          return (
-            <div key={index} className="image-container">
-              <img
-                src={segment}
-                alt="Embedded"
-                style={{ maxWidth: "100%", maxHeight: "500px" }}
-              />
-            </div>
-          );
-        }
-
-        // Embed generic web pages
-        if (urlRegex.test(segment)) {
-          return (
-            <div key={index} className="webpage-container">
-              <iframe
-                src={segment}
-                width="100%"
-                height="500px"
-                frameBorder="0"
-                style={{ border: "1px solid #ccc", borderRadius: "8px" }}
-                title={`Webpage-${index}`}
-              />
-            </div>
-          );
-        }
-
-        return <span key={index}>{segment}</span>;
-      })}
-    </div>
-  );
-};
-
-  
-  
   return (
     <>
       <input
@@ -819,100 +848,135 @@ const Notion = () => {
         onChange={handleFileChange}
       />
       <div
-        style={{ minHeight: '100vh', overflow: "hidden" }}
+        className="notion-page"
         onDrop={handleGlobalDrop}
         onDragOver={handleGlobalDragOver}
       >
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="droppable">
-            {(provided) => (
-              <ul
-                {...provided.droppableProps}
-                ref={provided.innerRef}
-                className="droppable-list"
-              >
-                <li className="draggable-item flex ghost-add-item" style={{ marginBottom: '20px' }}>
-                  <div className="container-block">
-                    <div
-                      className="edit-textarea flex items-center justify-center py-6 cursor-pointer"
-                      style={{ border: '2px dashed #ccc', opacity: 0.6 }}
-                      onClick={() => addItem()}
-                    >
-                      <PlusOutlined className="mr-2" />
-                      <span>Click here or press Enter in a note to add more...</span>
-                    </div>
-                  </div>
-                </li>
-                {items.map((item, index) => (
-                  <Draggable key={item.id} draggableId={item.id} index={index}>
-                    {(provided) => (
-                      <li
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className="draggable-item flex"
+        {loadingItems ? (
+          <ul className="droppable-list">
+            {[0, 1, 2].map((i) => (
+              <li className="draggable-item" key={`sk-${i}`}>
+                <div className="container-block">
+                  <div className="skeleton-block" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="droppable">
+              {(provided) => (
+                <ul
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="droppable-list"
+                >
+                  <li className="draggable-item ghost-add-item">
+                    <div className="container-block">
+                      <button
+                        type="button"
+                        className="ghost-add-btn"
+                        onClick={() => addItem()}
                       >
-                        <div className="container-block">
-                          {renderItemContent(item) ? (
-                            renderItemContent(item)
-                          ) : (
-                            <textarea
-                              placeholder={item.placeholder}
-                              value={newContent[item.id] || item.content || ""}
-                              onChange={(e) => handleChangeContent(item.id, e.target.value)}
-                              onKeyDown={(e) => handleKeyDown(e, item.id)}
-                              onPaste={(e) => handlePaste(e, item.id)}
-                              ref={(el) => (editTextareaRefs.current[item.id] = el)}
-                              className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""}`}
-                            />
-                          )}
-                          {loadingImage === item.id && (
-                            <div className="loading-overlay">
-                              <Spin />
-                            </div>
-                          )}
-                          <Dropdown
-                            className="dd-item-pages"
-                            placement="topRight"
-                            overlay={menu(item.id)}
-                            trigger={["click"]}
-                            visible={
-                              dropdownVisible[item.id] ||
-                              activeDropdown === item.id
-                            }
-                            onClick={() =>
-                              setDropdownVisible((prev) => ({
-                                ...prev,
-                                [item.id]: !prev[item.id],
-                              }))
-                            }
+                        <PlusOutlined />
+                        <span>Add a block — or just press Enter inside one</span>
+                      </button>
+                    </div>
+                  </li>
+                  {items.map((item, index) => (
+                    <Draggable key={item.id} draggableId={item.id} index={index}>
+                      {(provided) => (
+                        <li
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className="draggable-item"
+                          onMouseEnter={() => setHoveredItemId(item.id)}
+                          onMouseLeave={() =>
+                            setHoveredItemId((prev) => (prev === item.id ? null : prev))
+                          }
+                        >
+                          <div
+                            className={`block-controls ${
+                              hoveredItemId === item.id ? "is-visible" : ""
+                            }`}
                           >
-                            <span
-                              {...provided.dragHandleProps}
-                              className="drag-handle"
-                            >
-                              <svg
-                                style={{
-                                  width: "10px",
-                                  marginLeft: "5px",
-                                  padding: "0px !important",
-                                }}
-                                xmlns="http://www.w3.org/2000/svg"
-                                viewBox="0 0 10 16"
+                            <Tooltip title="Click to add block below" placement="left">
+                              <button
+                                type="button"
+                                className="block-control-btn"
+                                onClick={() => addItem(item.id)}
                               >
-                                <path d="M4 14c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zM2 6C.9 6 0 6.9 0 8s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0-6C.9 0 0 .9 0 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm6 4c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
-                              </svg>
-                            </span>
-                          </Dropdown>
-                        </div>
-                      </li>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-              </ul>
-            )}
-          </Droppable>
-        </DragDropContext>
+                                <PlusOutlined />
+                              </button>
+                            </Tooltip>
+                            <Tooltip
+                              title="Drag to reorder · Click for actions"
+                              placement="left"
+                            >
+                              <span
+                                {...provided.dragHandleProps}
+                                className="block-control-btn drag-handle"
+                                onClick={() => {
+                                  setSlashMenuFor(item.id);
+                                  setSlashQuery("");
+                                  setSlashSelectedIndex(0);
+                                  editTextareaRefs.current[item.id]?.focus();
+                                }}
+                              >
+                                <HolderOutlined />
+                              </span>
+                            </Tooltip>
+                          </div>
+
+                          <div className="container-block">
+                            {renderItemContent(item) ? (
+                              renderItemContent(item)
+                            ) : (
+                              <textarea
+                                placeholder={
+                                  item.placeholder ||
+                                  "Press '/' for commands, or just type…"
+                                }
+                                value={newContent[item.id] || item.content || ""}
+                                onChange={(e) =>
+                                  handleChangeContent(item.id, e.target.value)
+                                }
+                                onKeyDown={(e) => handleKeyDown(e, item.id)}
+                                onPaste={(e) => handlePaste(e, item.id)}
+                                ref={(el) =>
+                                  (editTextareaRefs.current[item.id] = el)
+                                }
+                                className={`edit-textarea ${
+                                  item.heading ? `heading-${item.heading}` : ""
+                                }`}
+                              />
+                            )}
+                            {loadingImage === item.id && (
+                              <div className="loading-overlay">
+                                <Spin />
+                              </div>
+                            )}
+                            {slashMenuFor === item.id && (
+                              <div className="slash-menu-anchor">
+                                <SlashMenu
+                                  query={slashQuery}
+                                  selectedIndex={slashSelectedIndex}
+                                  onSelect={(cmd) => executeSlashCommand(cmd, item.id)}
+                                  onClose={closeSlashMenu}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </ul>
+              )}
+            </Droppable>
+          </DragDropContext>
+        )}
       </div>
     </>
   );
