@@ -16,7 +16,8 @@
   border-radius: var(--global-border-radius, 6px);
   transition: background-color 0.3s ease, color 0.3s ease;
 
-  a, .text-black {
+  a,
+  .text-black {
     color: var(--text-color) !important;
   }
 }
@@ -82,10 +83,8 @@
   }
 }
 
-
 .ant-image-mask-info {
   display: none !important;
-
 }
 
 .ant-image-mask {
@@ -118,16 +117,19 @@
   width: 70% !important;
   max-width: 300px !important;
   border-radius: var(--global-border-radius, 6px) !important;
-
 }
 
 .ant-tour-inner,
 .ant-tour-header {
   border-radius: var(--global-border-radius, 5px) !important;
-
 }
 
-/* ─── Notion-style notification panel (scoped to noti popover only) ─── */
+// ─── FIX 1: Ẩn arrow trắng của Popover ──────────────────────────────
+.ant-popover-arrow {
+  display: none !important;
+}
+
+/* ─── Notification panel ────────────────────────────────────────────── */
 .noti-panel {
   width: 360px;
   max-width: 92vw;
@@ -163,8 +165,13 @@
     white-space: nowrap;
     position: relative;
 
-    svg { font-size: 13px; }
-    span { line-height: 1; }
+    svg {
+      font-size: 13px;
+    }
+
+    span {
+      line-height: 1;
+    }
 
     &:hover {
       background: rgba(55, 53, 47, 0.04);
@@ -214,7 +221,9 @@
     align-items: center;
     gap: 4px;
 
-    svg { font-size: 10px; }
+    svg {
+      font-size: 10px;
+    }
 
     &:hover {
       background: rgba(55, 53, 47, 0.06);
@@ -222,6 +231,7 @@
 
     &.is-danger {
       color: var(--text-color, #37352f);
+
       &:hover {
         background: rgba(55, 53, 47, 0.06);
       }
@@ -229,10 +239,11 @@
   }
 }
 
+// ─── FIX 2: padding-bottom để item cuối không bị khuất ──────────────
 .noti-list {
   display: flex;
   flex-direction: column;
-  padding: 4px;
+  padding: 4px 4px 14px; // bottom padding tránh item cuối bị clip
 }
 
 .noti-empty {
@@ -254,19 +265,43 @@
   }
 }
 
+// ─── FIX 3: Notification items ấn tượng hơn ─────────────────────────
+@keyframes noti-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .noti-item {
   position: relative;
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 10px 10px;
+  // left padding lớn hơn để accent bar 3px có chỗ, không đè lên nội dung
+  padding: 10px 10px 10px 14px;
   background: transparent;
   border: none;
   border-bottom: 1px solid rgba(55, 53, 47, 0.08);
+  border-left: 3px solid transparent;
   border-radius: 0;
   cursor: pointer;
-  transition: background-color 0.12s ease;
+  transition: background-color 0.12s ease, border-left-color 0.15s ease;
   user-select: none;
+
+  // stagger slide-in
+  animation: noti-slide-in 0.2s ease both;
+
+  @for $i from 1 through 20 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{($i - 1) * 0.035}s;
+    }
+  }
 
   &:last-child {
     border-bottom: none;
@@ -274,6 +309,22 @@
 
   &:hover {
     background: rgba(55, 53, 47, 0.05);
+    border-left-color: rgba(55, 53, 47, 0.25);
+  }
+
+  // unread: accent bar xanh + nền nhạt
+  &.is-unread {
+    background: rgba(35, 131, 226, 0.05);
+    border-left-color: #2383e2;
+
+    &:hover {
+      background: rgba(35, 131, 226, 0.09);
+      border-left-color: #1a6bbf;
+    }
+
+    .noti-name {
+      color: #1a6bbf;
+    }
   }
 
   &.is-read {
@@ -284,11 +335,12 @@
   .unread-dot {
     position: absolute;
     top: 16px;
-    left: 2px;
-    width: 6px;
-    height: 6px;
+    left: 4px;
+    width: 5px;
+    height: 5px;
     background: #2383e2;
     border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(35, 131, 226, 0.22);
   }
 
   .noti-avatar {
@@ -302,6 +354,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
 
     .ant-image,
     img {
@@ -309,6 +362,17 @@
       height: 100% !important;
       object-fit: cover !important;
     }
+  }
+
+  // avatar glow on hover
+  &:hover .noti-avatar {
+    border-color: rgba(55, 53, 47, 0.22);
+    box-shadow: 0 0 0 3px rgba(55, 53, 47, 0.07);
+  }
+
+  &.is-unread:hover .noti-avatar {
+    border-color: rgba(35, 131, 226, 0.35);
+    box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.1);
   }
 
   .noti-avatar-letter {
@@ -366,6 +430,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    transition: color 0.12s ease;
   }
 
   .noti-time {
@@ -384,7 +449,9 @@
     padding: 2px 4px;
     font-size: 12px;
 
-    &:hover { color: var(--text-color, #37352f); }
+    &:hover {
+      color: var(--text-color, #37352f);
+    }
   }
 
   .noti-text {
@@ -418,11 +485,13 @@
     font-size: 11px;
     transition: color 0.15s ease;
 
-    &:hover { color: var(--text-color, #37352f); }
+    &:hover {
+      color: var(--text-color, #37352f);
+    }
   }
 }
 
-/* Buttons used inside friend notifications — flat Notion-style */
+/* Buttons inside friend notifications */
 .btn-pixel {
   background: transparent;
   border: 1px solid rgba(55, 53, 47, 0.16);
@@ -432,7 +501,7 @@
   font-weight: 500;
   color: var(--text-color, #37352f);
   cursor: pointer;
-  transition: background-color 0.12s ease;
+  transition: background-color 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
 
   &:hover {
     background: rgba(55, 53, 47, 0.06);
@@ -446,6 +515,8 @@
     &:hover {
       background: #000;
       border-color: #000;
+      transform: translateY(-1px);
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
     }
   }
 
@@ -455,7 +526,7 @@
   }
 }
 
-/* Scope Notion-style surface ONLY to notification popover */
+/* Scope noti popover surface */
 .ant-popover-inner-content:has(.noti-panel) {
   padding: 0 !important;
   max-height: 440px !important;
@@ -479,22 +550,25 @@
   max-height: 460px;
   overflow-y: auto;
 
-  &::-webkit-scrollbar { width: 6px; }
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
   &::-webkit-scrollbar-thumb {
     background: rgba(55, 53, 47, 0.2);
     border-radius: 3px;
   }
 }
 
-/* ─── Dark Mode overrides for Header ─── */
+/* ─── Dark Mode ───────────────────────────────────────────────────── */
 body.dark-mode-active {
   .navbar {
+
     a,
     .text-black {
       color: var(--text-color) !important;
     }
 
-    /* Round-icon buttons in nav use inline backgroundColor: #faf8f7 — override */
     .anticon,
     svg.svg-inline--fa {
       background-color: var(--container-bg) !important;
@@ -502,7 +576,6 @@ body.dark-mode-active {
     }
   }
 
-  /* Notification card content inside popover */
   .container-noti {
     .bg-white {
       background-color: var(--container-bg) !important;
@@ -533,7 +606,6 @@ body.dark-mode-active {
     }
   }
 
-  /* Popover surface */
   .ant-popover-inner {
     background-color: var(--container-bg) !important;
     color: var(--text-color);
@@ -548,7 +620,6 @@ body.dark-mode-active {
     background-color: var(--container-bg) !important;
   }
 
-  /* Dropdown menu */
   .custom-dropdown-menu {
     background-color: var(--container-bg) !important;
     color: var(--text-color);
@@ -563,7 +634,6 @@ body.dark-mode-active {
     }
   }
 
-  /* Tour popover */
   .ant-tour,
   .ant-tour-inner {
     background-color: var(--container-bg) !important;
@@ -575,7 +645,6 @@ body.dark-mode-active {
     color: var(--text-color) !important;
   }
 
-  /* Notification panel — Notion-style dark */
   .ant-popover-inner:has(.noti-panel) {
     border-color: rgba(255, 255, 255, 0.09) !important;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
@@ -593,7 +662,9 @@ body.dark-mode-active {
   .noti-tab {
     color: rgba(255, 255, 255, 0.5);
 
-    &:hover { background: rgba(255, 255, 255, 0.04); }
+    &:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
 
     &.is-active {
       color: var(--text-color);
@@ -625,18 +696,57 @@ body.dark-mode-active {
     color: var(--text-color);
     border-bottom-color: rgba(255, 255, 255, 0.08);
 
-    &:hover { background: rgba(255, 255, 255, 0.05); }
-    &.is-read { background: transparent; opacity: 1; }
+    &:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-left-color: rgba(255, 255, 255, 0.25);
+    }
 
-    .noti-name { color: var(--text-color); }
-    .noti-text { color: rgba(255, 255, 255, 0.6); }
-    .noti-time { color: rgba(255, 255, 255, 0.4); }
+    &.is-unread {
+      background: rgba(35, 131, 226, 0.08);
+      border-left-color: #4da3f5;
+
+      &:hover {
+        background: rgba(35, 131, 226, 0.13);
+        border-left-color: #6eb8ff;
+      }
+
+      .noti-name {
+        color: #6eb8ff;
+      }
+    }
+
+    &.is-read {
+      background: transparent;
+      opacity: 1;
+    }
+
+    .noti-name {
+      color: var(--text-color);
+    }
+
+    .noti-text {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .noti-time {
+      color: rgba(255, 255, 255, 0.4);
+    }
 
     .noti-avatar,
     .noti-avatar-letter {
       background: rgba(255, 255, 255, 0.06);
       color: var(--text-color);
       border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    &:hover .noti-avatar {
+      border-color: rgba(255, 255, 255, 0.22);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.07);
+    }
+
+    &.is-unread:hover .noti-avatar {
+      border-color: rgba(77, 163, 245, 0.5);
+      box-shadow: 0 0 0 3px rgba(77, 163, 245, 0.15);
     }
 
     .noti-tag-private {
@@ -663,6 +773,8 @@ body.dark-mode-active {
       &:hover {
         background: #ffffff;
         color: #000;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 8px rgba(255, 255, 255, 0.15);
       }
     }
 
