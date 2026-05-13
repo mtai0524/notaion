@@ -392,7 +392,16 @@ const Notion = () => {
     handleChangeContent(id, newContentWithImage);
   };
 
+  const isFileDrag = (e) => {
+    const types = e?.dataTransfer?.types;
+    if (!types) return false;
+    if (typeof types.includes === "function") return types.includes("Files");
+    for (let i = 0; i < types.length; i++) if (types[i] === "Files") return true;
+    return false;
+  };
+
   const handleGlobalDrop = async (e) => {
+    if (!isFileDrag(e)) return; // let react-beautiful-dnd own non-file drags
     e.preventDefault();
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
@@ -428,7 +437,9 @@ const Notion = () => {
     }
   };
 
-  const handleGlobalDragOver = (e) => e.preventDefault();
+  const handleGlobalDragOver = (e) => {
+    if (isFileDrag(e)) e.preventDefault();
+  };
 
   const fileInputRef = useRef(null);
 
