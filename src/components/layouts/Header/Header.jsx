@@ -2,7 +2,7 @@ import { UserOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useState, useEffect, useRef } from "react";
 import "./Header.scss";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Dropdown, Image, Menu, Popover, Tooltip, Tour } from "antd";
+import { Dropdown, Empty, Image, Menu, Popover, Tooltip, Tour } from "antd";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faBan,
@@ -539,9 +539,8 @@ const Header = () => {
   const friendList = (
     notifications.length === 0 ? (
       <div className="noti-empty">
-        <div className="noti-empty-emoji" aria-hidden="true">🌸</div>
-        <span className="noti-empty-title">Chưa có lời mời nào</span>
-        <span className="noti-empty-sub">Bạn bè mới sẽ xuất hiện ở đây nha~</span>
+        <Empty description={false} />
+        <span>No friend notifications</span>
       </div>
     ) : (
       <div className="noti-list">
@@ -610,9 +609,8 @@ const Header = () => {
   const messageList = (
     messageNotifs.length === 0 ? (
       <div className="noti-empty">
-        <div className="noti-empty-emoji" aria-hidden="true">💌</div>
-        <span className="noti-empty-title">Hộp thư trống trơn</span>
-        <span className="noti-empty-sub">Có tin nhắn mới mình sẽ báo bạn liền nhé!</span>
+        <Empty description={false} />
+        <span>No message notifications</span>
       </div>
     ) : (
       <div className="noti-list">
@@ -804,12 +802,8 @@ const Header = () => {
             <Popover
               content={content}
               title={
-                <div className="noti-panel-title">
-                  <span className="noti-panel-title-emoji" aria-hidden="true">🔔</span>
-                  <span className="noti-panel-title-text">Notification</span>
-                  {totalUnread > 0 && (
-                    <span className="noti-panel-title-count">{totalUnread} mới</span>
-                  )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Notification</span>
                 </div>
               }
               trigger="click"
