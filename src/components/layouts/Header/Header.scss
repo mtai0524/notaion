@@ -1,3 +1,4 @@
+/* ─── Notion-style header ─── */
 .container-nav {
   width: 100vw;
   display: flex;
@@ -5,19 +6,36 @@
 }
 
 .navbar {
-  box-shadow: var(--box-shadow-sm) !important;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
-  background-color: var(--container-bg);
-  color: var(--text-color);
+  background-color: var(--container-bg, #ffffff);
+  color: var(--text-color, #37352f);
   max-width: 700px;
   width: 80vw;
-  height: 60px;
-  margin: 20px;
-  border-radius: var(--global-border-radius, 6px);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  height: 56px;
+  margin: 16px 20px;
+  padding: 0 4px;
+  border: 1px solid rgba(55, 53, 47, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 
-  a, .text-black {
-    color: var(--text-color) !important;
+  a,
+  .text-black {
+    color: var(--text-color, #37352f) !important;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Round-icon buttons in the header */
+  .anticon,
+  svg.svg-inline--fa {
+    background-color: transparent !important;
+    color: var(--text-color, #37352f) !important;
+    border-radius: 6px !important;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background-color: rgba(55, 53, 47, 0.08) !important;
+    }
   }
 }
 
@@ -26,9 +44,10 @@
 }
 
 .switch-login-page {
-  color: #6394f7 !important;
+  color: var(--text-color, #37352f) !important;
 }
 
+/* ─── Popover / Dropdown surfaces (header-owned) ─── */
 .ant-popover-content {
   margin-top: -10px;
   margin: -10px 10px 0 10px;
@@ -38,54 +57,60 @@
 
 .ant-popover-inner-content {
   max-height: 300px;
-  overflow-y: scroll;
+  overflow-y: auto;
+  scrollbar-width: none;
 }
 
-.ant-popover-inner-content>div>p {
+.ant-popover-inner-content::-webkit-scrollbar {
+  display: none;
+}
+
+.ant-popover-inner-content > div > p {
   margin: 5px !important;
 }
 
 .ant-popover-inner {
   padding-right: 0 !important;
-  border-radius: var(--global-border-radius, 6px) !important;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
-  box-shadow: var(--box-shadow-sm) !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(55, 53, 47, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(15, 15, 15, 0.08), 0 2px 6px rgba(15, 15, 15, 0.04) !important;
+  background: var(--container-bg, #ffffff) !important;
 }
 
 .custom-dropdown-menu {
-  border-radius: var(--global-border-radius, 6px) !important;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
-  box-shadow: var(--box-shadow-sm) !important;
-  padding: 5px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(55, 53, 47, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(15, 15, 15, 0.08), 0 2px 6px rgba(15, 15, 15, 0.04) !important;
+  padding: 6px !important;
+  background: var(--container-bg, #ffffff) !important;
 
   .ant-dropdown-menu-item {
-    border-radius: calc(var(--global-border-radius, 6px) * 0.5) !important;
-    margin-bottom: 2px;
-    font-weight: 800 !important;
-    
+    border-radius: 4px !important;
+    margin-bottom: 1px;
+    font-weight: 500 !important;
+    color: var(--text-color, #37352f) !important;
+    transition: background-color 0.12s ease;
+
     &:hover {
-      background-color: #f3f4f6 !important;
-      outline: 1px solid var(--global-border-color, #111827);
+      background-color: rgba(55, 53, 47, 0.06) !important;
+      outline: none;
     }
 
     &.ant-dropdown-menu-item-active {
-      background-color: #f3f4f6 !important;
+      background-color: rgba(55, 53, 47, 0.06) !important;
     }
   }
 }
 
 @media screen and (max-width: 400px) {
-
   .ant-popover-content,
   .ant-popover-inner {
     margin-left: 62px;
   }
 }
 
-
 .ant-image-mask-info {
   display: none !important;
-
 }
 
 .ant-image-mask {
@@ -98,41 +123,30 @@
   right: 5px;
 }
 
-.ant-popover-inner-content {
-  overflow-y: auto;
-  max-height: 300px;
-  scrollbar-width: none;
-}
-
-.ant-popover-inner-content::-webkit-scrollbar {
-  display: none;
-}
-
 .ant-empty-image {
   height: 60px !important;
 }
 
 .ant-tour {
-  box-shadow: var(--box-shadow-sm) !important;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  border: 1px solid rgba(55, 53, 47, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(15, 15, 15, 0.08) !important;
   width: 70% !important;
   max-width: 300px !important;
-  border-radius: var(--global-border-radius, 6px) !important;
-
+  border-radius: 8px !important;
 }
 
 .ant-tour-inner,
 .ant-tour-header {
-  border-radius: var(--global-border-radius, 5px) !important;
-
+  border-radius: 8px !important;
+  background: var(--container-bg, #ffffff) !important;
 }
 
-/* ─── Notaion-style notification panel ─── */
+/* ─── Notion-style notification panel ─── */
 .noti-panel {
   width: 360px;
   max-width: 92vw;
-  font-family: 'Mali', cursive, sans-serif;
   background: var(--container-bg, #ffffff);
+  color: var(--text-color, #37352f);
   display: flex;
   flex-direction: column;
 }
@@ -143,7 +157,7 @@
   top: 0;
   z-index: 5;
   background: var(--container-bg, #ffffff);
-  border-bottom: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827);
+  border-bottom: 1px solid rgba(55, 53, 47, 0.09);
 
   .noti-tab {
     flex: 1 1 0;
@@ -151,47 +165,43 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 12px 10px;
+    gap: 6px;
+    padding: 10px 12px;
     background: transparent;
     border: none;
-    border-right: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827);
-    color: #6b7280;
-    font-size: 12px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
+    color: rgba(55, 53, 47, 0.55);
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.15s ease, color 0.15s ease;
     white-space: nowrap;
-
-    &:last-child { border-right: none; }
+    position: relative;
 
     svg { font-size: 13px; }
     span { line-height: 1; }
 
     &:hover {
-      background: rgba(255, 203, 107, 0.15);
-      color: var(--text-color, #111827);
+      background: rgba(55, 53, 47, 0.04);
+      color: var(--text-color, #37352f);
     }
 
     &.is-active {
-      background: #fef3c7;
-      color: #111827;
-      box-shadow: inset 0 -3px 0 0 #f59e0b;
+      background: transparent;
+      color: var(--text-color, #37352f);
+      font-weight: 600;
+      box-shadow: inset 0 -2px 0 0 var(--text-color, #37352f);
     }
   }
 
   .noti-tab-badge {
-    background: #ef4444;
-    color: #fff;
+    background: var(--text-color, #37352f);
+    color: var(--container-bg, #ffffff);
     font-size: 10px;
-    font-weight: 800;
-    padding: 2px 7px;
+    font-weight: 600;
+    padding: 1px 6px;
     border-radius: 999px;
-    border: 1.5px solid #111827;
-    line-height: 1.3;
-    min-width: 22px;
+    line-height: 1.4;
+    min-width: 18px;
     text-align: center;
   }
 }
@@ -199,43 +209,36 @@
 .noti-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 4px;
   padding: 6px 10px;
-  border-bottom: 1px dashed rgba(17, 24, 39, 0.15);
-  background: rgba(254, 252, 232, 0.6);
+  border-bottom: 1px solid rgba(55, 53, 47, 0.06);
+  background: transparent;
 
   .noti-action-btn {
-    background: #fff;
-    border: 1.5px solid var(--global-border-color, #111827);
-    border-radius: calc(var(--global-border-radius, 0px) * 0.5);
-    padding: 3px 10px;
-    font-size: 10px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    background: transparent;
+    border: 1px solid rgba(55, 53, 47, 0.12);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-color, #37352f);
     cursor: pointer;
-    box-shadow: -1.5px 1.5px 0 0 var(--global-border-color, #111827);
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    transition: background-color 0.12s ease;
     display: inline-flex;
     align-items: center;
     gap: 4px;
 
-    svg { font-size: 9px; }
+    svg { font-size: 10px; }
 
     &:hover {
-      background: #fef3c7;
-      transform: translate(1px, -1px);
-      box-shadow: -2.5px 2.5px 0 0 var(--global-border-color, #111827);
-    }
-
-    &:active {
-      transform: translate(0, 0);
-      box-shadow: none;
+      background: rgba(55, 53, 47, 0.06);
     }
 
     &.is-danger {
-      color: #b91c1c;
-      &:hover { background: #fee2e2; }
+      color: var(--text-color, #37352f);
+      &:hover {
+        background: rgba(55, 53, 47, 0.06);
+      }
     }
   }
 }
@@ -243,8 +246,8 @@
 .noti-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 12px 14px 12px;
+  gap: 2px;
+  padding: 6px;
 }
 
 .noti-empty {
@@ -253,14 +256,12 @@
   align-items: center;
   justify-content: center;
   padding: 24px 12px;
-  color: #9ca3af;
+  color: rgba(55, 53, 47, 0.45);
 
   span {
     margin-top: 4px;
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.5px;
+    font-size: 12px;
+    font-weight: 500;
   }
 
   .ant-empty-image {
@@ -272,53 +273,42 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
-  background: #ffffff;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827);
-  border-radius: calc(var(--global-border-radius, 0px) * 0.6);
-  box-shadow: -3px 3px 0 0 var(--global-border-color, #111827);
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
-  transition: transform 0.12s ease, box-shadow 0.12s ease, background-color 0.15s ease;
+  transition: background-color 0.12s ease;
   user-select: none;
 
   &:hover {
-    transform: translate(1px, -1px);
-    box-shadow: -4px 4px 0 0 var(--global-border-color, #111827);
-    background: #fffbeb;
-  }
-
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: -1px 1px 0 0 var(--global-border-color, #111827);
+    background: rgba(55, 53, 47, 0.05);
   }
 
   &.is-read {
-    background: #f3f4f6;
-    box-shadow: -2px 2px 0 0 rgba(17, 24, 39, 0.6);
-    opacity: 0.85;
+    background: transparent;
+    opacity: 0.7;
   }
 
   .unread-dot {
     position: absolute;
-    top: -4px;
-    left: -4px;
-    width: 10px;
-    height: 10px;
-    background: #22c55e;
+    top: 14px;
+    left: 2px;
+    width: 6px;
+    height: 6px;
+    background: #2383e2;
     border-radius: 50%;
-    border: 2px solid var(--global-border-color, #111827);
-    box-shadow: 0 0 0 2px #fff;
   }
 
   .noti-avatar {
     flex-shrink: 0;
-    width: 42px;
-    height: 42px;
-    border: 2px solid var(--global-border-color, #111827);
+    width: 36px;
+    height: 36px;
+    border: 1px solid rgba(55, 53, 47, 0.09);
     border-radius: 999px;
     overflow: hidden;
-    background: #fde68a;
+    background: rgba(55, 53, 47, 0.06);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -332,37 +322,35 @@
   }
 
   .noti-avatar-letter {
-    background: #fde68a;
-    color: #111827;
-    font-weight: 900;
-    font-size: 18px;
+    background: rgba(55, 53, 47, 0.06);
+    color: var(--text-color, #37352f);
+    font-weight: 600;
+    font-size: 15px;
     line-height: 1;
-    font-family: 'Mali', cursive, sans-serif;
 
     &.is-bot {
-      background: #ddd6fe;
-      color: #4338ca;
-      font-size: 14px;
+      background: rgba(55, 53, 47, 0.06);
+      color: var(--text-color, #37352f);
+      font-size: 13px;
     }
 
     &.is-private {
-      background: #fbcfe8;
-      color: #9d174d;
+      background: rgba(55, 53, 47, 0.06);
+      color: var(--text-color, #37352f);
     }
   }
 
   .noti-tag-private {
     margin-left: 6px;
     display: inline-block;
-    padding: 1px 6px;
-    font-size: 9px;
-    font-weight: 900;
-    letter-spacing: 1.5px;
-    background: #fbcfe8;
-    color: #9d174d;
-    border: 1.5px solid #9d174d;
+    padding: 0 5px;
+    font-size: 10px;
+    font-weight: 500;
+    background: transparent;
+    color: rgba(55, 53, 47, 0.55);
+    border: 1px solid rgba(55, 53, 47, 0.12);
     border-radius: 3px;
-    line-height: 1.2;
+    line-height: 1.4;
     vertical-align: middle;
   }
 
@@ -382,19 +370,18 @@
   }
 
   .noti-name {
-    font-weight: 900;
+    font-weight: 600;
     font-size: 13px;
-    color: var(--text-color, #111827);
+    color: var(--text-color, #37352f);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-transform: capitalize;
   }
 
   .noti-time {
-    font-size: 10px;
-    font-weight: 700;
-    color: #6b7280;
+    font-size: 11px;
+    font-weight: 400;
+    color: rgba(55, 53, 47, 0.45);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
@@ -403,18 +390,18 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    color: #9ca3af;
+    color: rgba(55, 53, 47, 0.45);
     padding: 2px 4px;
     font-size: 12px;
 
-    &:hover { color: var(--text-color, #111827); }
+    &:hover { color: var(--text-color, #37352f); }
   }
 
   .noti-text {
     margin: 0;
-    font-size: 11px;
-    font-weight: 600;
-    color: #4b5563;
+    font-size: 12px;
+    font-weight: 400;
+    color: rgba(55, 53, 47, 0.65);
   }
 
   .noti-text-snippet {
@@ -436,51 +423,49 @@
     background: transparent;
     border: none;
     cursor: pointer;
-    color: #d1d5db;
+    color: rgba(55, 53, 47, 0.35);
     padding: 4px 6px;
     font-size: 11px;
     transition: color 0.15s ease;
 
-    &:hover { color: #dc2626; }
+    &:hover { color: var(--text-color, #37352f); }
   }
 }
 
-/* Pixel buttons used inside friend notifications */
+/* Buttons used inside friend notifications — flat Notion-style */
 .btn-pixel {
-  background: #fff;
-  border: 1.5px solid var(--global-border-color, #111827);
-  border-radius: calc(var(--global-border-radius, 0px) * 0.5);
+  background: transparent;
+  border: 1px solid rgba(55, 53, 47, 0.16);
+  border-radius: 4px;
   padding: 4px 10px;
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color, #37352f);
   cursor: pointer;
-  box-shadow: -2px 2px 0 0 var(--global-border-color, #111827);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
-  font-family: 'Mali', cursive, sans-serif;
+  transition: background-color 0.12s ease;
 
   &:hover {
-    transform: translate(1px, -1px);
-    box-shadow: -3px 3px 0 0 var(--global-border-color, #111827);
-  }
-
-  &:active {
-    transform: translate(0, 0);
-    box-shadow: none;
+    background: rgba(55, 53, 47, 0.06);
   }
 
   &.btn-pixel-primary {
-    background: #c3e88d;
+    background: var(--text-color, #37352f);
+    color: var(--container-bg, #ffffff);
+    border-color: var(--text-color, #37352f);
+
+    &:hover {
+      background: #000;
+      border-color: #000;
+    }
   }
 
   &.btn-pixel-ghost {
-    background: #f3f4f6;
-    color: #6b7280;
+    background: transparent;
+    color: rgba(55, 53, 47, 0.65);
   }
 }
 
-/* Make Popover's inner-content not fight our panel */
+/* Popover inner-content normalization for notification panel */
 .ant-popover-inner-content:has(.noti-panel) {
   padding: 0 !important;
   max-height: 440px !important;
@@ -503,7 +488,7 @@
 
   &::-webkit-scrollbar { width: 6px; }
   &::-webkit-scrollbar-thumb {
-    background: var(--global-border-color, #111827);
+    background: rgba(55, 53, 47, 0.2);
     border-radius: 3px;
   }
 }
@@ -511,46 +496,21 @@
 /* ─── Dark Mode overrides for Header ─── */
 body.dark-mode-active {
   .navbar {
+    border-color: rgba(255, 255, 255, 0.09);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+
     a,
     .text-black {
       color: var(--text-color) !important;
     }
 
-    /* Round-icon buttons in nav use inline backgroundColor: #faf8f7 — override */
     .anticon,
     svg.svg-inline--fa {
-      background-color: var(--container-bg) !important;
-      color: var(--text-color) !important;
-    }
-  }
-
-  /* Notification card content inside popover */
-  .container-noti {
-    .bg-white {
-      background-color: var(--container-bg) !important;
-      color: var(--text-color);
-    }
-
-    .text-gray-600,
-    .text-gray-800 {
-      color: var(--text-muted) !important;
-    }
-
-    .bg-gray-200 {
-      background-color: rgba(255, 255, 255, 0.08) !important;
+      background-color: transparent !important;
       color: var(--text-color) !important;
 
       &:hover {
-        background-color: rgba(255, 255, 255, 0.15) !important;
-      }
-    }
-
-    .bg-zinc-700 {
-      background-color: var(--accent-color) !important;
-
-      &:hover {
-        background-color: var(--accent-color) !important;
-        filter: brightness(1.1);
+        background-color: rgba(255, 255, 255, 0.08) !important;
       }
     }
   }
@@ -559,6 +519,8 @@ body.dark-mode-active {
   .ant-popover-inner {
     background-color: var(--container-bg) !important;
     color: var(--text-color);
+    border-color: rgba(255, 255, 255, 0.09) !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
   }
 
   .ant-popover-title,
@@ -574,13 +536,14 @@ body.dark-mode-active {
   .custom-dropdown-menu {
     background-color: var(--container-bg) !important;
     color: var(--text-color);
+    border-color: rgba(255, 255, 255, 0.09) !important;
 
     .ant-dropdown-menu-item {
       color: var(--text-color) !important;
 
       &:hover,
       &.ant-dropdown-menu-item-active {
-        background-color: rgba(255, 255, 255, 0.08) !important;
+        background-color: rgba(255, 255, 255, 0.06) !important;
       }
     }
   }
@@ -590,6 +553,7 @@ body.dark-mode-active {
   .ant-tour-inner {
     background-color: var(--container-bg) !important;
     color: var(--text-color) !important;
+    border-color: rgba(255, 255, 255, 0.09) !important;
   }
 
   .ant-tour-title,
@@ -603,43 +567,88 @@ body.dark-mode-active {
     background-color: var(--container-bg) !important;
   }
 
-  .noti-tab {
-    color: #9ca3af;
+  .noti-tabs {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
+  }
 
-    &:hover { background: rgba(255, 255, 255, 0.05); }
+  .noti-tab {
+    color: rgba(255, 255, 255, 0.5);
+
+    &:hover { background: rgba(255, 255, 255, 0.04); }
 
     &.is-active {
-      background: rgba(254, 243, 199, 0.12);
-      color: var(--text-color, #f9fafb);
+      color: var(--text-color);
+      box-shadow: inset 0 -2px 0 0 var(--text-color);
     }
   }
 
+  .noti-tab-badge {
+    background: var(--text-color);
+    color: var(--container-bg);
+  }
+
   .noti-actions {
-    background: rgba(255, 255, 255, 0.03);
+    border-bottom-color: rgba(255, 255, 255, 0.05);
 
     .noti-action-btn {
-      background: var(--container-bg);
+      background: transparent;
       color: var(--text-color);
+      border-color: rgba(255, 255, 255, 0.12);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.06);
+      }
     }
   }
 
   .noti-item {
-    background: rgba(255, 255, 255, 0.04);
+    background: transparent;
     color: var(--text-color);
 
-    &:hover { background: rgba(255, 255, 255, 0.08); }
-    &.is-read { background: rgba(255, 255, 255, 0.02); }
+    &:hover { background: rgba(255, 255, 255, 0.05); }
+    &.is-read { background: transparent; }
 
     .noti-name { color: var(--text-color); }
-    .noti-text { color: #d1d5db; }
-    .noti-time { color: #9ca3af; }
+    .noti-text { color: rgba(255, 255, 255, 0.6); }
+    .noti-time { color: rgba(255, 255, 255, 0.4); }
+
+    .noti-avatar,
+    .noti-avatar-letter {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-color);
+      border-color: rgba(255, 255, 255, 0.09);
+    }
+
+    .noti-tag-private {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.5);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
   }
 
   .btn-pixel {
-    background: var(--container-bg);
+    background: transparent;
     color: var(--text-color);
+    border-color: rgba(255, 255, 255, 0.16);
 
-    &.btn-pixel-primary { background: #4ade80; color: #052e16; }
-    &.btn-pixel-ghost { background: rgba(255, 255, 255, 0.04); color: #d1d5db; }
+    &:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    &.btn-pixel-primary {
+      background: var(--text-color);
+      color: var(--container-bg);
+      border-color: var(--text-color);
+
+      &:hover {
+        background: #ffffff;
+        color: #000;
+      }
+    }
+
+    &.btn-pixel-ghost {
+      background: transparent;
+      color: rgba(255, 255, 255, 0.55);
+    }
   }
 }

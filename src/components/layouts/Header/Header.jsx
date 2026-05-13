@@ -301,7 +301,7 @@ const Header = () => {
       <Menu.Item
         key="home"
         icon={<FontAwesomeIcon icon={faHome} />}
-        style={{ backgroundColor: location.pathname === "/home-page" ? "#f0f0f0" : "transparent" }} // Gray if on home page
+        style={{ backgroundColor: location.pathname === "/home-page" ? "rgba(55, 53, 47, 0.08)" : "transparent" }}
       >
         Home
       </Menu.Item>
@@ -319,7 +319,7 @@ const Header = () => {
           <Menu.Item
             key="page"
             icon={<FontAwesomeIcon icon={faNewspaper} />}
-            style={{ backgroundColor: location.pathname.startsWith("/page") ? "#f0f0f0" : "transparent" }} // Gray if on page
+            style={{ backgroundColor: location.pathname.startsWith("/page") ? "rgba(55, 53, 47, 0.08)" : "transparent" }} // Gray if on page
           >
             Page
           </Menu.Item>
@@ -327,7 +327,7 @@ const Header = () => {
             key="profile"
             icon={<FontAwesomeIcon icon={faUser} />}
             style={{
-              backgroundColor: location.pathname.startsWith("/profile") ? "#f0f0f0" : "transparent",
+              backgroundColor: location.pathname.startsWith("/profile") ? "rgba(55, 53, 47, 0.08)" : "transparent",
             }}
           >
             Profile
@@ -336,7 +336,7 @@ const Header = () => {
             key="files"
             icon={<FontAwesomeIcon icon={faFolderOpen} />}
             style={{
-              backgroundColor: location.pathname === "/files" ? "#f0f0f0" : "transparent",
+              backgroundColor: location.pathname === "/files" ? "rgba(55, 53, 47, 0.08)" : "transparent",
             }}
           >
             Files
@@ -345,7 +345,7 @@ const Header = () => {
             key="daily-note"
             icon={<FontAwesomeIcon icon={faNewspaper} />}
             style={{
-              backgroundColor: location.pathname === "/daily-note" ? "#f0f0f0" : "transparent",
+              backgroundColor: location.pathname === "/daily-note" ? "rgba(55, 53, 47, 0.08)" : "transparent",
             }}
           >
             Daily Notes
@@ -354,7 +354,7 @@ const Header = () => {
             key="dashboard"
             icon={<FontAwesomeIcon icon={faColumns} />}
             style={{
-              backgroundColor: location.pathname === "/dashboard" ? "#f0f0f0" : "transparent",
+              backgroundColor: location.pathname === "/dashboard" ? "rgba(55, 53, 47, 0.08)" : "transparent",
             }}
           >
             Dashboard
@@ -364,21 +364,21 @@ const Header = () => {
           <Menu.Item
             key="setting"
             icon={<FontAwesomeIcon icon={faGears} />}
-            style={{ backgroundColor: location.pathname === "/setting" ? "#f0f0f0" : "transparent" }} // Gray if on setting
+            style={{ backgroundColor: location.pathname === "/setting" ? "rgba(55, 53, 47, 0.08)" : "transparent" }} // Gray if on setting
           >
             Setting
           </Menu.Item>
           <Menu.Item
             key="guide"
             icon={<QuestionCircleOutlined />}
-            style={{ backgroundColor: location.pathname === "/guide" ? "#f0f0f0" : "transparent" }}
+            style={{ backgroundColor: location.pathname === "/guide" ? "rgba(55, 53, 47, 0.08)" : "transparent" }}
           >
             Guide
           </Menu.Item>
           <Menu.Item
             key="shortcut"
             icon={<FontAwesomeIcon icon={faKeyboard} />}
-            style={{ backgroundColor: location.pathname === "/shortcut" ? "#f0f0f0" : "transparent" }}
+            style={{ backgroundColor: location.pathname === "/shortcut" ? "rgba(55, 53, 47, 0.08)" : "transparent" }}
           >
             Shortcut
           </Menu.Item>
@@ -791,11 +791,10 @@ const Header = () => {
               <QuestionCircleOutlined
                 onClick={() => setOpenTour(true)}
                 style={{
-                  backgroundColor: "#faf8f7",
-                  padding: "10px",
+                  padding: "8px",
                   cursor: "pointer",
                 }}
-                className="text-black text-lg rounded-full mr-4"
+                className="text-black text-base mr-2"
               />
             </Tooltip>
 
@@ -813,11 +812,10 @@ const Header = () => {
                 <div style={{ position: 'relative' }} >
                   <FontAwesomeIcon
                     style={{
-                      backgroundColor: "#faf8f7",
-                      padding: "10px",
+                      padding: "8px",
                       cursor: "pointer",
                     }}
-                    className="text-black text-lg mr-4 rounded-full"
+                    className="text-black text-base mr-2"
                     icon={faEnvelope}
                     ref={ref2}
 
@@ -826,17 +824,20 @@ const Header = () => {
                     <span
                       style={{
                         position: 'absolute',
-                        top: '0',
-                        right: '10px',
-                        background: 'red',
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: '16px',
+                        top: '-2px',
+                        right: '6px',
+                        background: '#2383e2',
+                        color: '#ffffff',
+                        borderRadius: '999px',
+                        minWidth: '16px',
                         height: '16px',
+                        padding: '0 4px',
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        fontSize: '12px',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        lineHeight: 1,
                       }}
                     >
                       {totalUnread}
@@ -859,12 +860,11 @@ const Header = () => {
                 <Tooltip title="user" placement="bottom">
                   <UserOutlined
                     style={{
-                      backgroundColor: "#faf8f7",
-                      padding: "10px",
+                      padding: "8px",
                       cursor: "pointer",
                     }}
                     ref={ref1}
-                    className="text-black text-lg rounded-full"
+                    className="text-black text-base"
                   />
                 </Tooltip>
               </a>
