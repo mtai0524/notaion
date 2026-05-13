@@ -802,7 +802,7 @@ const Header = () => {
             <Popover
               content={content}
               title={
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0 0 15px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Notification</span>
                 </div>
               }
