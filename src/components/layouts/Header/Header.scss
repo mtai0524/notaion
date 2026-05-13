@@ -536,9 +536,20 @@
 .ant-popover-inner:has(.noti-panel) {
   padding: 0 !important;
   background: var(--container-bg, #ffffff) !important;
-  border: 1px solid rgba(55, 53, 47, 0.12) !important;
-  border-radius: 8px !important;
-  box-shadow: 0 8px 24px rgba(15, 15, 15, 0.08), 0 2px 6px rgba(15, 15, 15, 0.04) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  border-radius: var(--global-border-radius, 6px) !important;
+  box-shadow: var(--box-shadow-sm) !important;
+  overflow: hidden;
+
+  .ant-popover-title {
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    border-bottom: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-color, #37352f);
+    min-height: auto;
+  }
 }
 
 .ant-popover-content:has(.noti-panel) {
@@ -645,9 +656,15 @@ body.dark-mode-active {
     color: var(--text-color) !important;
   }
 
+  /* Notification panel — Notaion-style dark (chunky border via global vars) */
   .ant-popover-inner:has(.noti-panel) {
-    border-color: rgba(255, 255, 255, 0.09) !important;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4) !important;
+    border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+    box-shadow: var(--box-shadow-sm) !important;
+
+    .ant-popover-title {
+      border-bottom: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+      color: var(--text-color) !important;
+    }
   }
 
   .noti-panel,
