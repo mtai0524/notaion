@@ -183,7 +183,6 @@ const Notion = () => {
   const [apiAvailable, setApiAvailable] = useState(true);
   const [loadingImage, setLoadingImage] = useState(null);
   const [loadingItems, setLoadingItems] = useState(true);
-  const [hoveredItemId, setHoveredItemId] = useState(null);
 
   // Slash menu state
   const [slashMenuFor, setSlashMenuFor] = useState(null);
@@ -901,16 +900,8 @@ const Notion = () => {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           className="draggable-item"
-                          onMouseEnter={() => setHoveredItemId(item.id)}
-                          onMouseLeave={() =>
-                            setHoveredItemId((prev) => (prev === item.id ? null : prev))
-                          }
                         >
-                          <div
-                            className={`block-controls ${
-                              hoveredItemId === item.id ? "is-visible" : ""
-                            }`}
-                          >
+                          <div className="block-controls">
                             <Tooltip title="Click to add block below" placement="left">
                               <button
                                 type="button"

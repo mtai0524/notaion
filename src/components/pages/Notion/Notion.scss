@@ -27,19 +27,20 @@
   transition: background 0.15s ease;
   display: flex;
   align-items: flex-start;
-  padding: 2px 0;
+  padding: 2px 0 2px 56px;
 
-  &:hover {
-    .block-controls {
-      opacity: 1;
-    }
+  /* CSS-driven hover so the controls themselves count as parent hover area */
+  &:hover .block-controls,
+  &:focus-within .block-controls {
+    opacity: 1;
+    pointer-events: auto;
   }
 }
 
 /* ───────── Hover controls (Notion-style + & ⋮⋮) ───────── */
 .block-controls {
   position: absolute;
-  left: -56px;
+  left: 4px;
   top: 4px;
   display: flex;
   gap: 2px;
@@ -559,8 +560,12 @@
     max-width: 100%;
   }
 
+  .draggable-item {
+    padding-left: 44px;
+  }
+
   .block-controls {
-    left: -42px;
+    left: 2px;
     top: 6px;
 
     .block-control-btn {
@@ -605,8 +610,12 @@
 }
 
 @media (max-width: 480px) {
+  .draggable-item {
+    padding-left: 28px;
+  }
+
   .block-controls {
-    left: -32px;
+    left: 2px;
     gap: 0;
 
     .block-control-btn:first-child {
