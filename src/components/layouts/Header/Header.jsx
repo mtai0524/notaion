@@ -833,7 +833,7 @@ const Header = () => {
     <>
       <div className="container-nav">
         <nav className="navbar flex justify-between items-center">
-          <Link to="/home-page" className="ml-5 text-black font-bold">
+          <Link to="/notion" className="ml-5 text-black font-bold">
             Notaion
           </Link>
           <div className="flex items-center">

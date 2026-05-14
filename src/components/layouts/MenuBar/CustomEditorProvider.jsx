@@ -30,7 +30,6 @@ const lowlight = createLowlight(common);
 const CustomEditorProvider = ({ pageId }) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const [spinPosition, setSpinPosition] = useState({ top: "50%", left: "50%" });
   const [userId, setUserId] = useState('');
   const { token, setToken } = useAuth();
 
@@ -127,30 +126,35 @@ const CustomEditorProvider = ({ pageId }) => {
           const file = clipboardItems[i].getAsFile();
           if (!file) continue;
 
+          event.preventDefault();
           const formData = new FormData();
           formData.append("files", file);
           setLoading(true);
+          const hideLoading = message.loading(
+            file.type.startsWith("image/") ? "Đang tải ảnh lên..." : "Đang tải file lên...",
+            0
+          );
           try {
             const response = await axiosInstance.post(
               "/api/files/upload",
               formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              }
+              { headers: { "Content-Type": "multipart/form-data" } }
             );
             const fileData = response.data[0];
             const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
 
             if (file.type.startsWith("image/")) {
               editor.chain().focus().setImage({ src: fileUrl }).run();
+              message.success("Tải ảnh thành công");
             } else {
               editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+              message.success("Tải file thành công");
             }
           } catch (error) {
             console.error("Failed to upload file", error);
+            message.error("Tải lên thất bại, vui lòng thử lại");
           } finally {
+            hideLoading();
             setLoading(false);
           }
           break;
@@ -164,35 +168,38 @@ const CustomEditorProvider = ({ pageId }) => {
     async (event) => {
       event.preventDefault();
       const files = event.dataTransfer.files;
-      if (files && files.length > 0) {
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          const formData = new FormData();
-          formData.append("files", file);
-          setLoading(true);
-          try {
-            const response = await axiosInstance.post(
-              "/api/files/upload",
-              formData,
-              {
-                headers: {
-                  "Content-Type": "multipart/form-data",
-                },
-              }
-            );
-            const fileData = response.data[0];
-            const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+      if (!files || files.length === 0) return;
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append("files", file);
+        setLoading(true);
+        const hideLoading = message.loading(
+          file.type.startsWith("image/") ? "Đang tải ảnh lên..." : "Đang tải file lên...",
+          0
+        );
+        try {
+          const response = await axiosInstance.post(
+            "/api/files/upload",
+            formData,
+            { headers: { "Content-Type": "multipart/form-data" } }
+          );
+          const fileData = response.data[0];
+          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
 
-            if (file.type.startsWith("image/")) {
-              editor.chain().focus().setImage({ src: fileUrl }).run();
-            } else {
-              editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
-            }
-          } catch (error) {
-            console.error("Failed to upload file", error);
-          } finally {
-            setLoading(false);
+          if (file.type.startsWith("image/")) {
+            editor.chain().focus().setImage({ src: fileUrl }).run();
+            message.success("Tải ảnh thành công");
+          } else {
+            editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+            message.success("Tải file thành công");
           }
+        } catch (error) {
+          console.error("Failed to upload file", error);
+          message.error("Tải lên thất bại, vui lòng thử lại");
+        } finally {
+          hideLoading();
+          setLoading(false);
         }
       }
     },
@@ -210,17 +217,6 @@ const CustomEditorProvider = ({ pageId }) => {
     }
   }, [editor, handlePaste, handleDrop]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      const scrollTop = window.scrollY || document.documentElement.scrollTop;
-      setSpinPosition({
-        top: `${scrollTop + window.innerHeight / 2}px`,
-      });
-    };
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
   return (
     <div
       style={{
@@ -234,22 +230,23 @@ const CustomEditorProvider = ({ pageId }) => {
       {loading && (
         <div
           style={{
-            backgroundColor: "var(--container-bg)",
-            position: "absolute",
-            top: `calc(${spinPosition.top} - 150px)`,
-            left: "50%",
-            transform: "translate(-50%, -50%)",
+            position: "fixed",
+            bottom: "24px",
+            right: "24px",
             zIndex: 1000,
-            padding: "30px",
+            padding: "12px 18px",
             borderRadius: "var(--radius-md)",
             border: "var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color)",
             boxShadow: "var(--box-shadow)",
+            backgroundColor: "var(--container-bg)",
             display: "flex",
             alignItems: "center",
-            justifyContent: center,
+            justifyContent: "center",
+            gap: "10px",
           }}
         >
-          <l-bouncy size="60" color="var(--accent-color)"></l-bouncy>
+          <l-bouncy size="30" color="var(--accent-color)"></l-bouncy>
+          <span style={{ fontSize: "13px", color: "var(--text-color)" }}>Đang tải lên...</span>
         </div>
       )}
       <MenuBar editor={editor} />
