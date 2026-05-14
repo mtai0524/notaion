@@ -27,7 +27,7 @@ import jwt_decode from "jwt-decode";
 import { common, createLowlight } from "lowlight";
 import { useAuth } from "../../../contexts/AuthContext";
 const lowlight = createLowlight(common);
-const CustomEditorProvider = ({ pageId }) => {
+const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
@@ -80,6 +80,11 @@ const CustomEditorProvider = ({ pageId }) => {
     ],
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
+      if (onWordCountChange) {
+        const text = editor.getText();
+        const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+        onWordCountChange(words);
+      }
       const titleMatch = content.match(/<h1[^>]*>(.*?)<\/h1>/);
       const paragraph = content.match(/<p[^>]*>(.*?)<\/p>/);
       const title = titleMatch ? titleMatch[1] : "";
@@ -221,8 +226,7 @@ const CustomEditorProvider = ({ pageId }) => {
     <div
       style={{
         display: "flex",
-        width: "80vw",
-        maxWidth: "800px",
+        width: "100%",
         marginBottom: "100px",
         position: "relative",
       }}
@@ -253,7 +257,7 @@ const CustomEditorProvider = ({ pageId }) => {
       <EditorContent
         style={{
           marginTop: "90px",
-          maxWidth: "80vw",
+          maxWidth: "100%",
         }}
         editor={editor}
       />
@@ -262,5 +266,6 @@ const CustomEditorProvider = ({ pageId }) => {
 };
 CustomEditorProvider.propTypes = {
   pageId: PropTypes.string.isRequired,
+  onWordCountChange: PropTypes.func,
 };
 export default CustomEditorProvider;

@@ -6,8 +6,8 @@
     display: block;
     height: auto;
     margin: 1.5rem 0;
-    width: 80vw !important;
-    max-width: 800px !important;
+    width: 100% !important;
+    max-width: 100% !important;
 
     &.ProseMirror-selectednode {
       outline: 3px solid var(--purple);
@@ -84,7 +84,7 @@
   }
 
   h1 {
-    font-size: 1.4rem;
+    font-size: 2rem;
     font-weight: bolder;
   }
 
