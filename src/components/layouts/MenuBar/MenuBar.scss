@@ -164,14 +164,23 @@
     margin: 2rem 0;
   }
 }
-.container-content :focus {
+/* Remove focus outline from editor container — any wrapper class */
+.container-content :focus,
+.container-content-page :focus,
+.content-editor-wrap :focus,
+.content-page :focus {
   outline: none !important;
-  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
-.container-content-page :focus {
+
+/* ProseMirror itself — must suppress browser default outline */
+.ProseMirror:focus,
+.ProseMirror-focused {
   outline: none !important;
-  border: none !important;
+  box-shadow: none !important;
 }
+
 .button-group button {
   outline: none;
 }
@@ -179,12 +188,12 @@
   background-color: var(--container-bg, white);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color, #e5e5e5);
+  border: 1px solid rgba(0, 0, 0, 0.1);
   width: 85%;
 }
 .menubar-controls {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-  border: 1px solid var(--border-color, #e5e5e5) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
   border-radius: 8px;
   background: var(--container-bg, #fff);
 
@@ -216,7 +225,7 @@
 }
 .bubble-menu {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--border-color, #e5e5e5) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
   border-radius: 8px;
   background: var(--container-bg, #fff);
   button {
