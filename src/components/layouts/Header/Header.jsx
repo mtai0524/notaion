@@ -20,6 +20,7 @@ import {
   faUserPlus,
   faComment,
   faTrashCan,
+  faGamepad,
 } from "@fortawesome/free-solid-svg-icons";
 
 import Cookies from "js-cookie";
@@ -318,6 +319,9 @@ const Header = () => {
       case "dashboard":
         navigate("/dashboard");
         break;
+      case "game":
+        navigate("/game");
+        break;
 
       default:
         break;
@@ -408,6 +412,15 @@ const Header = () => {
             }}
           >
             Dashboard
+          </Menu.Item>
+          <Menu.Item
+            key="game"
+            icon={<FontAwesomeIcon icon={faGamepad} />}
+            style={{
+              backgroundColor: location.pathname === "/game" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Mini Game
           </Menu.Item>
 
 
