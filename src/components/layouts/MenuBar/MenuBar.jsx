@@ -87,7 +87,7 @@ const MenuBar = ({ editor }) => {
 
       try {
         const response = await axiosInstance.post(
-          "/api/files/upload",
+          "/api/files/upload/cloudinary",
           formData,
           {
             headers: {
@@ -96,7 +96,7 @@ const MenuBar = ({ editor }) => {
           }
         );
         const fileData = response.data[0];
-        const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+        const fileUrl = fileData.cloudUrl;
 
         if (file.type.startsWith("image/")) {
           editor.chain().focus().setImage({ src: fileUrl }).run();

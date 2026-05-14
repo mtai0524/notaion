@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
@@ -26,12 +26,14 @@ import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { common, createLowlight } from "lowlight";
 import { useAuth } from "../../../contexts/AuthContext";
+import SlashCommand from "./SlashCommand";
 const lowlight = createLowlight(common);
 const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [userId, setUserId] = useState('');
   const { token, setToken } = useAuth();
+  const slashFileInputRef = useRef(null);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -76,7 +78,8 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
       Highlight.configure({ multicolor: true }),
       Image.configure({ allowBase64: false }),
       Dropcursor,
-      Placeholder.configure({ placeholder: "Write something …" }),
+      Placeholder.configure({ placeholder: "Write something … or type '/' for commands" }),
+      SlashCommand,
     ],
     onUpdate: ({ editor }) => {
       const content = editor.getHTML();
@@ -141,12 +144,12 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
           );
           try {
             const response = await axiosInstance.post(
-              "/api/files/upload",
+              "/api/files/upload/cloudinary",
               formData,
               { headers: { "Content-Type": "multipart/form-data" } }
             );
             const fileData = response.data[0];
-            const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+            const fileUrl = fileData.cloudUrl;
 
             if (file.type.startsWith("image/")) {
               editor.chain().focus().setImage({ src: fileUrl }).run();
@@ -185,12 +188,12 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
         );
         try {
           const response = await axiosInstance.post(
-            "/api/files/upload",
+            "/api/files/upload/cloudinary",
             formData,
             { headers: { "Content-Type": "multipart/form-data" } }
           );
           const fileData = response.data[0];
-          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+          const fileUrl = fileData.cloudUrl;
 
           if (file.type.startsWith("image/")) {
             editor.chain().focus().setImage({ src: fileUrl }).run();
@@ -210,6 +213,51 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
     },
     [editor]
   );
+
+  const handleSlashFileChange = useCallback(async (e) => {
+    const file = e.target.files[0];
+    if (!file || !editor) return;
+    const formData = new FormData();
+    formData.append("files", file);
+    setLoading(true);
+    const hideLoading = message.loading(
+      file.type.startsWith("image/") ? "Đang tải ảnh lên..." : "Đang tải file lên...",
+      0
+    );
+    try {
+      const response = await axiosInstance.post(
+        "/api/files/upload/cloudinary",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+      const fileData = response.data[0];
+      const fileUrl = fileData.cloudUrl;
+      if (file.type.startsWith("image/")) {
+        editor.chain().focus().setImage({ src: fileUrl }).run();
+        message.success("Tải ảnh thành công");
+      } else {
+        editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+        message.success("Tải file thành công");
+      }
+    } catch (error) {
+      console.error("Slash upload failed", error);
+      message.error("Tải lên thất bại, vui lòng thử lại");
+    } finally {
+      hideLoading();
+      setLoading(false);
+      e.target.value = "";
+    }
+  }, [editor]);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (!slashFileInputRef.current) return;
+      slashFileInputRef.current.accept = e.detail.type === "image" ? "image/*" : "*/*";
+      slashFileInputRef.current.click();
+    };
+    window.addEventListener("notaion:slash-upload", handler);
+    return () => window.removeEventListener("notaion:slash-upload", handler);
+  }, []);
 
   useEffect(() => {
     if (editor) {
@@ -253,6 +301,12 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
           <span style={{ fontSize: "13px", color: "var(--text-color)" }}>Đang tải lên...</span>
         </div>
       )}
+      <input
+        type="file"
+        ref={slashFileInputRef}
+        style={{ display: "none" }}
+        onChange={handleSlashFileChange}
+      />
       <MenuBar editor={editor} />
       <EditorContent
         style={{

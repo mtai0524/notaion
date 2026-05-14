@@ -1,0 +1,139 @@
+.sc-popup {
+  background: var(--container-bg, #fff);
+  border: 1px solid var(--border-color, #e5e5e5);
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  width: 300px;
+  max-height: 380px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.sc-header {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted, #9b9a97);
+  border-bottom: 1px solid rgba(127, 127, 127, 0.1);
+  background: var(--bg-color, #f7f6f3);
+  flex-shrink: 0;
+}
+
+.sc-list {
+  overflow-y: auto;
+  padding: 4px;
+  flex: 1;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(127, 127, 127, 0.25);
+    border-radius: 3px;
+  }
+}
+
+.sc-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-color, #37352f);
+  text-align: left;
+  transition: background 0.1s;
+
+  &:hover,
+  &.is-selected {
+    background: rgba(59, 130, 246, 0.08);
+  }
+
+  &.is-selected {
+    box-shadow: inset 2px 0 0 var(--accent-color, #2383e2);
+  }
+}
+
+.sc-icon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-color, #f7f6f3);
+  border: 1px solid rgba(127, 127, 127, 0.18);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-color);
+}
+
+.sc-icon-text {
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: -0.5px;
+}
+
+.sc-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.sc-title {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-color);
+}
+
+.sc-desc {
+  font-size: 11px;
+  color: var(--text-muted, #9b9a97);
+  margin-top: 1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sc-footer {
+  padding: 5px 10px;
+  font-size: 11px;
+  color: var(--text-muted, #9b9a97);
+  border-top: 1px solid rgba(127, 127, 127, 0.1);
+  background: var(--bg-color, #f7f6f3);
+  flex-shrink: 0;
+
+  kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    background: var(--container-bg, #fff);
+    border: 1px solid rgba(127, 127, 127, 0.2);
+    border-radius: 3px;
+    font-size: 10px;
+    font-family: inherit;
+    color: var(--text-color);
+  }
+}
+
+.sc-empty {
+  margin: 0;
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted, #9b9a97);
+}
+
+/* tippy reset — remove default arrow/bg from tippy wrapper */
+.tippy-box[data-theme~="slash"] {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
