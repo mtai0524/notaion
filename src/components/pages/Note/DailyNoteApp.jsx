@@ -1038,20 +1038,6 @@ const DailyNoteApp = () => {
     fetchNotes(dateKey);
   }, [dateKey]);
 
-  // Keep a ref to the latest handlers so the global keydown listener never
-  // captures a stale closure even though it's attached once.
-  hotkeyRef.current = {
-    addNote,
-    toggleTheme,
-    setViewMode,
-    setShowBgPicker,
-    setShowTrash,
-    setShowColorMenu,
-    setShowToolsMenu,
-    setShowNewMenu,
-    setShowHotkeyHelp,
-  };
-
   useEffect(() => {
     const onKey = (e) => {
       const t = e.target;
@@ -1440,6 +1426,22 @@ const DailyNoteApp = () => {
   };
 
   window.allCurrentNotesGlobal = allCurrentNotes;
+
+  // Refresh the hotkey handler ref on every render so the global keydown
+  // listener (attached once on mount) always sees the latest closures
+  // without re-attaching. Placed here, after all the action functions are
+  // declared, to avoid temporal-dead-zone access on functions like addNote.
+  hotkeyRef.current = {
+    addNote,
+    toggleTheme,
+    setViewMode,
+    setShowBgPicker,
+    setShowTrash,
+    setShowColorMenu,
+    setShowToolsMenu,
+    setShowNewMenu,
+    setShowHotkeyHelp,
+  };
 
   const getAnchorPoints = (n) => {
     const h = n.isMinimized ? 40 : n.height;
