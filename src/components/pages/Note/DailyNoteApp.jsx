@@ -14,7 +14,8 @@ import {
   FaLink, FaUnlink, FaEye, FaEyeSlash, FaSyncAlt, FaRulerCombined, FaFont,
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
   FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain,
-  FaImage, FaPaperclip, FaDownload, FaUndo, FaTrash, FaChevronDown
+  FaImage, FaPaperclip, FaDownload, FaUndo, FaTrash, FaChevronDown,
+  FaEllipsisH, FaKeyboard, FaQuestionCircle
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import * as signalR from '@microsoft/signalr';
@@ -846,6 +847,9 @@ const DailyNoteApp = () => {
   const [showTrash, setShowTrash] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState(false);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const [showHotkeyHelp, setShowHotkeyHelp] = useState(false);
+  const hotkeyRef = useRef({});
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
@@ -1033,6 +1037,69 @@ const DailyNoteApp = () => {
   useEffect(() => {
     fetchNotes(dateKey);
   }, [dateKey]);
+
+  // Keep a ref to the latest handlers so the global keydown listener never
+  // captures a stale closure even though it's attached once.
+  hotkeyRef.current = {
+    addNote,
+    toggleTheme,
+    setViewMode,
+    setShowBgPicker,
+    setShowTrash,
+    setShowColorMenu,
+    setShowToolsMenu,
+    setShowNewMenu,
+    setShowHotkeyHelp,
+  };
+
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      const tag = t?.tagName?.toLowerCase();
+      const isTyping = tag === 'input' || tag === 'textarea' || t?.isContentEditable;
+
+      if (e.key === 'Escape') {
+        if (isTyping && typeof t.blur === 'function') { t.blur(); return; }
+        const r = hotkeyRef.current;
+        r.setShowToolsMenu(false);
+        r.setShowHotkeyHelp(false);
+        r.setShowColorMenu(false);
+        r.setShowNewMenu(false);
+        r.setShowBgPicker(false);
+        r.setShowTrash(false);
+        return;
+      }
+
+      if (isTyping) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      const r = hotkeyRef.current;
+      const map = {
+        n: () => r.addNote('blank'),
+        t: () => r.addNote('todo'),
+        m: () => r.addNote('meeting'),
+        k: () => r.addNote('code'),
+        v: () => r.setViewMode(v => v === 'canvas' ? 'kanban' : 'canvas'),
+        d: () => r.toggleTheme(),
+        b: () => r.setShowBgPicker(v => !v),
+        r: () => r.setShowTrash(v => !v),
+        c: () => r.setShowColorMenu(v => !v),
+        '?': () => r.setShowHotkeyHelp(v => !v),
+        '/': () => {
+          const el = document.querySelector('.search-box-cyber input');
+          if (el) el.focus();
+        },
+      };
+
+      const handler = map[e.key.toLowerCase()] || (e.key === '?' ? map['?'] : null);
+      if (handler) {
+        e.preventDefault();
+        handler();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const saveNotesToBackend = useCallback(
     debounce(async (notes) => {
@@ -1481,19 +1548,7 @@ const DailyNoteApp = () => {
             </div>
           </div>
 
-          <div className="toolbar-group toolbar-group-tools">
-            <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
-              {theme === 'dark' ? <FaSun /> : <FaMoon />}
-            </button>
-
-            <div className="bg-picker-container">
-            <button
-              className={`nav-btn bg-picker-toggle ${canvasBg ? 'active' : ''}`}
-              onClick={() => setShowBgPicker(v => !v)}
-              title="Canvas Background"
-            >
-              <FaImage />
-            </button>
+          <div className="bg-picker-container">
             {showBgPicker && (
               <div className="bg-picker-dropdown" onClick={(e) => e.stopPropagation()}>
                 <div className="bg-picker-header">CANVAS_BG</div>
@@ -1539,16 +1594,6 @@ const DailyNoteApp = () => {
           </div>
 
           <div className="trash-picker-container">
-            <button
-              className={`nav-btn trash-toggle ${(trashByDate[dateKey] || []).length > 0 ? 'has-items' : ''}`}
-              onClick={() => setShowTrash(v => !v)}
-              title="Trash (deleted today)"
-            >
-              <FaTrash />
-              {(trashByDate[dateKey] || []).length > 0 && (
-                <span className="trash-count">{(trashByDate[dateKey] || []).length}</span>
-              )}
-            </button>
             {showTrash && (
               <div className="trash-dropdown" onClick={(e) => e.stopPropagation()}>
                 <div className="trash-header">
@@ -1594,43 +1639,6 @@ const DailyNoteApp = () => {
                 <button className="trash-close" onClick={() => setShowTrash(false)}>CLOSE</button>
               </div>
             )}
-            </div>
-
-            <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
-              {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
-            </button>
-          </div>
-
-          <div className="toolbar-group toolbar-group-colors">
-            <div className="color-menu-container">
-              <button
-                className="nav-btn color-menu-btn"
-                onClick={() => setShowColorMenu(v => !v)}
-                title="Default color for new notes"
-              >
-                <span
-                  className="color-swatch-dot"
-                  style={{ backgroundColor: (COLORS.find(c => c.id === selectedColor) || COLORS[0]).color }}
-                />
-                <FaChevronDown className="caret" />
-              </button>
-              {showColorMenu && (
-                <div className="color-menu-dropdown" onClick={(e) => e.stopPropagation()}>
-                  <div className="color-menu-header">DEFAULT_COLOR</div>
-                  <div className="color-menu-swatches">
-                    {COLORS.map(c => (
-                      <button
-                        key={c.id}
-                        className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
-                        style={{ backgroundColor: c.color }}
-                        onClick={() => { setSelectedColor(c.id); setShowColorMenu(false); }}
-                        title={c.id}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="new-menu-container">
@@ -1640,22 +1648,156 @@ const DailyNoteApp = () => {
             {showNewMenu && (
               <div className="new-menu-dropdown" onClick={(e) => e.stopPropagation()}>
                 <button onClick={() => { addNote('blank'); setShowNewMenu(false); }}>
-                  <FaFileAlt /> Blank
+                  <FaFileAlt /> Blank <span className="hk-hint">N</span>
                 </button>
                 <button onClick={() => { addNote('todo'); setShowNewMenu(false); }}>
-                  <FaListUl /> To-do List
+                  <FaListUl /> To-do List <span className="hk-hint">T</span>
                 </button>
                 <button onClick={() => { addNote('meeting'); setShowNewMenu(false); }}>
-                  <FaFileAlt /> Meeting Notes
+                  <FaFileAlt /> Meeting Notes <span className="hk-hint">M</span>
                 </button>
                 <button onClick={() => { addNote('code'); setShowNewMenu(false); }}>
-                  <FaCode /> Code Snippet
+                  <FaCode /> Code Snippet <span className="hk-hint">K</span>
                 </button>
               </div>
             )}
           </div>
+
+          <div className="tools-menu-container">
+            <button
+              className="nav-btn tools-menu-btn"
+              onClick={() => setShowToolsMenu(v => !v)}
+              title="More tools (theme, background, trash, view)"
+            >
+              <FaEllipsisH />
+            </button>
+            {showToolsMenu && (
+              <div className="tools-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="tools-section">
+                  <div className="tools-section-label">VIEW</div>
+                  <div className="tools-segmented">
+                    <button
+                      className={viewMode === 'canvas' ? 'active' : ''}
+                      onClick={() => { setViewMode('canvas'); }}
+                    >
+                      <FaTh /> Canvas
+                    </button>
+                    <button
+                      className={viewMode === 'kanban' ? 'active' : ''}
+                      onClick={() => { setViewMode('kanban'); }}
+                    >
+                      <FaLayerGroup /> Kanban
+                    </button>
+                  </div>
+                  <span className="hk-hint inline">V</span>
+                </div>
+
+                <div className="tools-section">
+                  <div className="tools-section-label">THEME</div>
+                  <div className="tools-segmented">
+                    <button
+                      className={theme === 'light' ? 'active' : ''}
+                      onClick={() => { if (theme !== 'light') toggleTheme(); }}
+                    >
+                      <FaSun /> Light
+                    </button>
+                    <button
+                      className={theme === 'dark' ? 'active' : ''}
+                      onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+                    >
+                      <FaMoon /> Dark
+                    </button>
+                  </div>
+                  <span className="hk-hint inline">D</span>
+                </div>
+
+                <div className="tools-section">
+                  <div className="tools-section-label">DEFAULT_COLOR</div>
+                  <div className="tools-swatches">
+                    {COLORS.map(c => (
+                      <button
+                        key={c.id}
+                        className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
+                        style={{ backgroundColor: c.color }}
+                        onClick={() => setSelectedColor(c.id)}
+                        title={c.id}
+                      />
+                    ))}
+                  </div>
+                  <span className="hk-hint inline">C</span>
+                </div>
+
+                <div className="tools-divider" />
+
+                <button
+                  className={`tools-menu-item ${canvasBg ? 'active' : ''}`}
+                  onClick={() => { setShowToolsMenu(false); setShowBgPicker(true); }}
+                >
+                  <FaImage /> Canvas Background <span className="hk-hint">B</span>
+                </button>
+
+                <button
+                  className={`tools-menu-item ${(trashByDate[dateKey] || []).length > 0 ? 'has-items' : ''}`}
+                  onClick={() => { setShowToolsMenu(false); setShowTrash(true); }}
+                >
+                  <FaTrash /> Trash
+                  {(trashByDate[dateKey] || []).length > 0 && (
+                    <span className="tools-menu-badge">{(trashByDate[dateKey] || []).length}</span>
+                  )}
+                  <span className="hk-hint">R</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button
+            className="nav-btn hotkey-help-btn"
+            onClick={() => setShowHotkeyHelp(true)}
+            title="Keyboard shortcuts (?)"
+          >
+            <FaKeyboard />
+          </button>
         </div>
       </header>
+
+      {showHotkeyHelp && (
+        <div className="hotkey-help-overlay" onClick={() => setShowHotkeyHelp(false)}>
+          <div className="hotkey-help-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="hotkey-help-header">
+              <span><FaKeyboard /> KEYBOARD_SHORTCUTS</span>
+              <button onClick={() => setShowHotkeyHelp(false)} aria-label="Close">
+                <FaTimes />
+              </button>
+            </div>
+            <div className="hotkey-help-body">
+              <div className="hk-group">
+                <div className="hk-group-title">Create</div>
+                <div className="hk-row"><kbd>N</kbd><span>New blank note</span></div>
+                <div className="hk-row"><kbd>T</kbd><span>New to-do list</span></div>
+                <div className="hk-row"><kbd>M</kbd><span>New meeting notes</span></div>
+                <div className="hk-row"><kbd>K</kbd><span>New code snippet</span></div>
+              </div>
+              <div className="hk-group">
+                <div className="hk-group-title">View & Style</div>
+                <div className="hk-row"><kbd>V</kbd><span>Toggle Canvas / Kanban</span></div>
+                <div className="hk-row"><kbd>D</kbd><span>Toggle Light / Dark theme</span></div>
+                <div className="hk-row"><kbd>C</kbd><span>Open default-color picker</span></div>
+                <div className="hk-row"><kbd>B</kbd><span>Open canvas background picker</span></div>
+              </div>
+              <div className="hk-group">
+                <div className="hk-group-title">Navigation</div>
+                <div className="hk-row"><kbd>/</kbd><span>Focus search</span></div>
+                <div className="hk-row"><kbd>R</kbd><span>Open trash</span></div>
+                <div className="hk-row"><kbd>?</kbd><span>Open this help</span></div>
+                <div className="hk-row"><kbd>Esc</kbd><span>Close any open menu / blur input</span></div>
+              </div>
+            </div>
+            <div className="hotkey-help-footer">
+              Hotkeys are disabled while typing in inputs or note bodies.
+            </div>
+          </div>
+        </div>
+      )}
 
       <main
         className={`note-canvas-cyber ${canvasBg ? 'has-custom-bg' : ''}`}

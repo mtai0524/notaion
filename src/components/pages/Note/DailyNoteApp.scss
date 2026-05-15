@@ -149,17 +149,47 @@
     .toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
       row-gap: 8px;
       justify-content: flex-end;
 
-      // Flat groups: simple horizontal containers with their own internal gap.
-      // No boxed borders, no dividers — relying on outer gap for separation.
+      // Uniform button sizing across the whole toolbar so icon controls
+      // line up cleanly and nothing looks stranded.
+      .nav-btn,
+      .create-note-btn,
+      .color-menu-btn,
+      .tools-menu-btn,
+      .hotkey-help-btn {
+        height: 36px;
+        min-width: 36px;
+        box-sizing: border-box;
+      }
+
+      .nav-btn,
+      .tools-menu-btn,
+      .hotkey-help-btn {
+        width: 36px;
+        padding: 0;
+        font-size: 0.95rem;
+      }
+
+      .create-note-btn {
+        padding: 0 14px;
+        font-size: 0.78rem;
+      }
+
       .toolbar-group {
         display: inline-flex;
         align-items: center;
         gap: 8px;
+      }
+
+      // Hide picker anchor divs from layout when no dropdown is open so they
+      // don't add empty flex gaps between visible buttons.
+      .bg-picker-container:empty,
+      .trash-picker-container:empty {
+        display: none;
       }
 
       .search-box-cyber {
@@ -238,10 +268,10 @@
         }
 
         .trash-dropdown {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          z-index: 1000;
+          position: fixed;
+          top: 84px;
+          right: 24px;
+          z-index: 1100;
           width: 320px;
           background: var(--container-bg);
           border: 1px solid var(--border-color);
@@ -389,10 +419,10 @@
         }
 
         .bg-picker-dropdown {
-          position: absolute;
-          top: calc(100% + 8px);
-          right: 0;
-          z-index: 1000;
+          position: fixed;
+          top: 84px;
+          right: 24px;
+          z-index: 1100;
           width: 280px;
           background: var(--container-bg);
           border: 1px solid var(--border-color);
@@ -2982,6 +3012,317 @@
 
     50% {
       opacity: 0.4;
+    }
+  }
+}
+
+/* ───────────── Tools menu (consolidated ⋮ dropdown) ───────────── */
+.daily-note-app-container-cyber .tools-menu-container {
+  position: relative;
+
+  .tools-menu-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 1000;
+    background: var(--container-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--global-border-radius, 4px);
+    box-shadow: var(--box-shadow-sm);
+    min-width: 280px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+
+    .tools-section {
+      position: relative;
+      padding: 8px;
+      border: 1px dashed var(--border-color);
+      border-radius: var(--global-border-radius, 4px);
+
+      .tools-section-label {
+        font-size: 0.6rem;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        color: var(--text-muted);
+        margin-bottom: 6px;
+      }
+
+      .tools-segmented {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px;
+
+        button {
+          background: transparent;
+          border: 1px solid var(--border-color);
+          color: var(--text-color);
+          padding: 6px 10px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.15s ease;
+          font-family: inherit;
+
+          svg {
+            font-size: 0.75rem;
+          }
+
+          &:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+          }
+
+          &.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: #fff;
+          }
+        }
+      }
+
+      .tools-swatches {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 6px;
+
+        .color-option {
+          width: 100%;
+          height: 24px;
+          padding: 0;
+          border: 1px solid var(--border-color);
+          border-radius: var(--global-border-radius, 4px);
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+          &:hover {
+            transform: scale(1.08);
+          }
+
+          &.active {
+            box-shadow: 0 0 0 2px var(--text-color);
+          }
+        }
+      }
+
+      .hk-hint.inline {
+        position: absolute;
+        top: 6px;
+        right: 8px;
+      }
+    }
+
+    .tools-divider {
+      height: 1px;
+      background: var(--border-color);
+      opacity: 0.5;
+      margin: 2px 4px;
+    }
+
+    .tools-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: transparent;
+      border: none;
+      border-radius: var(--global-border-radius, 4px);
+      color: var(--text-color);
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+      position: relative;
+
+      svg {
+        color: var(--text-muted);
+        flex-shrink: 0;
+        font-size: 0.85rem;
+      }
+
+      &:hover {
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.08);
+        color: var(--accent-color);
+
+        svg {
+          color: var(--accent-color);
+        }
+      }
+
+      &.active {
+        color: var(--accent-color);
+
+        svg {
+          color: var(--accent-color);
+        }
+      }
+
+      .tools-menu-badge {
+        background: #ef4444;
+        color: #fff;
+        font-size: 0.6rem;
+        font-weight: 800;
+        padding: 1px 6px;
+        border-radius: 999px;
+        min-width: 18px;
+        text-align: center;
+        margin-left: auto;
+        margin-right: 6px;
+      }
+
+      .hk-hint {
+        margin-left: auto;
+      }
+
+      &.has-items {
+        color: var(--accent-color);
+      }
+    }
+  }
+}
+
+/* ───────────── Hotkey hint chip ───────────── */
+.daily-note-app-container-cyber .hk-hint {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background: rgba(var(--accent-rgb, 59, 130, 246), 0.08);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 1px 6px;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+/* ───────────── Hotkey help modal ───────────── */
+.hotkey-help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  backdrop-filter: blur(2px);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+
+  .hotkey-help-modal {
+    width: 100%;
+    max-width: 720px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: var(--container-bg, #fff);
+    color: var(--text-color, #111827);
+    border: 1px solid var(--border-color, #111827);
+    border-radius: var(--global-border-radius, 6px);
+    box-shadow: var(--box-shadow-sm);
+    display: flex;
+    flex-direction: column;
+
+    .hotkey-help-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border-color, #111827);
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      font-size: 0.85rem;
+
+      span {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--accent-color);
+      }
+
+      button {
+        background: transparent;
+        border: 1px solid var(--border-color, #111827);
+        border-radius: var(--global-border-radius, 4px);
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--text-muted);
+
+        &:hover {
+          color: var(--accent-color);
+          border-color: var(--accent-color);
+        }
+      }
+    }
+
+    .hotkey-help-body {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+
+      .hk-group {
+        .hk-group-title {
+          font-size: 0.7rem;
+          font-weight: 800;
+          letter-spacing: 1.5px;
+          color: var(--text-muted);
+          margin-bottom: 8px;
+          text-transform: uppercase;
+        }
+
+        .hk-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 6px 0;
+          font-size: 0.78rem;
+
+          kbd {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            padding: 2px 8px;
+            background: rgba(var(--accent-rgb, 59, 130, 246), 0.08);
+            border: 1px solid var(--border-color);
+            border-bottom-width: 2px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            text-transform: uppercase;
+            line-height: 1.4;
+          }
+
+          span {
+            color: var(--text-color);
+            opacity: 0.9;
+          }
+        }
+      }
+    }
+
+    .hotkey-help-footer {
+      padding: 10px 18px 14px;
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border-top: 1px solid var(--border-color, #111827);
     }
   }
 }
