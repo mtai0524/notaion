@@ -1466,21 +1466,25 @@ const DailyNoteApp = () => {
               <FaTrashAlt /> DELETE_SELECTED ({selectedIds.length})
             </button>
           )}
-          <div className="search-box-cyber">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="SEARCH_NOTES..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+
+          <div className="toolbar-group toolbar-group-search">
+            <div className="search-box-cyber">
+              <FaSearch className="search-icon" />
+              <input
+                type="text"
+                placeholder="SEARCH_NOTES..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
 
-          <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
-            {theme === 'dark' ? <FaSun /> : <FaMoon />}
-          </button>
+          <div className="toolbar-group toolbar-group-tools">
+            <button className="nav-btn theme-toggle" onClick={toggleTheme} title="Toggle Theme">
+              {theme === 'dark' ? <FaSun /> : <FaMoon />}
+            </button>
 
-          <div className="bg-picker-container">
+            <div className="bg-picker-container">
             <button
               className={`nav-btn bg-picker-toggle ${canvasBg ? 'active' : ''}`}
               onClick={() => setShowBgPicker(v => !v)}
@@ -1588,28 +1592,35 @@ const DailyNoteApp = () => {
                 <button className="trash-close" onClick={() => setShowTrash(false)}>CLOSE</button>
               </div>
             )}
+            </div>
+
+            <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
+              {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
+            </button>
           </div>
 
-          <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
-            {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
-          </button>
-
-          <div className="template-actions">
-            <button className="tpl-btn" onClick={() => addNote('todo')} title="Add To-do List"><FaListUl /></button>
-            <button className="tpl-btn" onClick={() => addNote('meeting')} title="Add Meeting Notes"><FaFileAlt /></button>
-            <button className="tpl-btn" onClick={() => addNote('code')} title="Add Code Snippet"><FaCode /></button>
+          <div className="toolbar-group toolbar-group-templates">
+            <div className="template-actions">
+              <button className="tpl-btn" onClick={() => addNote('todo')} title="Add To-do List"><FaListUl /></button>
+              <button className="tpl-btn" onClick={() => addNote('meeting')} title="Add Meeting Notes"><FaFileAlt /></button>
+              <button className="tpl-btn" onClick={() => addNote('code')} title="Add Code Snippet"><FaCode /></button>
+            </div>
           </div>
 
-          <div className="color-selector">
-            {COLORS.map(c => (
-              <button
-                key={c.id}
-                className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
-                style={{ backgroundColor: c.color }}
-                onClick={() => setSelectedColor(c.id)}
-              />
-            ))}
+          <div className="toolbar-group toolbar-group-colors">
+            <div className="color-selector">
+              {COLORS.map(c => (
+                <button
+                  key={c.id}
+                  className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
+                  style={{ backgroundColor: c.color }}
+                  onClick={() => setSelectedColor(c.id)}
+                  title={c.id}
+                />
+              ))}
+            </div>
           </div>
+
           <button className="create-note-btn" onClick={() => addNote('blank')}>
             <FaPlus /> NEW_ENTRY
           </button>
@@ -1832,13 +1843,10 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme, dragHandlePro
       style={{ '--accent-color': accentColor, '--accent-rgb': accentRgb }}
       onClick={() => onFocus(note.id)}
     >
-      <div className="k-category-tab">
-        {category}
-      </div>
-
       <div className="k-note-header" {...(dragHandleProps || {})}>
         <span className="k-drag-handle" title="Drag to reorder">⠿</span>
         <span className="k-time">[ {note.timestamp} ]</span>
+        <span className="k-category-chip" title={category}>{category}</span>
         <div className="k-actions">
           <button
             className={showDrawing ? 'active' : ''}

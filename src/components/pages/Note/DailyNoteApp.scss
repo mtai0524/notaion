@@ -43,13 +43,29 @@
   }
 
   .app-toolbar-cyber {
-    padding: 1.2rem 2rem;
+    padding: 0.8rem 1.2rem;
     background: var(--toolbar-bg);
     border-bottom: 2px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
     z-index: 100;
+
+    @media (max-width: 768px) {
+      padding: 0.6rem 0.8rem;
+      gap: 8px;
+
+      .toolbar-group {
+        padding: 3px 6px !important;
+      }
+
+      .toolbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
 
     // Light theme toolbar emphasis
     .theme-light & {
@@ -135,7 +151,30 @@
     .toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 10px;
+      flex-wrap: wrap;
+      row-gap: 8px;
+      justify-content: flex-end;
+
+      .toolbar-group {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--global-border-radius, 4px);
+        background: rgba(var(--accent-rgb, 59, 130, 246), 0.03);
+
+        &.toolbar-group-search {
+          padding: 0;
+          background: transparent;
+          border: none;
+        }
+
+        &.toolbar-group-colors {
+          padding: 4px 8px;
+        }
+      }
 
       .search-box-cyber {
         position: relative;
@@ -464,9 +503,7 @@
 
       .template-actions {
         display: flex;
-        gap: 0.5rem;
-        padding-right: 1.5rem;
-        border-right: 1px solid var(--border-color);
+        gap: 6px;
 
         .tpl-btn {
           background: transparent;
@@ -489,7 +526,23 @@
       }
 
       .color-selector {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+
         .color-option {
+          width: 20px;
+          height: 20px;
+          padding: 0;
+          border: 1px solid var(--border-color);
+          border-radius: 50%;
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+          &:hover {
+            transform: scale(1.1);
+          }
+
           &.active {
             box-shadow: 0 0 0 2px var(--text-color);
 
@@ -768,44 +821,43 @@
             border-color: var(--accent-color);
           }
 
-          // Category badge in top-right of header — terminal-style chip
-          .k-category-tab {
-            position: absolute;
-            top: 4px;
-            right: 10px;
-            padding: 0 6px;
-            font-size: 0.55rem;
-            font-weight: 800;
-            color: var(--accent-color);
-            background: transparent;
-            border: 1px solid var(--accent-color);
-            border-radius: 0;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            line-height: 14px;
-            z-index: 2;
-
-            .note-theme-light &,
-            .note-theme-sticky & {
-              color: var(--accent-color);
-              background: transparent;
-            }
-          }
-
           .k-note-header {
-            height: 30px;
+            min-height: 32px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 0 12px;
+            gap: 8px;
+            padding: 4px 10px;
             border-bottom: 1px solid var(--border-color);
             background: transparent;
             margin: 0;
             cursor: grab;
             user-select: none;
+            flex-wrap: nowrap;
 
             &:active {
               cursor: grabbing;
+            }
+
+            // Category chip inline (replaces old absolute .k-category-tab so
+            // it never overlaps the action buttons).
+            .k-category-chip {
+              flex: 1 1 auto;
+              min-width: 0;
+              padding: 0 8px;
+              font-size: 0.58rem;
+              font-weight: 800;
+              color: var(--accent-color);
+              background: rgba(var(--accent-rgb), 0.08);
+              border: 1px solid var(--accent-color);
+              border-radius: 2px;
+              text-transform: uppercase;
+              letter-spacing: 1px;
+              line-height: 16px;
+              text-align: center;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              max-width: 90px;
             }
 
             .k-drag-handle {
@@ -814,11 +866,12 @@
               justify-content: center;
               width: 14px;
               height: 14px;
-              margin-right: 8px;
+              margin-right: 2px;
               font-size: 0.9rem;
               line-height: 1;
               color: var(--text-muted);
               transition: color 0.15s;
+              flex-shrink: 0;
 
               &:hover {
                 color: var(--accent-color);
@@ -833,6 +886,8 @@
               padding: 0;
               border-radius: 0;
               letter-spacing: 1px;
+              flex-shrink: 0;
+              white-space: nowrap;
 
               .theme-light &,
               .note-theme-light &,
@@ -848,6 +903,8 @@
               display: flex;
               gap: 10px;
               cursor: default;
+              flex-shrink: 0;
+              margin-left: auto;
 
               button {
                 background: none;
