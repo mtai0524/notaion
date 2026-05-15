@@ -947,7 +947,34 @@ const DailyNoteApp = () => {
           });
 
           connection.on("NoteDeleted", (noteId) => {
-            setNotesByDate(prev => ({
+            setNotesByDate(prev => {
+              const current = prev[dateKey] || [];
+              const removed = current.find(n => n.id === noteId);
+              if (removed) {
+                setTrashByDate(t => ({
+                  ...t,
+                  [dateKey]: [...(t[dateKey] || []).filter(n => n.id !== noteId), { ...removed, isDeleted: true, deletedAt: new Date().toISOString() }]
+                }));
+              }
+              return { ...prev, [dateKey]: current.filter(n => n.id !== noteId) };
+            });
+          });
+
+          connection.on("NoteRestored", (restored) => {
+            if (restored.date !== dateKey) return;
+            setTrashByDate(prev => ({
+              ...prev,
+              [dateKey]: (prev[dateKey] || []).filter(n => n.id !== restored.id)
+            }));
+            setNotesByDate(prev => {
+              const current = prev[dateKey] || [];
+              if (current.some(n => n.id === restored.id)) return prev;
+              return { ...prev, [dateKey]: [...current, { ...restored, isFocused: false, isDeleting: false }] };
+            });
+          });
+
+          connection.on("NotePurged", (noteId) => {
+            setTrashByDate(prev => ({
               ...prev,
               [dateKey]: (prev[dateKey] || []).filter(n => n.id !== noteId)
             }));
@@ -978,14 +1005,20 @@ const DailyNoteApp = () => {
     console.log(`[SYSTEM] Syncing notes for ${date}...`);
     setLoading(true);
     try {
-      const response = await axiosInstance.get(`/api/DailyNote/${date}`);
+      const response = await axiosInstance.get(`/api/DailyNote/${date}?includeDeleted=true`);
+      const active = response.data.filter(n => !n.isDeleted);
+      const deleted = response.data
+        .filter(n => n.isDeleted)
+        .map(n => ({ ...n, deletedAt: n.updatedAt || new Date().toISOString() }));
+
       setNotesByDate(prev => ({
         ...prev,
-        [date]: response.data.map(n => ({ ...n, isFocused: false, isDeleting: false }))
+        [date]: active.map(n => ({ ...n, isFocused: false, isDeleting: false }))
       }));
+      setTrashByDate(prev => ({ ...prev, [date]: deleted }));
 
-      if (response.data.length > 0) {
-        const maxZ = Math.max(...response.data.map(n => n.zIndex));
+      if (active.length > 0) {
+        const maxZ = Math.max(...active.map(n => n.zIndex));
         setTopZIndex(prev => Math.max(prev, maxZ));
       }
     } catch (error) {
@@ -1123,7 +1156,6 @@ const DailyNoteApp = () => {
     const { isFocused, isDeleting, deletedAt, ...rest } = trashedNote;
     const restored = {
       ...rest,
-      id: uuidv4(),
       isDeleted: false,
       isMinimized: false,
       isFullscreen: false,
@@ -1144,7 +1176,7 @@ const DailyNoteApp = () => {
 
     try {
       setSyncStatus('saving');
-      await axiosInstance.post('/api/DailyNote', restored);
+      await axiosInstance.post(`/api/DailyNote/${trashedNote.id}/restore`);
       setSyncStatus('saved');
     } catch (err) {
       console.error('[RESTORE-ERROR]', err);
@@ -1152,16 +1184,27 @@ const DailyNoteApp = () => {
     }
   };
 
-  const purgeTrashedNote = (trashId) => {
+  const purgeTrashedNote = async (trashId) => {
     setTrashByDate(prev => ({
       ...prev,
       [dateKey]: (prev[dateKey] || []).filter(n => n.id !== trashId)
     }));
+    try {
+      await axiosInstance.delete(`/api/DailyNote/${trashId}/permanent`);
+    } catch (err) {
+      console.error('[PURGE-ERROR]', err);
+    }
   };
 
-  const clearTrash = () => {
+  const clearTrash = async () => {
     if (!window.confirm('Empty today\'s trash? Notes here will no longer be restorable from this view.')) return;
+    const ids = (trashByDate[dateKey] || []).map(n => n.id);
     setTrashByDate(prev => ({ ...prev, [dateKey]: [] }));
+    try {
+      await Promise.all(ids.map(id => axiosInstance.delete(`/api/DailyNote/${id}/permanent`)));
+    } catch (err) {
+      console.error('[CLEAR-TRASH-ERROR]', err);
+    }
   };
 
   const focusNote = (id) => {
