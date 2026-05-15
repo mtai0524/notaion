@@ -1,8 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
+const REACT_VENDOR_RE = /node_modules\/(react|react-dom|scheduler|its-fine|use-sync-external-store)(\/|$)/;
+
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    dedupe: ["react", "react-dom"],
+  },
   server: {
     port: 2405,
   },
@@ -11,13 +16,15 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules")) {
-            return id
-              .toString()
-              .split("node_modules/")[1]
-              .split("/")[0]
-              .toString();
-          }
+          if (!id.includes("node_modules")) return;
+
+          if (REACT_VENDOR_RE.test(id)) return "react-vendor";
+
+          return id
+            .toString()
+            .split("node_modules/")[1]
+            .split("/")[0]
+            .toString();
         },
       },
     },
