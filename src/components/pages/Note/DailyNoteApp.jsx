@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Rnd } from 'react-rnd';
 import ReactMarkdown from 'react-markdown';
@@ -13,7 +13,8 @@ import {
   FaSun as FaGlow, FaCloud as FaBlur, FaAlignLeft, FaAlignCenter, FaAlignRight, FaCog,
   FaLink, FaUnlink, FaEye, FaEyeSlash, FaSyncAlt, FaRulerCombined, FaFont,
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
-  FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain
+  FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain,
+  FaImage, FaPaperclip, FaDownload
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import * as signalR from '@microsoft/signalr';
@@ -21,6 +22,7 @@ import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
 import config from '../../../config';
 import axiosInstance from '../../../axiosConfig';
+import { uploadFilesToCloudinary } from '../../../services/fileService';
 import debounce from 'lodash.debounce';
 import './DailyNoteApp.scss';
 
@@ -34,6 +36,19 @@ const COLORS = [
 ];
 
 const CATEGORIES = ['SYSTEM', 'TASK', 'IDEA', 'LOG', 'MEMO'];
+
+// Anime/scenic-themed canvas backgrounds. Gradients ship by default because they
+// always render reliably; users can paste any image URL via the "Custom URL" input.
+const CANVAS_BG_TEMPLATES = [
+  { id: 'none', name: 'OFF', value: null },
+  { id: 'sakura', name: 'SAKURA', value: 'linear-gradient(135deg, #ffd1dc 0%, #ff9aa2 50%, #ffaaa5 100%)' },
+  { id: 'cyber', name: 'CYBER', value: 'linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%)' },
+  { id: 'sunset', name: 'SUNSET', value: 'linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%)' },
+  { id: 'ocean', name: 'OCEAN', value: 'linear-gradient(135deg, #2980b9 0%, #6dd5fa 50%, #ffffff 100%)' },
+  { id: 'matrix', name: 'MATRIX', value: 'linear-gradient(135deg, #000000 0%, #003300 100%)' },
+  { id: 'aurora', name: 'AURORA', value: 'linear-gradient(135deg, #00c9ff 0%, #92fe9d 100%)' },
+  { id: 'midnight', name: 'NIGHT', value: 'radial-gradient(ellipse at top, #1b2735 0%, #090a0f 100%)' },
+];
 
 // ── Drawing Preview Component ──
 const DrawingPreview = ({ data, color, onClick }) => {
@@ -133,6 +148,70 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [showProps, setShowProps] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('STYLE');
+  const [, forceTick] = useState(0);
+  const [uploading, setUploading] = useState(false);
+  const imgInputRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Re-render fullscreen note when window resizes so it tracks viewport size.
+  useEffect(() => {
+    if (!note.isFullscreen) return;
+    const onResize = () => forceTick(t => t + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [note.isFullscreen]);
+
+  const formatFileSize = (bytes) => {
+    if (!bytes && bytes !== 0) return '';
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  };
+
+  const handleAttachmentUpload = async (files) => {
+    const list = Array.from(files || []);
+    if (list.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded = await uploadFilesToCloudinary(list);
+      const newAttachments = uploaded.map(f => ({
+        type: (f.contentType || '').startsWith('image/') ? 'image' : 'file',
+        url: f.cloudUrl,
+        name: f.originalName,
+        size: f.sizeInBytes,
+        contentType: f.contentType,
+      }));
+      onUpdate(note.id, { attachments: [...(note.attachments || []), ...newAttachments] });
+    } catch (err) {
+      console.error('[NOTE-UPLOAD-ERROR]', err);
+      alert('Failed to upload attachment');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const pastedFiles = [];
+    for (const item of items) {
+      if (item.kind === 'file') {
+        const f = item.getAsFile();
+        if (f) pastedFiles.push(f);
+      }
+    }
+    if (pastedFiles.length > 0) {
+      e.preventDefault();
+      handleAttachmentUpload(pastedFiles);
+    }
+  };
+
+  const removeAttachment = (url) => {
+    onUpdate(note.id, { attachments: (note.attachments || []).filter(a => a.url !== url) });
+  };
+
+  const imageAttachments = (note.attachments || []).filter(a => a.type === 'image');
+  const fileAttachments = (note.attachments || []).filter(a => a.type !== 'image');
 
   const theme = COLORS.find(c => c.id === note.color) || COLORS[0];
   const accentColor = note.customColor || theme.color;
@@ -245,16 +324,22 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
 
   return (
     <Rnd
-      size={{
-        width: note.width,
-        height: note.isMinimized ? 40 : note.height
-      }}
-      position={{ x: Math.max(0, note.x || 0), y: Math.max(0, note.y || 0) }}
+      size={
+        note.isFullscreen
+          ? { width: window.innerWidth, height: window.innerHeight - 80 }
+          : { width: note.width, height: note.isMinimized ? 40 : note.height }
+      }
+      position={
+        note.isFullscreen
+          ? { x: 0, y: 0 }
+          : { x: Math.max(0, note.x || 0), y: Math.max(0, note.y || 0) }
+      }
       onDragStop={(e, d) => {
+        if (note.isFullscreen) return;
         onUpdate(note.id, { x: Math.max(0, d.x), y: Math.max(0, d.y) });
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
-        if (!note.isMinimized) {
+        if (!note.isMinimized && !note.isFullscreen) {
           onUpdate(note.id, {
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
@@ -263,14 +348,14 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           });
         }
       }}
-      disableResizing={note.isMinimized || note.locked}
+      disableResizing={note.isMinimized || note.locked || note.isFullscreen}
       dragHandleClassName="note-header"
       minWidth={200}
       minHeight={note.isMinimized ? 40 : 150}
       bounds={false}
-      disableDragging={note.locked}
+      disableDragging={note.locked || note.isFullscreen}
       style={{
-        zIndex: note.zIndex,
+        zIndex: note.isFullscreen ? 9999 : note.zIndex,
         position: 'absolute',
         opacity: note.opacity || 1
       }}
@@ -300,6 +385,11 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         <div className={`note-header ${note.hideHeader ? 'header-hidden' : ''}`}>
           <div className="header-left">
             {!note.hideHeader && <span className="timestamp">[ {note.timestamp} ]</span>}
+            {!note.hideHeader && note.updatedAt && (
+              <span className="timestamp updated-at" title={`Last edited: ${new Date(note.updatedAt).toLocaleString()}`}>
+                ~ {format(new Date(note.updatedAt), 'HH:mm')}
+              </span>
+            )}
           </div>
           <div className="header-actions">
             <button className="action-btn config-btn" onClick={() => setShowProps(!showProps)}>
@@ -308,8 +398,31 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
             <button className={`action-btn copy-btn ${copied ? 'active' : ''}`} onClick={handleCopy} title="Copy Content">
               {copied ? <FaCheck /> : <FaCopy />}
             </button>
+            <button
+              className="action-btn upload-img-btn"
+              onClick={(e) => { e.stopPropagation(); imgInputRef.current?.click(); }}
+              title="Upload image"
+              disabled={uploading}
+            >
+              <FaImage />
+            </button>
+            <button
+              className="action-btn upload-file-btn"
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+              title="Upload file"
+              disabled={uploading}
+            >
+              <FaPaperclip />
+            </button>
             <button className="action-btn minimize-btn" onClick={toggleMinimize} title="Minimize/Maximize">
               {note.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
+            </button>
+            <button
+              className="action-btn fullscreen-btn"
+              onClick={(e) => { e.stopPropagation(); onUpdate(note.id, { isFullscreen: !note.isFullscreen }); }}
+              title={note.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            >
+              {note.isFullscreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
             </button>
             <button className="action-btn color-btn" onClick={cycleColor}>
               <FaPalette />
@@ -577,7 +690,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         )}
 
         {!note.isMinimized && (
-          <div className="note-body">
+          <div className="note-body" onPaste={handlePaste}>
             <input
               className="note-title-input"
               value={note.title || ''}
@@ -587,13 +700,32 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
               style={{ textAlign: getTitleAlign(note.titleAlign) }}
             />
 
+            {imageAttachments.length > 0 && (
+              <div className="note-image-attachments">
+                {imageAttachments.map(att => (
+                  <div className="note-image-item" key={att.url}>
+                    <a href={att.url} target="_blank" rel="noopener noreferrer">
+                      <img src={att.url} alt={att.name} />
+                    </a>
+                    <button
+                      className="att-remove"
+                      onClick={(e) => { e.stopPropagation(); removeAttachment(att.url); }}
+                      title="Remove"
+                    >
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="content-container" onClick={startEditing}>
               {isEditing ? (
                 <textarea
                   className="note-content-area"
                   value={note.content || ''}
                   onChange={(e) => onUpdate(note.id, { content: e.target.value })}
-                  placeholder="> waiting for input..."
+                  placeholder="> waiting for input... (paste image/file to attach)"
                   autoFocus
                   onBlur={() => setIsEditing(false)}
                 />
@@ -607,6 +739,42 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                 </div>
               )}
             </div>
+
+            {fileAttachments.length > 0 && (
+              <div className="note-file-attachments">
+                {fileAttachments.map(att => (
+                  <div className="att-chip" key={att.url} onClick={(e) => e.stopPropagation()}>
+                    <FaFileAlt className="att-icon" />
+                    <span className="att-name" title={att.name}>{att.name}</span>
+                    {att.size != null && <span className="att-size">{formatFileSize(att.size)}</span>}
+                    <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.name} className="att-action" title="Download">
+                      <FaDownload />
+                    </a>
+                    <button className="att-remove" onClick={() => removeAttachment(att.url)} title="Remove">
+                      <FaTimes />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {uploading && <div className="note-upload-indicator">Uploading...</div>}
+
+            <input
+              ref={imgInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(e) => { handleAttachmentUpload(e.target.files); e.target.value = ''; }}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(e) => { handleAttachmentUpload(e.target.files); e.target.value = ''; }}
+            />
           </div>
         )}
       </div>
@@ -641,6 +809,9 @@ const DailyNoteApp = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
   const [searchQuery, setSearchQuery] = useState('');
   const [showGrid, setShowGrid] = useState(true);
+  const [canvasBg, setCanvasBg] = useState(() => localStorage.getItem('daily-note-canvas-bg') || '');
+  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [customBgUrl, setCustomBgUrl] = useState('');
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
@@ -689,6 +860,27 @@ const DailyNoteApp = () => {
     setTheme(newTheme);
     localStorage.setItem('daily-note-theme', newTheme);
   };
+
+  const applyCanvasBg = (val) => {
+    if (!val) {
+      setCanvasBg('');
+      localStorage.removeItem('daily-note-canvas-bg');
+    } else {
+      setCanvasBg(val);
+      localStorage.setItem('daily-note-canvas-bg', val);
+    }
+  };
+
+  const canvasBgStyle = canvasBg
+    ? {
+      backgroundImage: canvasBg.startsWith('http') || canvasBg.startsWith('data:')
+        ? `url("${canvasBg}")`
+        : canvasBg,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+    }
+    : undefined;
 
   useEffect(() => {
     if (connection && userId) {
@@ -832,6 +1024,7 @@ const DailyNoteApp = () => {
       // Leave customTextColor unset so the note follows the current theme
       // dynamically; setting it here would freeze the color at creation time.
       customTextColor: null,
+      updatedAt: new Date().toISOString(),
     };
 
     setTopZIndex(prev => prev + 1);
@@ -852,8 +1045,9 @@ const DailyNoteApp = () => {
   };
 
   const updateNote = (id, updates) => {
+    const stamp = { updatedAt: new Date().toISOString() };
     setNotesByDate(prev => {
-      const updated = (prev[dateKey] || []).map(n => n.id === id ? { ...n, ...updates } : n);
+      const updated = (prev[dateKey] || []).map(n => n.id === id ? { ...n, ...updates, ...stamp } : n);
       saveNotesToBackend(updated.map(n => ({ ...n, date: dateKey })));
       return {
         ...prev,
@@ -1145,6 +1339,58 @@ const DailyNoteApp = () => {
             {theme === 'dark' ? <FaSun /> : <FaMoon />}
           </button>
 
+          <div className="bg-picker-container">
+            <button
+              className={`nav-btn bg-picker-toggle ${canvasBg ? 'active' : ''}`}
+              onClick={() => setShowBgPicker(v => !v)}
+              title="Canvas Background"
+            >
+              <FaImage />
+            </button>
+            {showBgPicker && (
+              <div className="bg-picker-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="bg-picker-header">CANVAS_BG</div>
+                <div className="bg-picker-grid">
+                  {CANVAS_BG_TEMPLATES.map(tpl => (
+                    <button
+                      key={tpl.id}
+                      className={`bg-tpl ${(canvasBg || null) === tpl.value ? 'active' : ''}`}
+                      style={tpl.value ? { background: tpl.value } : undefined}
+                      onClick={() => applyCanvasBg(tpl.value)}
+                      title={tpl.name}
+                    >
+                      <span>{tpl.name}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="bg-picker-custom">
+                  <input
+                    type="text"
+                    placeholder="Paste anime image URL..."
+                    value={customBgUrl}
+                    onChange={(e) => setCustomBgUrl(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && customBgUrl.trim()) {
+                        applyCanvasBg(customBgUrl.trim());
+                        setShowBgPicker(false);
+                      }
+                    }}
+                  />
+                  <button
+                    className="bg-apply-btn"
+                    onClick={() => {
+                      if (customBgUrl.trim()) {
+                        applyCanvasBg(customBgUrl.trim());
+                        setShowBgPicker(false);
+                      }
+                    }}
+                  >APPLY</button>
+                </div>
+                <button className="bg-close" onClick={() => setShowBgPicker(false)}><FaTimes /> CLOSE</button>
+              </div>
+            )}
+          </div>
+
           <button className={`nav-btn ${viewMode === 'kanban' ? 'active' : ''}`} onClick={() => setViewMode(viewMode === 'canvas' ? 'kanban' : 'canvas')} title="Toggle View Mode">
             {viewMode === 'canvas' ? <FaTh /> : <FaLayerGroup />}
           </button>
@@ -1172,8 +1418,9 @@ const DailyNoteApp = () => {
       </header>
 
       <main
-        className="note-canvas-cyber"
+        className={`note-canvas-cyber ${canvasBg ? 'has-custom-bg' : ''}`}
         ref={canvasRef}
+        style={canvasBgStyle}
         onContextMenu={handleContextMenu}
         onMouseDown={handleCanvasMouseDown}
         onMouseMove={handleCanvasMouseMove}

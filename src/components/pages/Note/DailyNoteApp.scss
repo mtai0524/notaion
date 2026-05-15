@@ -183,6 +183,113 @@
         }
       }
 
+      .bg-picker-container {
+        position: relative;
+
+        .bg-picker-toggle.active {
+          color: var(--accent-color) !important;
+          border-color: var(--accent-color);
+        }
+
+        .bg-picker-dropdown {
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          z-index: 1000;
+          width: 280px;
+          background: var(--container-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          padding: 12px;
+          box-shadow: var(--box-shadow-sm);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+
+          .bg-picker-header {
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            letter-spacing: 0.05em;
+          }
+
+          .bg-picker-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+
+            .bg-tpl {
+              height: 50px;
+              border-radius: 4px;
+              border: 1px solid var(--border-color);
+              cursor: pointer;
+              color: #fff;
+              font-size: 0.6rem;
+              font-weight: bold;
+              text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              transition: transform 0.15s, border-color 0.15s;
+              background: transparent;
+
+              &:hover { transform: scale(1.05); }
+              &.active {
+                border: 2px solid var(--accent-color);
+                box-shadow: 0 0 0 2px rgba(var(--accent-rgb, 137, 221, 255), 0.3);
+              }
+            }
+          }
+
+          .bg-picker-custom {
+            display: flex;
+            gap: 6px;
+
+            input {
+              flex: 1;
+              padding: 6px 8px;
+              background: var(--bg-color);
+              border: 1px solid var(--border-color);
+              border-radius: 4px;
+              color: var(--text-color);
+              font-size: 0.7rem;
+              font-family: inherit;
+              outline: none;
+
+              &:focus { border-color: var(--accent-color); }
+            }
+
+            .bg-apply-btn {
+              padding: 6px 10px;
+              background: var(--accent-color);
+              color: #fff;
+              border: none;
+              border-radius: 4px;
+              font-size: 0.65rem;
+              font-weight: bold;
+              cursor: pointer;
+              letter-spacing: 0.05em;
+            }
+          }
+
+          .bg-close {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 4px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+
+            &:hover { color: var(--danger-color, #ef4444); }
+          }
+        }
+      }
+
       .template-actions {
         display: flex;
         gap: 0.5rem;
@@ -1078,8 +1185,7 @@
     text-transform: uppercase;
     z-index: 10;
     font-weight: bold;
-    border: 1px solid var(--border-color);
-    border-bottom: none;
+    border: none;
   }
 
   &.category-hidden::before {
@@ -1114,10 +1220,20 @@
     }
 
     .header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
       .timestamp {
         font-size: 0.65rem;
         color: var(--text-color);
         font-weight: bold;
+
+        &.updated-at {
+          color: var(--text-muted);
+          font-weight: normal;
+          opacity: 0.75;
+        }
       }
     }
 
@@ -1164,6 +1280,104 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+
+    .note-image-attachments {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 40%;
+      overflow-y: auto;
+
+      .note-image-item {
+        position: relative;
+
+        a { display: block; }
+
+        img {
+          max-width: 120px;
+          max-height: 90px;
+          object-fit: cover;
+          border-radius: 4px;
+          border: 1px solid var(--border-color);
+          display: block;
+        }
+
+        .att-remove {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: var(--danger-color, #ef4444);
+          color: #fff;
+          border: none;
+          cursor: pointer;
+          font-size: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          opacity: 0;
+          transition: opacity 0.15s;
+        }
+
+        &:hover .att-remove { opacity: 1; }
+      }
+    }
+
+    .note-file-attachments {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 30%;
+      overflow-y: auto;
+
+      .att-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        background: rgba(var(--accent-rgb), 0.08);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        font-size: 0.7rem;
+        color: var(--text-color);
+
+        .att-icon { color: var(--accent-color); flex-shrink: 0; }
+        .att-name {
+          flex: 1;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .att-size {
+          color: var(--text-muted);
+          font-size: 0.65rem;
+          flex-shrink: 0;
+        }
+        .att-action,
+        .att-remove {
+          background: none;
+          border: none;
+          color: var(--text-muted);
+          cursor: pointer;
+          padding: 2px;
+          display: flex;
+          align-items: center;
+          font-size: 0.7rem;
+          text-decoration: none;
+
+          &:hover { color: var(--accent-color); }
+        }
+        .att-remove:hover { color: var(--danger-color, #ef4444); }
+      }
+    }
+
+    .note-upload-indicator {
+      font-size: 0.7rem;
+      color: var(--accent-color);
+      font-style: italic;
     }
 
     .note-title-input {
