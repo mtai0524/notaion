@@ -278,7 +278,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div
-        className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
+        className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} ${note.hideCategory ? 'category-hidden' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
         data-category={note.customCategory || note.category}
         style={{
           '--accent-color': accentColor,
@@ -503,6 +503,10 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                       <div className="ins-control" onClick={() => onUpdate(note.id, { hideHeader: !note.hideHeader })}>
                         {note.hideHeader ? <FaEyeSlash className="active-icon" /> : <FaEye />}
                         <span>HEADER</span>
+                      </div>
+                      <div className="ins-control" onClick={() => onUpdate(note.id, { hideCategory: !note.hideCategory })}>
+                        <FaTag className={note.hideCategory ? 'active-icon' : ''} />
+                        <span>{note.hideCategory ? 'CAT_OFF' : 'CAT_ON'}</span>
                       </div>
                       <div className="ins-control" onClick={() => onUpdate(note.id, { isCompleted: !note.isCompleted })}>
                         <FaCheckCircle className={note.isCompleted ? 'active-icon' : ''} />

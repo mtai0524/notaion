@@ -1082,6 +1082,10 @@
     border-bottom: none;
   }
 
+  &.category-hidden::before {
+    display: none;
+  }
+
   .note-header {
     height: 35px;
     cursor: move;
