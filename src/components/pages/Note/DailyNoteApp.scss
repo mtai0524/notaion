@@ -57,13 +57,16 @@
       padding: 0.6rem 0.8rem;
       gap: 8px;
 
-      .toolbar-group {
-        padding: 3px 6px !important;
-      }
-
       .toolbar-actions {
         width: 100%;
         justify-content: flex-start;
+        row-gap: 6px;
+      }
+
+      // On wrap, the ::before dividers from previous-line groups look stranded.
+      // Suppress them; the row-gap is enough visual separation.
+      .toolbar-actions .toolbar-group + .toolbar-group::before {
+        display: none;
       }
     }
 
@@ -151,28 +154,30 @@
     .toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
       flex-wrap: wrap;
       row-gap: 8px;
       justify-content: flex-end;
 
+      // Flat groups: no boxed border. Just a hair-line divider between groups
+      // for clarity. Search group skips the divider since it sits at the edge.
       .toolbar-group {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: var(--global-border-radius, 4px);
-        background: rgba(var(--accent-rgb, 59, 130, 246), 0.03);
+        position: relative;
+        padding: 0 4px;
 
-        &.toolbar-group-search {
-          padding: 0;
-          background: transparent;
-          border: none;
-        }
-
-        &.toolbar-group-colors {
-          padding: 4px 8px;
+        & + .toolbar-group::before {
+          content: "";
+          position: absolute;
+          left: -8px;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 1px;
+          height: 22px;
+          background: var(--border-color);
+          opacity: 0.5;
         }
       }
 
