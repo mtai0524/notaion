@@ -242,16 +242,17 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         width: note.width,
         height: note.isMinimized ? 40 : note.height
       }}
-      position={{ x: note.x, y: note.y }}
+      position={{ x: Math.max(0, note.x || 0), y: Math.max(0, note.y || 0) }}
       onDragStop={(e, d) => {
-        onUpdate(note.id, { x: d.x, y: d.y });
+        onUpdate(note.id, { x: Math.max(0, d.x), y: Math.max(0, d.y) });
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
         if (!note.isMinimized) {
           onUpdate(note.id, {
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
-            ...position,
+            x: Math.max(0, position.x),
+            y: Math.max(0, position.y),
           });
         }
       }}
