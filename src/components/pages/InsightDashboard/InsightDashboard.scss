@@ -135,9 +135,17 @@
 
   .stats-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    grid-template-columns: repeat(6, 1fr);
     gap: 16px;
     margin-bottom: 24px;
+
+    @media (max-width: 1280px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
 
     .stat-card {
       background: var(--panel-bg);
@@ -632,8 +640,12 @@
 
   .tod-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
     gap: 10px;
+
+    @media (max-width: 900px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
 
     .tod-card {
       border: 1px solid var(--panel-border);
@@ -1057,9 +1069,60 @@
 
           .value {
             font-size: 1.25rem;
+
+            small {
+              font-size: 0.55rem;
+            }
           }
         }
       }
+    }
+
+    .bar-list {
+      .bar-label {
+        font-size: 0.7rem;
+
+        .bar-meta {
+          font-size: 0.65rem;
+        }
+      }
+    }
+
+    .tod-grid .tod-card {
+      padding: 10px;
+
+      .tod-count {
+        font-size: 1.1rem;
+      }
+    }
+
+    .recent-files-list .recent-file-item {
+      padding: 8px;
+      gap: 8px;
+
+      .rf-icon {
+        width: 26px;
+        height: 26px;
+      }
+
+      .rf-info .rf-name {
+        font-size: 0.75rem;
+      }
+
+      .rf-info .rf-meta {
+        font-size: 0.6rem;
+      }
+    }
+
+    .focus-item .focus-check {
+      width: 24px;
+      height: 24px;
+      font-size: 0.8rem;
+    }
+
+    .filter-pill {
+      font-size: 0.55rem;
+      padding: 2px 6px;
     }
 
     .dashboard-content {
@@ -1185,8 +1248,19 @@
       flex-direction: column;
       align-items: stretch;
 
+      .header-actions {
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+      }
+
       .action-btn-neo {
         justify-content: center;
+        width: 100%;
+      }
+
+      .header-search {
+        width: 100%;
       }
     }
 
@@ -1196,6 +1270,40 @@
 
     .quick-links {
       grid-template-columns: 1fr 1fr;
+    }
+
+    .tod-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .recent-files-list .recent-file-item {
+      .rf-info .rf-name {
+        font-size: 0.7rem;
+      }
+    }
+
+    .activity-item {
+      flex-wrap: wrap;
+
+      .item-content {
+        flex: 1 1 100%;
+        order: 2;
+      }
+
+      .item-date {
+        order: 1;
+      }
+
+      .item-link {
+        order: 3;
+      }
+    }
+
+    .heatmap-section .panel-header {
+      .heatmap-filters {
+        width: 100%;
+        justify-content: flex-start;
+      }
     }
   }
 }

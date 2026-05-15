@@ -23,7 +23,15 @@ const CSS_VAR_MAP = {
   globalShadowY: { var: '--global-shadow-y', fallback: '4px' }
 };
 
-const readBool = (key) => localStorage.getItem(key) === 'true';
+const DEFAULT_MODE_VALUES = {
+  eyeProtection: true,
+};
+
+const readBool = (key) => {
+  const v = localStorage.getItem(key);
+  if (v === null) return DEFAULT_MODE_VALUES[key] ?? false;
+  return v === 'true';
+};
 
 export const applyGlobalSettings = () => {
   if (typeof document === 'undefined') return;

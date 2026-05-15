@@ -19,7 +19,10 @@ const Setting = () => {
   const [bubble, setBubble] = useState(localStorage.getItem("isBubbleMenuVisible") === "true");
   const [controls, setControls] = useState(localStorage.getItem("isControlsMenuVisible") === "true");
   const [force, setForce] = useState(localStorage.getItem("forceDelete") === "true");
-  const [eyeProtection, setEyeProtection] = useState(localStorage.getItem("eyeProtection") === "true");
+  const [eyeProtection, setEyeProtection] = useState(() => {
+    const v = localStorage.getItem("eyeProtection");
+    return v === null ? true : v === "true";
+  });
   const [darkMode, setDarkMode] = useState(localStorage.getItem("darkMode") === "true");
   const [focusMode, setFocusMode] = useState(localStorage.getItem("focusMode") === "true");
   const [partyMode, setPartyMode] = useState(localStorage.getItem("partyMode") === "true");
