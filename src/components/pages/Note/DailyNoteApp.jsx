@@ -14,7 +14,7 @@ import {
   FaLink, FaUnlink, FaEye, FaEyeSlash, FaSyncAlt, FaRulerCombined, FaFont,
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
   FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain,
-  FaImage, FaPaperclip, FaDownload, FaUndo, FaTrash
+  FaImage, FaPaperclip, FaDownload, FaUndo, FaTrash, FaChevronDown
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import * as signalR from '@microsoft/signalr';
@@ -844,6 +844,8 @@ const DailyNoteApp = () => {
   const [customBgUrl, setCustomBgUrl] = useState('');
   const [trashByDate, setTrashByDate] = useState({});
   const [showTrash, setShowTrash] = useState(false);
+  const [showNewMenu, setShowNewMenu] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState(false);
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
@@ -1599,31 +1601,59 @@ const DailyNoteApp = () => {
             </button>
           </div>
 
-          <div className="toolbar-group toolbar-group-templates">
-            <div className="template-actions">
-              <button className="tpl-btn" onClick={() => addNote('todo')} title="Add To-do List"><FaListUl /></button>
-              <button className="tpl-btn" onClick={() => addNote('meeting')} title="Add Meeting Notes"><FaFileAlt /></button>
-              <button className="tpl-btn" onClick={() => addNote('code')} title="Add Code Snippet"><FaCode /></button>
-            </div>
-          </div>
-
           <div className="toolbar-group toolbar-group-colors">
-            <div className="color-selector">
-              {COLORS.map(c => (
-                <button
-                  key={c.id}
-                  className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
-                  style={{ backgroundColor: c.color }}
-                  onClick={() => setSelectedColor(c.id)}
-                  title={c.id}
+            <div className="color-menu-container">
+              <button
+                className="nav-btn color-menu-btn"
+                onClick={() => setShowColorMenu(v => !v)}
+                title="Default color for new notes"
+              >
+                <span
+                  className="color-swatch-dot"
+                  style={{ backgroundColor: (COLORS.find(c => c.id === selectedColor) || COLORS[0]).color }}
                 />
-              ))}
+                <FaChevronDown className="caret" />
+              </button>
+              {showColorMenu && (
+                <div className="color-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                  <div className="color-menu-header">DEFAULT_COLOR</div>
+                  <div className="color-menu-swatches">
+                    {COLORS.map(c => (
+                      <button
+                        key={c.id}
+                        className={`color-option ${selectedColor === c.id ? 'active' : ''}`}
+                        style={{ backgroundColor: c.color }}
+                        onClick={() => { setSelectedColor(c.id); setShowColorMenu(false); }}
+                        title={c.id}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <button className="create-note-btn" onClick={() => addNote('blank')}>
-            <FaPlus /> NEW_ENTRY
-          </button>
+          <div className="new-menu-container">
+            <button className="create-note-btn" onClick={() => setShowNewMenu(v => !v)}>
+              <FaPlus /> NEW_ENTRY <FaChevronDown className="caret" />
+            </button>
+            {showNewMenu && (
+              <div className="new-menu-dropdown" onClick={(e) => e.stopPropagation()}>
+                <button onClick={() => { addNote('blank'); setShowNewMenu(false); }}>
+                  <FaFileAlt /> Blank
+                </button>
+                <button onClick={() => { addNote('todo'); setShowNewMenu(false); }}>
+                  <FaListUl /> To-do List
+                </button>
+                <button onClick={() => { addNote('meeting'); setShowNewMenu(false); }}>
+                  <FaFileAlt /> Meeting Notes
+                </button>
+                <button onClick={() => { addNote('code'); setShowNewMenu(false); }}>
+                  <FaCode /> Code Snippet
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
