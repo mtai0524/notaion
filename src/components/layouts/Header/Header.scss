@@ -6,10 +6,10 @@
 
 .nav-bell-badge {
   position: absolute;
-  top: 0;
-  right: 10px;
-  background: var(--text-color, #37352f);
-  color: var(--container-bg, #ffffff);
+  top: 2px;
+  right: 6px;
+  background: #ef4444;
+  color: #ffffff;
   border-radius: 999px;
   min-width: 16px;
   height: 16px;
@@ -17,9 +17,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
+  box-shadow: 0 0 0 2px var(--container-bg, #ffffff);
 }
 
 .navbar {
@@ -149,12 +150,13 @@
 
 /* ─── Notification panel ────────────────────────────────────────────── */
 .noti-panel {
-  width: 360px;
+  width: 380px;
   max-width: 92vw;
   background: var(--container-bg, #ffffff);
   color: var(--text-color, #37352f);
   display: flex;
   flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
 }
 
 @keyframes noti-count-pop {
@@ -179,9 +181,9 @@
   top: 0;
   z-index: 5;
   background: var(--container-bg, #ffffff);
-  border-bottom: 1px solid rgba(55, 53, 47, 0.09);
-  padding: 6px 6px 0;
-  gap: 4px;
+  border-bottom: 1px solid rgba(55, 53, 47, 0.1);
+  padding: 0;
+  gap: 0;
 
   .noti-tab {
     flex: 1 1 0;
@@ -190,22 +192,22 @@
     align-items: center;
     justify-content: center;
     gap: 6px;
-    padding: 8px 12px;
+    padding: 11px 12px;
     background: transparent;
-    border: 1px solid transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
     color: rgba(55, 53, 47, 0.55);
-    font-size: 13px;
+    font-size: 12.5px;
     font-weight: 500;
+    letter-spacing: 0.01em;
     cursor: pointer;
-    transition: background-color 0.18s ease, color 0.18s ease,
-      border-color 0.18s ease, transform 0.12s ease;
+    transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
     white-space: nowrap;
     position: relative;
-    border-radius: 10px 10px 4px 4px;
+    border-radius: 0;
 
     svg {
       font-size: 13px;
-      transition: transform 0.2s ease;
     }
 
     span {
@@ -213,30 +215,21 @@
     }
 
     &:hover {
-      background: rgba(55, 53, 47, 0.05);
       color: var(--text-color, #37352f);
-
-      svg {
-        transform: translateY(-1px) rotate(-4deg);
-      }
-    }
-
-    &:active {
-      transform: translateY(1px);
+      background: rgba(55, 53, 47, 0.035);
     }
 
     &.is-active {
-      background: rgba(55, 53, 47, 0.06);
       color: var(--text-color, #37352f);
-      font-weight: 700;
-      border-color: rgba(55, 53, 47, 0.12);
-      box-shadow: inset 0 -2px 0 0 var(--text-color, #37352f);
+      font-weight: 600;
+      border-bottom-color: var(--text-color, #37352f);
+      background: transparent;
     }
   }
 
   .noti-tab-badge {
-    background: var(--text-color, #37352f);
-    color: var(--container-bg, #ffffff);
+    background: #ef4444;
+    color: #ffffff;
     font-size: 10px;
     font-weight: 700;
     padding: 1px 6px;
@@ -251,38 +244,41 @@
 .noti-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 4px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(55, 53, 47, 0.06);
   background: transparent;
 
   .noti-action-btn {
     background: transparent;
-    border: 1px solid rgba(55, 53, 47, 0.12);
+    border: none;
     border-radius: 4px;
-    padding: 3px 8px;
+    padding: 4px 8px;
     font-size: 11px;
     font-weight: 500;
-    color: var(--text-color, #37352f);
+    color: rgba(55, 53, 47, 0.6);
     cursor: pointer;
-    transition: background-color 0.12s ease;
+    transition: background-color 0.12s ease, color 0.12s ease;
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    letter-spacing: 0.01em;
 
     svg {
       font-size: 10px;
     }
 
     &:hover {
-      background: rgba(55, 53, 47, 0.06);
+      background: rgba(55, 53, 47, 0.05);
+      color: var(--text-color, #37352f);
     }
 
     &.is-danger {
-      color: var(--text-color, #37352f);
+      color: rgba(55, 53, 47, 0.6);
 
       &:hover {
-        background: rgba(55, 53, 47, 0.06);
+        background: rgba(239, 68, 68, 0.08);
+        color: #ef4444;
       }
     }
   }
@@ -292,7 +288,13 @@
 .noti-list {
   display: flex;
   flex-direction: column;
-  padding: 4px 4px 14px; // bottom padding tránh item cuối bị clip
+  padding: 0 0 8px;
+  max-height: 480px;
+  overflow-y: auto;
+
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(55, 53, 47, 0.2); border-radius: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
 }
 
 .noti-empty {
@@ -331,19 +333,16 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  // left padding lớn hơn để accent bar 3px có chỗ, không đè lên nội dung
-  padding: 10px 10px 10px 14px;
+  gap: 12px;
+  padding: 12px 14px 12px 26px;
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(55, 53, 47, 0.08);
-  border-left: 3px solid transparent;
+  border-bottom: none;
   border-radius: 0;
   cursor: pointer;
-  transition: background-color 0.12s ease, border-left-color 0.15s ease;
+  transition: background-color 0.12s ease;
   user-select: none;
 
-  // stagger slide-in
   animation: noti-slide-in 0.2s ease both;
 
   @for $i from 1 through 20 {
@@ -352,59 +351,50 @@
     }
   }
 
-  &:last-child {
-    border-bottom: none;
-  }
-
   &:hover {
-    background: rgba(55, 53, 47, 0.05);
-    border-left-color: rgba(55, 53, 47, 0.25);
+    background: rgba(55, 53, 47, 0.04);
   }
 
-  // unread: subtle neutral bar so it stays theme-aware
   &.is-unread {
-    background: rgba(55, 53, 47, 0.04);
-    border-left-color: var(--text-color, #37352f);
+    background: transparent;
 
     &:hover {
-      background: rgba(55, 53, 47, 0.07);
-      border-left-color: var(--text-color, #37352f);
+      background: rgba(55, 53, 47, 0.04);
     }
 
     .noti-name {
       color: var(--text-color, #37352f);
-      font-weight: 700;
+      font-weight: 600;
     }
   }
 
   &.is-read {
     background: transparent;
-    opacity: 1;
+    opacity: 0.78;
   }
 
   .unread-dot {
     position: absolute;
-    top: 16px;
-    left: 4px;
-    width: 5px;
-    height: 5px;
-    background: var(--text-color, #37352f);
+    top: 22px;
+    left: 12px;
+    width: 6px;
+    height: 6px;
+    background: #ef4444;
     border-radius: 50%;
-    opacity: 0.85;
   }
 
   .noti-avatar {
     flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    border: 1px solid rgba(55, 53, 47, 0.09);
+    width: 38px;
+    height: 38px;
+    border: none;
     border-radius: 999px;
     overflow: hidden;
     background: rgba(55, 53, 47, 0.06);
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: opacity 0.15s ease;
 
     .ant-image,
     img {
@@ -414,14 +404,8 @@
     }
   }
 
-  // avatar hover: subtle border darken only — no glow
-  &:hover .noti-avatar {
-    border-color: rgba(55, 53, 47, 0.22);
-  }
-
-  &.is-unread:hover .noti-avatar {
-    border-color: rgba(55, 53, 47, 0.35);
-  }
+  // avatar hover: no border/glow effect — clean modern look
+  &:hover .noti-avatar { opacity: 0.92; }
 
   .noti-avatar-letter {
     background: rgba(55, 53, 47, 0.06);
@@ -472,19 +456,20 @@
   }
 
   .noti-name {
-    font-weight: 600;
-    font-size: 13px;
+    font-weight: 500;
+    font-size: 13.5px;
     color: var(--text-color, #37352f);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     transition: color 0.12s ease;
+    letter-spacing: -0.005em;
   }
 
   .noti-time {
     font-size: 11px;
     font-weight: 400;
-    color: rgba(55, 53, 47, 0.45);
+    color: rgba(55, 53, 47, 0.5);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
@@ -504,9 +489,10 @@
 
   .noti-text {
     margin: 0;
-    font-size: 12px;
+    font-size: 12.5px;
     font-weight: 400;
-    color: rgba(55, 53, 47, 0.65);
+    color: rgba(55, 53, 47, 0.7);
+    line-height: 1.4;
   }
 
   .noti-text-snippet {
@@ -542,17 +528,19 @@
 /* Buttons inside friend notifications */
 .btn-pixel {
   background: transparent;
-  border: 1px solid rgba(55, 53, 47, 0.16);
-  border-radius: 4px;
-  padding: 4px 10px;
+  border: 1px solid rgba(55, 53, 47, 0.14);
+  border-radius: 6px;
+  padding: 5px 12px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-color, #37352f);
   cursor: pointer;
-  transition: background-color 0.12s ease, transform 0.1s ease, box-shadow 0.12s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+  letter-spacing: 0.005em;
 
   &:hover {
-    background: rgba(55, 53, 47, 0.06);
+    background: rgba(55, 53, 47, 0.05);
+    border-color: rgba(55, 53, 47, 0.22);
   }
 
   &.btn-pixel-primary {
@@ -563,14 +551,18 @@
     &:hover {
       background: #000;
       border-color: #000;
-      transform: translateY(-1px);
-      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.18);
     }
   }
 
   &.btn-pixel-ghost {
     background: transparent;
-    color: rgba(55, 53, 47, 0.65);
+    border-color: transparent;
+    color: rgba(55, 53, 47, 0.6);
+
+    &:hover {
+      background: rgba(55, 53, 47, 0.05);
+      color: var(--text-color, #37352f);
+    }
   }
 }
 
@@ -584,19 +576,20 @@
 .ant-popover-inner:has(.noti-panel) {
   padding: 0 !important;
   background: var(--container-bg, #ffffff) !important;
-  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
-  border-radius: var(--global-border-radius, 6px) !important;
-  box-shadow: var(--box-shadow-sm) !important;
+  border: 1px solid rgba(55, 53, 47, 0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
   overflow: hidden;
 
   .ant-popover-title {
-    padding: 12px 16px !important;
+    padding: 14px 16px !important;
     margin: 0 !important;
-    border-bottom: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
-    font-size: 13px;
+    border-bottom: 1px solid rgba(55, 53, 47, 0.08) !important;
+    font-size: 14px;
     font-weight: 600;
     color: var(--text-color, #37352f);
     min-height: auto;
+    letter-spacing: -0.005em;
   }
 }
 
@@ -721,20 +714,22 @@ body.dark-mode-active {
   }
 
   .noti-tabs {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    border-bottom-color: rgba(255, 255, 255, 0.1);
   }
 
   .noti-tab {
     color: rgba(255, 255, 255, 0.5);
+    border-bottom-color: transparent;
 
     &:hover {
       background: rgba(255, 255, 255, 0.04);
+      color: var(--text-color);
     }
   }
 
   .noti-tab-badge {
-    background: var(--text-color);
-    color: var(--container-bg);
+    background: #ef4444;
+    color: #ffffff;
     box-shadow: none;
   }
 
@@ -753,34 +748,30 @@ body.dark-mode-active {
   }
 
   .noti-tabs .noti-tab.is-active {
-    background: rgba(255, 255, 255, 0.06);
+    background: transparent;
     color: var(--text-color);
-    border-color: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 -2px 0 0 var(--text-color);
+    border-bottom-color: var(--text-color);
   }
 
   .noti-item {
     background: transparent;
     color: var(--text-color);
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    border-bottom: none;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-left-color: rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.04);
     }
 
     &.is-unread {
-      background: rgba(255, 255, 255, 0.04);
-      border-left-color: var(--text-color);
+      background: transparent;
 
       &:hover {
-        background: rgba(255, 255, 255, 0.08);
-        border-left-color: var(--text-color);
+        background: rgba(255, 255, 255, 0.04);
       }
 
       .noti-name {
         color: var(--text-color);
-        font-weight: 700;
+        font-weight: 600;
       }
     }
 
