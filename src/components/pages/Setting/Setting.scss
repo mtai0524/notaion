@@ -205,8 +205,22 @@ body.dark-mode-active {
   }
 }
 
-body.eye-protection-active {
-  filter: sepia(0.4) contrast(0.9);
+/* Eye protection: warm sepia-like overlay rendered via a fixed pseudo-element.
+   Avoid `filter: sepia()` on <body> because it creates a new containing
+   block, which detaches every `position: fixed` element (header, chat
+   button, corner arrows) from the viewport and makes them jump. */
+body.eye-protection-active::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: rgba(244, 215, 160, 0.18);
+  mix-blend-mode: multiply;
+  z-index: 2147483646;
+}
+
+body.dark-mode-active.eye-protection-active::after {
+  background: rgba(255, 200, 130, 0.10);
 }
 
 body.focus-mode-active {
