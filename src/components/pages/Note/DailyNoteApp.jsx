@@ -139,10 +139,17 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const accentRgb = note.customRgb || theme.rgb;
 
   // Resolve text color: customTextColorHex > accent > customTextColor preset > theme default
+  // Treat the legacy "default" values (#0f172a / #a6accd) as unset so older notes
+  // follow the current theme instead of staying locked to creation-time color.
+  const THEME_DEFAULT_SENTINELS = ['#0f172a', '#a6accd'];
+  const hasRealCustomColor = note.customTextColor
+    && note.customTextColor !== 'null'
+    && note.customTextColor !== null
+    && !THEME_DEFAULT_SENTINELS.includes(String(note.customTextColor).toLowerCase());
   const resolvedTextColor = note.customTextColorHex
     || (note.customTextColor === 'accent'
       ? accentColor
-      : (note.customTextColor && note.customTextColor !== 'null' && note.customTextColor !== null
+      : (hasRealCustomColor
         ? note.customTextColor
         : (note.noteTheme === 1 || note.noteTheme === 2
           ? '#000000'                                        // light/sticky note → black
@@ -818,8 +825,9 @@ const DailyNoteApp = () => {
       fontSize: '0.85rem',
       borderStyle: 0,
       isCompleted: false,
-      // ✅ Set text color theo app theme hiện tại
-      customTextColor: defaultTextColor(theme),
+      // Leave customTextColor unset so the note follows the current theme
+      // dynamically; setting it here would freeze the color at creation time.
+      customTextColor: null,
     };
 
     setTopZIndex(prev => prev + 1);
