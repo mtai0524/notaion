@@ -322,16 +322,28 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
     return val || 'solid';
   };
 
+  const popupW = Math.min(880, window.innerWidth - 80);
+  const popupH = Math.min(660, window.innerHeight - 140);
+  const popupX = Math.max(20, (window.innerWidth - popupW) / 2);
+  const popupY = Math.max(40, (window.innerHeight - popupH) / 2 - 40);
+
   return (
+    <>
+      {note.isFullscreen && (
+        <div
+          className="note-fullscreen-backdrop"
+          onClick={() => onUpdate(note.id, { isFullscreen: false })}
+        />
+      )}
     <Rnd
       size={
         note.isFullscreen
-          ? { width: window.innerWidth, height: window.innerHeight - 80 }
+          ? { width: popupW, height: popupH }
           : { width: note.width, height: note.isMinimized ? 40 : note.height }
       }
       position={
         note.isFullscreen
-          ? { x: 0, y: 0 }
+          ? { x: popupX, y: popupY }
           : { x: Math.max(0, note.x || 0), y: Math.max(0, note.y || 0) }
       }
       onDragStop={(e, d) => {
@@ -363,7 +375,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div
-        className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} ${note.hideCategory ? 'category-hidden' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
+        className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} ${note.hideCategory ? 'category-hidden' : ''} ${note.isFullscreen ? 'is-fullscreen-popup' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
         data-category={note.customCategory || note.category}
         style={{
           '--accent-color': accentColor,
@@ -779,6 +791,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         )}
       </div>
     </Rnd>
+    </>
   );
 };
 

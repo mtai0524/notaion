@@ -886,22 +886,7 @@ const Header = () => {
 
                   />
                   {totalUnread > 0 && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '0',
-                        right: '10px',
-                        background: 'red',
-                        color: 'white',
-                        borderRadius: '50%',
-                        width: '16px',
-                        height: '16px',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        fontSize: '12px',
-                      }}
-                    >
+                    <span className="nav-bell-badge">
                       {totalUnread}
                     </span>
                   )}

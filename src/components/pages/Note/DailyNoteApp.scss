@@ -887,6 +887,20 @@
 // ─────────────────────────────────────────────
 // NOTE CARD
 // ─────────────────────────────────────────────
+.note-fullscreen-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
+  z-index: 9998;
+  animation: backdrop-fade 0.18s ease;
+}
+
+@keyframes backdrop-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .daily-note-card-cyber {
   width: 100%;
   height: 100%;
@@ -904,6 +918,13 @@
 
   &.border-dashed {
     border-style: dashed;
+  }
+
+  &.is-fullscreen-popup {
+    border-radius: 12px;
+    border-width: 1px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04);
+    overflow: hidden;
   }
 
   &.glow-active {
