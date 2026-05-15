@@ -7,8 +7,15 @@
   font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
   transition: background-color 0.3s, color 0.3s;
 
-  // Theme Dark — defer color/bg to Notaion global vars; only map local aliases
+  // Theme Dark — local palette that overrides global vars so the page toggle
+  // works independently of body.dark-mode-active.
   &.theme-dark {
+    --bg-color: #111827;
+    --container-bg: #1f2937;
+    --text-color: #f9fafb;
+    --text-muted: #9ca3af;
+    --border-color: #374151;
+    --shadow-color: #000000;
     background-color: var(--bg-color);
     color: var(--text-color);
     --toolbar-bg: var(--container-bg);
@@ -18,8 +25,14 @@
     --input-placeholder: var(--text-muted);
   }
 
-  // Theme Light — same, just brighter via the global vars
+  // Theme Light — local palette mirroring the global light defaults.
   &.theme-light {
+    --bg-color: #fdfcf8;
+    --container-bg: #ffffff;
+    --text-color: #111827;
+    --text-muted: #6b7280;
+    --border-color: #111827;
+    --shadow-color: #111827;
     background-color: var(--bg-color);
     color: var(--text-color);
     --toolbar-bg: var(--container-bg);
