@@ -334,7 +334,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 14px 12px 26px;
+  padding: 12px 14px;
   background: transparent;
   border: none;
   border-bottom: none;
@@ -373,14 +373,19 @@
     opacity: 0.78;
   }
 
+  // Unread dot — overlay on avatar's bottom-right (badge style).
+  // Avatar starts at padding-left 14px, is 38px wide (right edge ≈ 52px).
+  // Avatar starts at padding-top 12px, is 38px tall (bottom edge ≈ 50px).
   .unread-dot {
     position: absolute;
-    top: 22px;
-    left: 12px;
-    width: 6px;
-    height: 6px;
+    top: 40px;
+    left: 42px;
+    width: 10px;
+    height: 10px;
     background: #ef4444;
     border-radius: 50%;
+    border: 2px solid var(--container-bg, #ffffff);
+    box-sizing: border-box;
   }
 
   .noti-avatar {
@@ -576,15 +581,15 @@
 .ant-popover-inner:has(.noti-panel) {
   padding: 0 !important;
   background: var(--container-bg, #ffffff) !important;
-  border: 1px solid rgba(55, 53, 47, 0.12) !important;
-  border-radius: 10px !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08), 0 2px 6px rgba(0, 0, 0, 0.04) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
+  border-radius: var(--global-border-radius, 6px) !important;
+  box-shadow: var(--box-shadow-sm) !important;
   overflow: hidden;
 
   .ant-popover-title {
     padding: 14px 16px !important;
     margin: 0 !important;
-    border-bottom: 1px solid rgba(55, 53, 47, 0.08) !important;
+    border-bottom: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, #111827) !important;
     font-size: 14px;
     font-weight: 600;
     color: var(--text-color, #37352f);
