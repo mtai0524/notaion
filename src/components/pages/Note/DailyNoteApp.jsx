@@ -322,10 +322,15 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
     return val || 'solid';
   };
 
-  const popupW = Math.min(880, window.innerWidth - 80);
-  const popupH = Math.min(660, window.innerHeight - 140);
-  const popupX = Math.max(20, (window.innerWidth - popupW) / 2);
-  const popupY = Math.max(40, (window.innerHeight - popupH) / 2 - 40);
+  // Popup defaults: centered in viewport. Capped to viewport with margin.
+  const defaultPopupW = Math.min(880, window.innerWidth - 80);
+  const defaultPopupH = Math.min(660, window.innerHeight - 100);
+  const popupW = note.popupWidth || defaultPopupW;
+  const popupH = note.popupHeight || defaultPopupH;
+  const defaultPopupX = Math.max(20, (window.innerWidth - popupW) / 2);
+  const defaultPopupY = Math.max(20, (window.innerHeight - popupH) / 2);
+  const popupX = note.popupX != null ? note.popupX : defaultPopupX;
+  const popupY = note.popupY != null ? note.popupY : defaultPopupY;
 
   return (
     <>
@@ -347,11 +352,23 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           : { x: Math.max(0, note.x || 0), y: Math.max(0, note.y || 0) }
       }
       onDragStop={(e, d) => {
-        if (note.isFullscreen) return;
+        if (note.isFullscreen) {
+          onUpdate(note.id, { popupX: d.x, popupY: d.y });
+          return;
+        }
         onUpdate(note.id, { x: Math.max(0, d.x), y: Math.max(0, d.y) });
       }}
       onResizeStop={(e, direction, ref, delta, position) => {
-        if (!note.isMinimized && !note.isFullscreen) {
+        if (note.isFullscreen) {
+          onUpdate(note.id, {
+            popupWidth: parseInt(ref.style.width),
+            popupHeight: parseInt(ref.style.height),
+            popupX: position.x,
+            popupY: position.y,
+          });
+          return;
+        }
+        if (!note.isMinimized) {
           onUpdate(note.id, {
             width: parseInt(ref.style.width),
             height: parseInt(ref.style.height),
@@ -360,15 +377,15 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           });
         }
       }}
-      disableResizing={note.isMinimized || note.locked || note.isFullscreen}
+      disableResizing={note.isMinimized || note.locked}
       dragHandleClassName="note-header"
-      minWidth={200}
-      minHeight={note.isMinimized ? 40 : 150}
+      minWidth={note.isFullscreen ? 360 : 200}
+      minHeight={note.isMinimized ? 40 : (note.isFullscreen ? 280 : 150)}
       bounds={false}
-      disableDragging={note.locked || note.isFullscreen}
+      disableDragging={note.locked}
       style={{
         zIndex: note.isFullscreen ? 9999 : note.zIndex,
-        position: 'absolute',
+        position: note.isFullscreen ? 'fixed' : 'absolute',
         opacity: note.opacity || 1
       }}
       onDragStart={() => onFocus(note.id)}
