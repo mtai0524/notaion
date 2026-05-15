@@ -14,7 +14,7 @@ import {
   FaLink, FaUnlink, FaEye, FaEyeSlash, FaSyncAlt, FaRulerCombined, FaFont,
   FaSlidersH, FaLayerGroup as FaStack, FaLock, FaUnlock, FaHighlighter,
   FaDrawPolygon, FaCompressArrowsAlt, FaExpandArrowsAlt, FaBrain,
-  FaImage, FaPaperclip, FaDownload
+  FaImage, FaPaperclip, FaDownload, FaUndo, FaTrash
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import * as signalR from '@microsoft/signalr';
@@ -842,6 +842,8 @@ const DailyNoteApp = () => {
   const [canvasBg, setCanvasBg] = useState(() => localStorage.getItem('daily-note-canvas-bg') || '');
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [customBgUrl, setCustomBgUrl] = useState('');
+  const [trashByDate, setTrashByDate] = useState({});
+  const [showTrash, setShowTrash] = useState(false);
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
@@ -1089,11 +1091,21 @@ const DailyNoteApp = () => {
   const deleteNote = async (id) => {
     if (!window.confirm("ARE YOU SURE YOU WANT TO HIDE THIS ENTRY?")) return;
 
+    const noteToTrash = (notesByDate[dateKey] || []).find(n => n.id === id);
+
     // 1. Xóa ngay lập tức khỏi State để người dùng thấy nó biến mất và tránh bị Auto-save ghi đè
     setNotesByDate(prev => ({
       ...prev,
       [dateKey]: (prev[dateKey] || []).filter(n => n.id !== id)
     }));
+
+    // 1b. Đẩy vào trash session để có thể khôi phục trong cùng phiên làm việc
+    if (noteToTrash) {
+      setTrashByDate(prev => ({
+        ...prev,
+        [dateKey]: [...(prev[dateKey] || []), { ...noteToTrash, deletedAt: new Date().toISOString() }]
+      }));
+    }
 
     // 2. Gọi API DELETE chuyên biệt để Backend xử lý IsDeleted = true
     try {
@@ -1105,6 +1117,51 @@ const DailyNoteApp = () => {
       setSyncStatus('error');
       // Nếu lỗi, có thể cân nhắc fetch lại dữ liệu hoặc thông báo cho người dùng
     }
+  };
+
+  const restoreNote = async (trashedNote) => {
+    const { isFocused, isDeleting, deletedAt, ...rest } = trashedNote;
+    const restored = {
+      ...rest,
+      id: uuidv4(),
+      isDeleted: false,
+      isMinimized: false,
+      isFullscreen: false,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Remove from trash
+    setTrashByDate(prev => ({
+      ...prev,
+      [dateKey]: (prev[dateKey] || []).filter(n => n.id !== trashedNote.id)
+    }));
+
+    // Add back to active notes
+    setNotesByDate(prev => ({
+      ...prev,
+      [dateKey]: [...(prev[dateKey] || []), restored]
+    }));
+
+    try {
+      setSyncStatus('saving');
+      await axiosInstance.post('/api/DailyNote', restored);
+      setSyncStatus('saved');
+    } catch (err) {
+      console.error('[RESTORE-ERROR]', err);
+      setSyncStatus('error');
+    }
+  };
+
+  const purgeTrashedNote = (trashId) => {
+    setTrashByDate(prev => ({
+      ...prev,
+      [dateKey]: (prev[dateKey] || []).filter(n => n.id !== trashId)
+    }));
+  };
+
+  const clearTrash = () => {
+    if (!window.confirm('Empty today\'s trash? Notes here will no longer be restorable from this view.')) return;
+    setTrashByDate(prev => ({ ...prev, [dateKey]: [] }));
   };
 
   const focusNote = (id) => {
@@ -1138,11 +1195,22 @@ const DailyNoteApp = () => {
     const idsToDelete = [...selectedIds];
     setSelectedIds([]); // Clear selection
 
+    const notesToTrash = (notesByDate[dateKey] || []).filter(n => idsToDelete.includes(n.id));
+
     // 1. Cập nhật State ngay lập tức
     setNotesByDate(prev => ({
       ...prev,
       [dateKey]: (prev[dateKey] || []).map(n => idsToDelete.includes(n.id) ? { ...n, isDeleted: true } : n)
     }));
+
+    // 1b. Đẩy vào trash session
+    if (notesToTrash.length > 0) {
+      const stamp = new Date().toISOString();
+      setTrashByDate(prev => ({
+        ...prev,
+        [dateKey]: [...(prev[dateKey] || []), ...notesToTrash.map(n => ({ ...n, deletedAt: stamp }))]
+      }));
+    }
 
     // 2. Gọi API xóa hàng loạt
     try {
@@ -1417,6 +1485,64 @@ const DailyNoteApp = () => {
                   >APPLY</button>
                 </div>
                 <button className="bg-close" onClick={() => setShowBgPicker(false)}><FaTimes /> CLOSE</button>
+              </div>
+            )}
+          </div>
+
+          <div className="trash-picker-container">
+            <button
+              className={`nav-btn trash-toggle ${(trashByDate[dateKey] || []).length > 0 ? 'has-items' : ''}`}
+              onClick={() => setShowTrash(v => !v)}
+              title="Trash (deleted today)"
+            >
+              <FaTrash />
+              {(trashByDate[dateKey] || []).length > 0 && (
+                <span className="trash-count">{(trashByDate[dateKey] || []).length}</span>
+              )}
+            </button>
+            {showTrash && (
+              <div className="trash-dropdown" onClick={(e) => e.stopPropagation()}>
+                <div className="trash-header">
+                  <span>TRASH · {(trashByDate[dateKey] || []).length}</span>
+                  {(trashByDate[dateKey] || []).length > 0 && (
+                    <button className="trash-clear-btn" onClick={clearTrash} title="Empty trash">
+                      Empty
+                    </button>
+                  )}
+                </div>
+                <div className="trash-list">
+                  {(trashByDate[dateKey] || []).length === 0 ? (
+                    <div className="trash-empty">Nothing here yet.</div>
+                  ) : (
+                    [...(trashByDate[dateKey] || [])].reverse().map(t => (
+                      <div className="trash-item" key={t.id}>
+                        <div className="trash-item-info">
+                          <span className="trash-item-title">{t.title || 'Untitled'}</span>
+                          <span className="trash-item-meta">
+                            {t.category || 'MEMO'} · {t.deletedAt ? new Date(t.deletedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                        </div>
+                        <div className="trash-item-actions">
+                          <button
+                            className="trash-action restore"
+                            onClick={() => restoreNote(t)}
+                            title="Restore"
+                          >
+                            <FaUndo />
+                          </button>
+                          <button
+                            className="trash-action purge"
+                            onClick={() => purgeTrashedNote(t.id)}
+                            title="Remove from trash"
+                          >
+                            <FaTimes />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <button className="trash-close" onClick={() => setShowTrash(false)}>CLOSE</button>
               </div>
             )}
           </div>

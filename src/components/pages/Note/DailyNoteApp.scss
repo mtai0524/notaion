@@ -183,6 +183,178 @@
         }
       }
 
+      .trash-picker-container {
+        position: relative;
+
+        .trash-toggle {
+          position: relative;
+
+          &.has-items {
+            color: var(--accent-color) !important;
+          }
+
+          .trash-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            background: #ef4444;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 999px;
+            min-width: 14px;
+            height: 14px;
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+        }
+
+        .trash-dropdown {
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          z-index: 1000;
+          width: 320px;
+          background: var(--container-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 6px;
+          padding: 0;
+          box-shadow: var(--box-shadow-sm);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+
+          .trash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            letter-spacing: 0.05em;
+
+            .trash-clear-btn {
+              background: transparent;
+              border: 1px solid var(--border-color);
+              color: var(--text-muted);
+              font-size: 0.65rem;
+              padding: 2px 8px;
+              border-radius: 4px;
+              cursor: pointer;
+              letter-spacing: 0.03em;
+
+              &:hover {
+                color: #ef4444;
+                border-color: #ef4444;
+              }
+            }
+          }
+
+          .trash-list {
+            display: flex;
+            flex-direction: column;
+            max-height: 320px;
+            overflow-y: auto;
+          }
+
+          .trash-empty {
+            padding: 20px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            font-style: italic;
+          }
+
+          .trash-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
+            gap: 8px;
+
+            &:last-child { border-bottom: none; }
+
+            &:hover {
+              background: rgba(var(--accent-rgb, 137, 221, 255), 0.04);
+            }
+
+            .trash-item-info {
+              display: flex;
+              flex-direction: column;
+              gap: 2px;
+              flex: 1;
+              min-width: 0;
+            }
+
+            .trash-item-title {
+              font-size: 0.78rem;
+              color: var(--text-color);
+              font-weight: 600;
+              white-space: nowrap;
+              overflow: hidden;
+              text-overflow: ellipsis;
+            }
+
+            .trash-item-meta {
+              font-size: 0.65rem;
+              color: var(--text-muted);
+              letter-spacing: 0.03em;
+            }
+
+            .trash-item-actions {
+              display: flex;
+              gap: 4px;
+              flex-shrink: 0;
+
+              .trash-action {
+                background: transparent;
+                border: 1px solid var(--border-color);
+                border-radius: 4px;
+                width: 26px;
+                height: 26px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: var(--text-muted);
+                cursor: pointer;
+                font-size: 0.7rem;
+                transition: color 0.12s, border-color 0.12s;
+
+                &.restore:hover {
+                  color: var(--accent-color);
+                  border-color: var(--accent-color);
+                }
+
+                &.purge:hover {
+                  color: #ef4444;
+                  border-color: #ef4444;
+                }
+              }
+            }
+          }
+
+          .trash-close {
+            background: transparent;
+            border: none;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 8px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            letter-spacing: 0.05em;
+            font-family: inherit;
+
+            &:hover { color: var(--text-color); }
+          }
+        }
+      }
+
       .bg-picker-container {
         position: relative;
 
