@@ -654,39 +654,84 @@ const Notion = () => {
     [items, setNewContent, setItems, saveItemsDebounced]
   );
 
+  const uploadFileAndInsert = async (file, targetId, isNewBlock) => {
+    setLoadingImage(targetId);
+    const formData = new FormData();
+    formData.append("files", file);
+    try {
+      const response = await axiosInstance.post("/api/files/upload", formData);
+      const fileData = response.data[0];
+      const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+      setItems((prevItems) => {
+        const updated = prevItems.map((it) =>
+          it.id === targetId ? { ...it, content: fileUrl } : it
+        );
+        saveItems(updated, false);
+        return updated;
+      });
+    } catch (error) {
+      console.error("Error uploading pasted file:", error);
+      if (isNewBlock) setItems((prev) => prev.filter((it) => it.id !== targetId));
+      message.error("Failed to upload pasted file");
+    } finally {
+      setLoadingImage(null);
+    }
+  };
+
   const handlePaste = async (e, id) => {
     const clipboardItems = e.clipboardData.items;
-    let imageFound = false;
     for (let i = 0; i < clipboardItems.length; i++) {
-      if (
-        clipboardItems[i].type.indexOf("image") !== -1 ||
-        clipboardItems[i].kind === "file"
-      ) {
-        const file = clipboardItems[i].getAsFile();
-        if (!file) continue;
-        imageFound = true;
-        const formData = new FormData();
-        formData.append("files", file);
-        setLoadingImage(id);
-        try {
-          const response = await axiosInstance.post("/api/files/upload", formData);
-          const fileData = response.data[0];
-          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
-          if (file.type.startsWith("image/")) {
-            responseDataImage({ data: { url: fileUrl } }, e, id);
-          } else {
-            handleChangeContent(id, fileUrl);
-          }
-        } catch (error) {
-          console.error("Error uploading pasted file:", error);
-        } finally {
-          setLoadingImage(null);
-        }
-        e.preventDefault();
-        break;
+      const clipItem = clipboardItems[i];
+      if (clipItem.kind !== "file") continue;
+      const file = clipItem.getAsFile();
+      if (!file) continue;
+
+      e.preventDefault();
+
+      const currentContent =
+        newContent[id] || items.find((it) => it.id === id)?.content || "";
+      const hasContent = currentContent.trim().length > 0;
+
+      if (hasContent) {
+        const insertIndex = items.findIndex((it) => it.id === id) + 1;
+        const newBlockId = generateRandomId();
+        setItems((prev) => {
+          const arr = [...prev];
+          arr.splice(insertIndex, 0, {
+            id: newBlockId,
+            heading: "",
+            code: "",
+            order: insertIndex,
+            content: "",
+          });
+          return arr.map((it, idx) => ({ ...it, order: idx }));
+        });
+        await uploadFileAndInsert(file, newBlockId, true);
+      } else {
+        await uploadFileAndInsert(file, id, false);
       }
+      return;
     }
-    if (!imageFound) setLoadingImage(null);
+  };
+
+  const handleGlobalPaste = async (e) => {
+    if (document.activeElement?.tagName === "TEXTAREA") return;
+    const clipboardItems = e.clipboardData.items;
+    for (let i = 0; i < clipboardItems.length; i++) {
+      const clipItem = clipboardItems[i];
+      if (clipItem.kind !== "file") continue;
+      const file = clipItem.getAsFile();
+      if (!file) continue;
+
+      e.preventDefault();
+      const newBlockId = generateRandomId();
+      setItems((prev) => [
+        ...prev,
+        { id: newBlockId, heading: "", code: "", order: prev.length, content: "" },
+      ]);
+      await uploadFileAndInsert(file, newBlockId, true);
+      return;
+    }
   };
 
   const onDownload = (imgUrl) => {
@@ -707,7 +752,7 @@ const Notion = () => {
   const renderItemContent = (item) => {
     if (
       item.content &&
-      item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/) != null
+      item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i) != null
     ) {
       return (
         <div
@@ -861,6 +906,7 @@ const Notion = () => {
         className="notion-page"
         onDrop={handleGlobalDrop}
         onDragOver={handleGlobalDragOver}
+        onPaste={handleGlobalPaste}
       >
         {loadingItems ? (
           <ul className="droppable-list">
