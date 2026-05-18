@@ -17,6 +17,9 @@ import {
   DeleteOutlined,
   FileOutlined,
   HolderOutlined,
+  SettingOutlined,
+  BgColorsOutlined,
+  CloseOutlined,
 } from "@ant-design/icons";
 import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
@@ -31,6 +34,43 @@ const reorder = (list, startIndex, endIndex) => {
 };
 
 const generateRandomId = () => uuidv4();
+
+// ── View preference catalog ──────────────────────────────────────────
+const DEFAULT_PREFS = {
+  density: "comfortable",   // compact | comfortable | spacious
+  width: "normal",          // narrow | normal | wide | full
+  theme: "auto",            // auto | light | dark | sepia
+  font: "sans",             // sans | serif | mono
+  fontSize: "md",           // sm | md | lg
+  background: "plain",      // plain | dots | grid | lines
+  accent: "#3b82f6",        // any hex
+  focusMode: false,         // hides controls + ghost-add
+};
+
+const ACCENT_SWATCHES = [
+  "#3b82f6", // blue
+  "#8b5cf6", // violet
+  "#ec4899", // pink
+  "#f59e0b", // amber
+  "#10b981", // emerald
+  "#ef4444", // red
+  "#111827", // ink
+];
+
+const FONT_STACKS = {
+  sans: "'Inter', system-ui, -apple-system, sans-serif",
+  serif: "'Lora', 'Georgia', serif",
+  mono: "'JetBrains Mono', 'Fira Code', monospace",
+};
+
+const loadPrefs = () => {
+  try {
+    const raw = localStorage.getItem("notion.prefs");
+    return raw ? { ...DEFAULT_PREFS, ...JSON.parse(raw) } : DEFAULT_PREFS;
+  } catch {
+    return DEFAULT_PREFS;
+  }
+};
 
 // ── Slash command catalog (Notion-style) ─────────────────────────────
 const SLASH_COMMANDS = [
@@ -175,6 +215,154 @@ const SlashMenu = ({ query, selectedIndex, onSelect, onClose, anchorRef }) => {
   );
 };
 
+// ── Settings panel ───────────────────────────────────────────────────
+const SegGroup = ({ label, value, options, onChange }) => (
+  <div className="prefs-row">
+    <div className="prefs-label">{label}</div>
+    <div className="prefs-seg">
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          className={`prefs-seg-item ${value === opt.value ? "is-active" : ""}`}
+          onClick={() => onChange(opt.value)}
+          title={opt.title || opt.label}
+        >
+          {opt.icon && <span className="prefs-seg-icon">{opt.icon}</span>}
+          <span>{opt.label}</span>
+        </button>
+      ))}
+    </div>
+  </div>
+);
+
+const NotionPrefsPanel = ({ prefs, onChange, onReset, onClose }) => {
+  return (
+    <div className="notion-prefs-panel" onMouseDown={(e) => e.stopPropagation()}>
+      <div className="prefs-header">
+        <div className="prefs-title">
+          <BgColorsOutlined />
+          <span>Appearance</span>
+        </div>
+        <button type="button" className="prefs-close" onClick={onClose}>
+          <CloseOutlined />
+        </button>
+      </div>
+
+      <div className="prefs-body">
+        <SegGroup
+          label="Theme"
+          value={prefs.theme}
+          onChange={(v) => onChange({ theme: v })}
+          options={[
+            { value: "auto", label: "Auto" },
+            { value: "light", label: "Light" },
+            { value: "dark", label: "Dark" },
+            { value: "sepia", label: "Sepia" },
+          ]}
+        />
+
+        <SegGroup
+          label="Density"
+          value={prefs.density}
+          onChange={(v) => onChange({ density: v })}
+          options={[
+            { value: "compact", label: "Compact" },
+            { value: "comfortable", label: "Comfy" },
+            { value: "spacious", label: "Spacious" },
+          ]}
+        />
+
+        <SegGroup
+          label="Page width"
+          value={prefs.width}
+          onChange={(v) => onChange({ width: v })}
+          options={[
+            { value: "narrow", label: "Narrow" },
+            { value: "normal", label: "Normal" },
+            { value: "wide", label: "Wide" },
+            { value: "full", label: "Full" },
+          ]}
+        />
+
+        <SegGroup
+          label="Font"
+          value={prefs.font}
+          onChange={(v) => onChange({ font: v })}
+          options={[
+            { value: "sans", label: "Sans" },
+            { value: "serif", label: "Serif" },
+            { value: "mono", label: "Mono" },
+          ]}
+        />
+
+        <SegGroup
+          label="Text size"
+          value={prefs.fontSize}
+          onChange={(v) => onChange({ fontSize: v })}
+          options={[
+            { value: "sm", label: "S" },
+            { value: "md", label: "M" },
+            { value: "lg", label: "L" },
+          ]}
+        />
+
+        <SegGroup
+          label="Background"
+          value={prefs.background}
+          onChange={(v) => onChange({ background: v })}
+          options={[
+            { value: "plain", label: "Plain" },
+            { value: "dots", label: "Dots" },
+            { value: "grid", label: "Grid" },
+            { value: "lines", label: "Lines" },
+          ]}
+        />
+
+        <div className="prefs-row">
+          <div className="prefs-label">Accent</div>
+          <div className="prefs-swatches">
+            {ACCENT_SWATCHES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                className={`prefs-swatch ${prefs.accent === c ? "is-active" : ""}`}
+                style={{ background: c }}
+                onClick={() => onChange({ accent: c })}
+                title={c}
+              />
+            ))}
+            <input
+              type="color"
+              className="prefs-swatch prefs-swatch-custom"
+              value={prefs.accent}
+              onChange={(e) => onChange({ accent: e.target.value })}
+              title="Custom color"
+            />
+          </div>
+        </div>
+
+        <div className="prefs-row">
+          <div className="prefs-label">Focus mode</div>
+          <button
+            type="button"
+            className={`prefs-toggle ${prefs.focusMode ? "is-on" : ""}`}
+            onClick={() => onChange({ focusMode: !prefs.focusMode })}
+          >
+            <span className="prefs-toggle-thumb" />
+          </button>
+        </div>
+      </div>
+
+      <div className="prefs-footer">
+        <button type="button" className="prefs-reset" onClick={onReset}>
+          Reset to defaults
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const Notion = () => {
   const [blockId, setBlockId] = useState();
   const [items, setItems] = useState([]);
@@ -184,35 +372,38 @@ const Notion = () => {
   const [loadingImage, setLoadingImage] = useState(null);
   const [loadingItems, setLoadingItems] = useState(true);
 
-  // Page title — persisted locally so it survives reloads without backend changes
-  const [pageTitle, setPageTitle] = useState(() => {
-    try {
-      return localStorage.getItem("notion.pageTitle") || "";
-    } catch {
-      return "";
-    }
-  });
+  // View preferences (theme, density, font, etc.) — persisted locally
+  const [prefs, setPrefs] = useState(loadPrefs);
+  const [showPrefs, setShowPrefs] = useState(false);
+  const updatePref = (patch) => setPrefs((p) => ({ ...p, ...patch }));
   useEffect(() => {
     try {
-      localStorage.setItem("notion.pageTitle", pageTitle);
+      localStorage.setItem("notion.prefs", JSON.stringify(prefs));
     } catch {
       /* ignore */
     }
-  }, [pageTitle]);
+  }, [prefs]);
 
-  // Sync status — visible badge near the title: 'saved' | 'saving' | 'error'
-  const [syncStatus, setSyncStatus] = useState("saved");
+  const pageStyleVars = useMemo(
+    () => ({
+      "--notion-accent": prefs.accent,
+      "--notion-font": FONT_STACKS[prefs.font] || FONT_STACKS.sans,
+    }),
+    [prefs.accent, prefs.font]
+  );
 
-  // Stats — block count + word + character count, recomputed when items/newContent change
-  const stats = useMemo(() => {
-    const text = items
-      .map((it) => newContent[it.id] ?? it.content ?? "")
-      .filter((c) => typeof c === "string")
-      .join(" ");
-    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
-    const chars = text.length;
-    return { blocks: items.length, words, chars };
-  }, [items, newContent]);
+  const pageClass = [
+    "notion-page",
+    `density-${prefs.density}`,
+    `width-${prefs.width}`,
+    `theme-${prefs.theme}`,
+    `font-${prefs.font}`,
+    `size-${prefs.fontSize}`,
+    `bg-${prefs.background}`,
+    prefs.focusMode ? "is-focus-mode" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   // Slash menu state
   const [slashMenuFor, setSlashMenuFor] = useState(null);
@@ -657,13 +848,10 @@ const Notion = () => {
 
   const saveItems = async (updatedItems, showNoti) => {
     if (!apiAvailable) return;
-    setSyncStatus("saving");
     try {
       await axiosInstance.post("/api/Items/bulk", updatedItems);
-      setSyncStatus("saved");
     } catch (error) {
       console.error("Error saving items:", error);
-      setSyncStatus("error");
       if (showNoti) message.error("Error saving items", 1);
     }
   };
@@ -935,39 +1123,29 @@ const Notion = () => {
         ref={fileInputRef}
         onChange={handleFileChange}
       />
+      <button
+        type="button"
+        className={`notion-prefs-fab ${showPrefs ? "is-open" : ""}`}
+        onClick={() => setShowPrefs((v) => !v)}
+        title="View settings"
+      >
+        {showPrefs ? <CloseOutlined /> : <SettingOutlined />}
+      </button>
+      {showPrefs && (
+        <NotionPrefsPanel
+          prefs={prefs}
+          onChange={updatePref}
+          onReset={() => setPrefs(DEFAULT_PREFS)}
+          onClose={() => setShowPrefs(false)}
+        />
+      )}
       <div
-        className="notion-page"
+        className={pageClass}
+        style={pageStyleVars}
         onDrop={handleGlobalDrop}
         onDragOver={handleGlobalDragOver}
         onPaste={handleGlobalPaste}
       >
-        <div className="notion-doc-header">
-          <div className="notion-doc-meta">
-            <span className={`sync-badge sync-${syncStatus}`}>
-              <span className="sync-dot" />
-              {syncStatus === "saving"
-                ? "Saving…"
-                : syncStatus === "error"
-                ? "Save failed"
-                : apiAvailable
-                ? "Saved"
-                : "Offline"}
-            </span>
-            {pageTitle && (
-              <span className="doc-stats-inline">
-                {stats.blocks} {stats.blocks === 1 ? "block" : "blocks"} ·{" "}
-                {stats.words} {stats.words === 1 ? "word" : "words"}
-              </span>
-            )}
-          </div>
-          <input
-            className="notion-doc-title"
-            value={pageTitle}
-            onChange={(e) => setPageTitle(e.target.value)}
-            placeholder="Untitled"
-            spellCheck={false}
-          />
-        </div>
         {loadingItems ? (
           <ul className="droppable-list">
             {[0, 1, 2].map((i) => (
@@ -1080,43 +1258,10 @@ const Notion = () => {
                     </Draggable>
                   ))}
                   {provided.placeholder}
-                  <li className="draggable-item ghost-add-item ghost-add-tail">
-                    <div className="container-block">
-                      <button
-                        type="button"
-                        className="ghost-add-btn"
-                        onClick={() =>
-                          addItem(items.length ? items[items.length - 1].id : null)
-                        }
-                      >
-                        <PlusOutlined />
-                        <span>Add another block at the end</span>
-                      </button>
-                    </div>
-                  </li>
                 </ul>
               )}
             </Droppable>
           </DragDropContext>
-        )}
-        {!loadingItems && (
-          <div className="notion-doc-footer">
-            <span>
-              <strong>{stats.blocks}</strong>{" "}
-              {stats.blocks === 1 ? "block" : "blocks"}
-            </span>
-            <span>
-              <strong>{stats.words}</strong>{" "}
-              {stats.words === 1 ? "word" : "words"}
-            </span>
-            <span>
-              <strong>{stats.chars}</strong>{" "}
-              {stats.chars === 1 ? "char" : "chars"}
-            </span>
-            <span className="footer-hint">
-              Press <kbd>/</kbd> for commands · <kbd>Enter</kbd> to add a block
-            </span>
-          </div>
         )}
       </div>
     </>
