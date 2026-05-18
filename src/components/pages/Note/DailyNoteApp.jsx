@@ -18,6 +18,7 @@ import {
   FaEllipsisH, FaKeyboard, FaQuestionCircle
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { Dropdown } from 'antd';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
@@ -422,42 +423,53 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
             )}
           </div>
           <div className="header-actions">
-            <button className="action-btn config-btn" onClick={() => setShowProps(!showProps)}>
+            <button className="action-btn config-btn" onClick={() => setShowProps(!showProps)} title="Settings">
               <FaCog />
             </button>
-            <button className={`action-btn copy-btn ${copied ? 'active' : ''}`} onClick={handleCopy} title="Copy Content">
-              {copied ? <FaCheck /> : <FaCopy />}
-            </button>
-            <button
-              className="action-btn upload-img-btn"
-              onClick={(e) => { e.stopPropagation(); imgInputRef.current?.click(); }}
-              title="Upload image"
-              disabled={uploading}
+            <Dropdown
+              trigger={['click']}
+              placement="bottomRight"
+              dropdownRender={() => (
+                <div className="note-overflow-menu" onClick={(e) => e.stopPropagation()}>
+                  <button className={`overflow-item ${copied ? 'is-active' : ''}`} onClick={handleCopy}>
+                    {copied ? <FaCheck /> : <FaCopy />} <span>{copied ? 'Copied' : 'Copy content'}</span>
+                  </button>
+                  <button
+                    className="overflow-item"
+                    onClick={(e) => { e.stopPropagation(); imgInputRef.current?.click(); }}
+                    disabled={uploading}
+                  >
+                    <FaImage /> <span>Upload image</span>
+                  </button>
+                  <button
+                    className="overflow-item"
+                    onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                    disabled={uploading}
+                  >
+                    <FaPaperclip /> <span>Upload file</span>
+                  </button>
+                  <button className="overflow-item" onClick={toggleMinimize}>
+                    {note.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
+                    <span>{note.isMinimized ? 'Maximize' : 'Minimize'}</span>
+                  </button>
+                  <button
+                    className="overflow-item"
+                    onClick={(e) => { e.stopPropagation(); onUpdate(note.id, { isFullscreen: !note.isFullscreen }); }}
+                  >
+                    {note.isFullscreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
+                    <span>{note.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
+                  </button>
+                  <button className="overflow-item" onClick={cycleColor}>
+                    <FaPalette /> <span>Cycle color</span>
+                  </button>
+                </div>
+              )}
             >
-              <FaImage />
-            </button>
-            <button
-              className="action-btn upload-file-btn"
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-              title="Upload file"
-              disabled={uploading}
-            >
-              <FaPaperclip />
-            </button>
-            <button className="action-btn minimize-btn" onClick={toggleMinimize} title="Minimize/Maximize">
-              {note.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
-            </button>
-            <button
-              className="action-btn fullscreen-btn"
-              onClick={(e) => { e.stopPropagation(); onUpdate(note.id, { isFullscreen: !note.isFullscreen }); }}
-              title={note.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            >
-              {note.isFullscreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
-            </button>
-            <button className="action-btn color-btn" onClick={cycleColor}>
-              <FaPalette />
-            </button>
-            <button className="action-btn delete-btn" onClick={() => onDelete(note.id)}>
+              <button className="action-btn more-btn" onClick={(e) => e.stopPropagation()} title="More actions">
+                <FaEllipsisH />
+              </button>
+            </Dropdown>
+            <button className="action-btn delete-btn" onClick={() => onDelete(note.id)} title="Delete">
               <FaTimes />
             </button>
           </div>

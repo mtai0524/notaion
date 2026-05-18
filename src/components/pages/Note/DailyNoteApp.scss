@@ -1643,15 +1643,10 @@
         color: var(--text-muted);
         cursor: pointer;
         font-size: 0.8rem;
-        transition: opacity 0.15s, color 0.2s;
+        transition: all 0.2s;
         display: flex;
         align-items: center;
         justify-content: center;
-
-        &:not(.config-btn):not(.delete-btn) {
-          opacity: 0;
-          pointer-events: none;
-        }
 
         &:hover {
           color: var(--danger-color);
@@ -1668,10 +1663,43 @@
     }
   }
 
-  &:hover .header-actions .action-btn,
-  &.is-focused .header-actions .action-btn {
-    opacity: 1;
-    pointer-events: auto;
+  .note-overflow-menu {
+    background: var(--bg-color, #1a1a1f);
+    border: 1px solid var(--border-color, #333);
+    border-radius: 6px;
+    padding: 4px;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+    .overflow-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      color: var(--text-muted, #888);
+      background: none;
+      border: none;
+      width: 100%;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-family: inherit;
+      border-radius: 4px;
+      transition: background 0.15s, color 0.15s;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--accent-color, #82a1ff);
+      }
+
+      svg {
+        flex-shrink: 0;
+        font-size: 0.85rem;
+      }
+
+      &.is-active {
+        color: #16a34a;
+      }
+    }
   }
 
   .note-body {
