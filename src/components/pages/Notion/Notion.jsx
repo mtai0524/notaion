@@ -25,6 +25,7 @@ import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "../../../axiosConfig";
 import debounce from "lodash.debounce";
+import { Rnd } from "react-rnd";
 
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
@@ -45,8 +46,9 @@ const DEFAULT_PREFS = {
   background: "plain",      // plain | dots | grid | lines
   accent: "#3b82f6",        // any hex
   focusMode: false,         // hides controls + ghost-add
-  layout: "single",         // single | columns2 | columns3
+  layout: "single",         // single | columns2 | columns3 | canvas | slideshow
   showOutline: false,       // outline (TOC) sidebar visibility
+  showTimestamps: false,    // show created/updated time under each block
 };
 
 const ACCENT_SWATCHES = [
@@ -72,6 +74,23 @@ const loadPrefs = () => {
   } catch {
     return DEFAULT_PREFS;
   }
+};
+
+// Format an ISO/string date into a short relative-or-absolute label.
+const fmtTime = (raw) => {
+  if (!raw) return null;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return null;
+  const now = Date.now();
+  const diff = now - d.getTime();
+  const min = 60 * 1000;
+  const hour = 60 * min;
+  const day = 24 * hour;
+  if (diff < min) return "just now";
+  if (diff < hour) return `${Math.floor(diff / min)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 };
 
 // ── Slash command catalog (Notion-style) ─────────────────────────────
@@ -373,9 +392,11 @@ const NotionPrefsPanel = ({ prefs, onChange, onReset, onClose }) => {
           value={prefs.layout}
           onChange={(v) => onChange({ layout: v })}
           options={[
-            { value: "single", label: "1 col" },
+            { value: "single", label: "List" },
             { value: "columns2", label: "2 cols" },
             { value: "columns3", label: "3 cols" },
+            { value: "canvas", label: "Canvas" },
+            { value: "slideshow", label: "Slides" },
           ]}
         />
 
@@ -385,6 +406,17 @@ const NotionPrefsPanel = ({ prefs, onChange, onReset, onClose }) => {
             type="button"
             className={`prefs-toggle ${prefs.showOutline ? "is-on" : ""}`}
             onClick={() => onChange({ showOutline: !prefs.showOutline })}
+          >
+            <span className="prefs-toggle-thumb" />
+          </button>
+        </div>
+
+        <div className="prefs-row">
+          <div className="prefs-label">Show timestamps</div>
+          <button
+            type="button"
+            className={`prefs-toggle ${prefs.showTimestamps ? "is-on" : ""}`}
+            onClick={() => onChange({ showTimestamps: !prefs.showTimestamps })}
           >
             <span className="prefs-toggle-thumb" />
           </button>
@@ -454,6 +486,65 @@ const Notion = () => {
       /* ignore */
     }
   }, [prefs]);
+
+  // Canvas mode positions (free-floating blocks) — persisted in localStorage
+  const [canvasPositions, setCanvasPositions] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("notion.canvasPositions") || "{}");
+    } catch {
+      return {};
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("notion.canvasPositions", JSON.stringify(canvasPositions));
+    } catch {
+      /* ignore */
+    }
+  }, [canvasPositions]);
+  const updateCanvasPos = useCallback((id, patch) => {
+    setCanvasPositions((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), ...patch } }));
+  }, []);
+  const getCanvasPos = useCallback(
+    (id, fallbackIndex = 0) => {
+      const p = canvasPositions[id];
+      if (p) return p;
+      // Spiral default layout for new blocks
+      const col = fallbackIndex % 3;
+      const row = Math.floor(fallbackIndex / 3);
+      return {
+        x: 40 + col * 320,
+        y: 40 + row * 240,
+        w: 280,
+        h: 180,
+      };
+    },
+    [canvasPositions]
+  );
+
+  // Slideshow mode — current slide index
+  const [slideIndex, setSlideIndex] = useState(0);
+  useEffect(() => {
+    if (prefs.layout !== "slideshow") return;
+    const handler = (e) => {
+      // Avoid intercepting typing in textareas
+      if (e.target?.tagName === "TEXTAREA" || e.target?.tagName === "INPUT") return;
+      if (e.key === "ArrowRight" || e.key === "PageDown" || e.key === " ") {
+        e.preventDefault();
+        setSlideIndex((i) => Math.min(i + 1, items.length - 1));
+      } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+        e.preventDefault();
+        setSlideIndex((i) => Math.max(i - 1, 0));
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [prefs.layout, items.length]);
+
+  // Clamp slide index when items change
+  useEffect(() => {
+    if (slideIndex >= items.length) setSlideIndex(Math.max(0, items.length - 1));
+  }, [items.length, slideIndex]);
 
   const pageStyleVars = useMemo(
     () => ({
@@ -1138,6 +1229,60 @@ const Notion = () => {
     }
   };
 
+  // Render the editable body + overlays for a single block.
+  // Used by list, canvas, and slideshow layouts.
+  const renderBlockBody = (item) => {
+    const content = renderItemContent(item);
+    const ts = (prefs.showTimestamps && (item.createdAt || item.updatedAt)) ? (
+      <div className="block-timestamps">
+        {item.createdAt && (
+          <span title={new Date(item.createdAt).toLocaleString()}>
+            Created {fmtTime(item.createdAt)}
+          </span>
+        )}
+        {item.updatedAt && item.updatedAt !== item.createdAt && (
+          <span title={new Date(item.updatedAt).toLocaleString()}>
+            · Updated {fmtTime(item.updatedAt)}
+          </span>
+        )}
+      </div>
+    ) : null;
+
+    return (
+      <>
+        {content ? (
+          content
+        ) : (
+          <textarea
+            placeholder={item.placeholder || "Press '/' for commands, or just type…"}
+            value={newContent[item.id] || item.content || ""}
+            onChange={(e) => handleChangeContent(item.id, e.target.value)}
+            onKeyDown={(e) => handleKeyDown(e, item.id)}
+            onPaste={(e) => handlePaste(e, item.id)}
+            ref={(el) => (editTextareaRefs.current[item.id] = el)}
+            className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""}`}
+          />
+        )}
+        {ts}
+        {loadingImage === item.id && (
+          <div className="loading-overlay">
+            <Spin />
+          </div>
+        )}
+        {slashMenuFor === item.id && (
+          <div className="slash-menu-anchor">
+            <SlashMenu
+              query={slashQuery}
+              selectedIndex={slashSelectedIndex}
+              onSelect={(cmd) => executeSlashCommand(cmd, item.id)}
+              onClose={closeSlashMenu}
+            />
+          </div>
+        )}
+      </>
+    );
+  };
+
   const convertLinksToEmbedTags = (text) => {
     const urlRegex = /(https?:\/\/[^\s]+)/g;
     const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
@@ -1246,6 +1391,112 @@ const Notion = () => {
               </li>
             ))}
           </ul>
+        ) : prefs.layout === "canvas" ? (
+          <div className="notion-canvas">
+            {items.map((item, idx) => {
+              const pos = getCanvasPos(item.id, idx);
+              return (
+                <Rnd
+                  key={item.id}
+                  size={{ width: pos.w, height: pos.h }}
+                  position={{ x: pos.x, y: pos.y }}
+                  bounds="parent"
+                  minWidth={180}
+                  minHeight={80}
+                  dragHandleClassName="canvas-block-handle"
+                  onDragStop={(e, d) =>
+                    updateCanvasPos(item.id, { x: Math.max(0, d.x), y: Math.max(0, d.y) })
+                  }
+                  onResizeStop={(e, dir, ref, delta, p) =>
+                    updateCanvasPos(item.id, {
+                      w: parseInt(ref.style.width, 10),
+                      h: parseInt(ref.style.height, 10),
+                      x: Math.max(0, p.x),
+                      y: Math.max(0, p.y),
+                    })
+                  }
+                  className="canvas-block"
+                >
+                  <div className="canvas-block-handle" title="Drag to move">
+                    <HolderOutlined />
+                    <div className="canvas-block-tools">
+                      <button
+                        type="button"
+                        className="canvas-tool-btn"
+                        onClick={() => {
+                          setSlashMenuFor(item.id);
+                          setSlashQuery("");
+                          setSlashSelectedIndex(0);
+                          editTextareaRefs.current[item.id]?.focus();
+                        }}
+                        title="Block actions"
+                      >
+                        ⋯
+                      </button>
+                      <button
+                        type="button"
+                        className="canvas-tool-btn danger"
+                        onClick={async () => {
+                          setItems((prev) => prev.filter((it) => it.id !== item.id));
+                          await deleteItem(item.id, true);
+                        }}
+                        title="Delete block"
+                      >
+                        <CloseOutlined />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="container-block canvas-content">
+                    {renderBlockBody(item)}
+                  </div>
+                </Rnd>
+              );
+            })}
+            <button
+              type="button"
+              className="canvas-add-fab"
+              onClick={() => addItem()}
+              title="Add block"
+            >
+              <PlusOutlined />
+            </button>
+          </div>
+        ) : prefs.layout === "slideshow" ? (
+          <div className="notion-slideshow">
+            {items.length > 0 && items[slideIndex] && (
+              <div className="slide-stage">
+                <div className="slide-frame">
+                  <div className="container-block">
+                    {renderBlockBody(items[slideIndex])}
+                  </div>
+                </div>
+                <div className="slide-controls">
+                  <button
+                    type="button"
+                    className="slide-nav"
+                    onClick={() => setSlideIndex((i) => Math.max(0, i - 1))}
+                    disabled={slideIndex === 0}
+                  >
+                    ← Prev
+                  </button>
+                  <span className="slide-counter">
+                    {slideIndex + 1} / {items.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="slide-nav"
+                    onClick={() => setSlideIndex((i) => Math.min(items.length - 1, i + 1))}
+                    disabled={slideIndex >= items.length - 1}
+                  >
+                    Next →
+                  </button>
+                </div>
+                <div className="slide-hint">
+                  <kbd>←</kbd> <kbd>→</kbd> or <kbd>Space</kbd> to navigate
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="droppable">
@@ -1306,43 +1557,7 @@ const Notion = () => {
                           </div>
 
                           <div className="container-block">
-                            {renderItemContent(item) ? (
-                              renderItemContent(item)
-                            ) : (
-                              <textarea
-                                placeholder={
-                                  item.placeholder ||
-                                  "Press '/' for commands, or just type…"
-                                }
-                                value={newContent[item.id] || item.content || ""}
-                                onChange={(e) =>
-                                  handleChangeContent(item.id, e.target.value)
-                                }
-                                onKeyDown={(e) => handleKeyDown(e, item.id)}
-                                onPaste={(e) => handlePaste(e, item.id)}
-                                ref={(el) =>
-                                  (editTextareaRefs.current[item.id] = el)
-                                }
-                                className={`edit-textarea ${
-                                  item.heading ? `heading-${item.heading}` : ""
-                                }`}
-                              />
-                            )}
-                            {loadingImage === item.id && (
-                              <div className="loading-overlay">
-                                <Spin />
-                              </div>
-                            )}
-                            {slashMenuFor === item.id && (
-                              <div className="slash-menu-anchor">
-                                <SlashMenu
-                                  query={slashQuery}
-                                  selectedIndex={slashSelectedIndex}
-                                  onSelect={(cmd) => executeSlashCommand(cmd, item.id)}
-                                  onClose={closeSlashMenu}
-                                />
-                              </div>
-                            )}
+                            {renderBlockBody(item)}
                           </div>
                         </li>
                       )}
