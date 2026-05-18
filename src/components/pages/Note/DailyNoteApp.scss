@@ -1663,44 +1663,6 @@
     }
   }
 
-  .note-overflow-menu {
-    background: var(--bg-color, #1a1a1f);
-    border: 1px solid var(--border-color, #333);
-    border-radius: 6px;
-    padding: 4px;
-    min-width: 160px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-
-    .overflow-item {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 6px 10px;
-      color: var(--text-muted, #888);
-      background: none;
-      border: none;
-      width: 100%;
-      cursor: pointer;
-      font-size: 0.75rem;
-      font-family: inherit;
-      border-radius: 4px;
-      transition: background 0.15s, color 0.15s;
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--accent-color, #82a1ff);
-      }
-
-      svg {
-        flex-shrink: 0;
-        font-size: 0.85rem;
-      }
-
-      &.is-active {
-        color: #16a34a;
-      }
-    }
-  }
 
   .note-body {
     flex: 1;
@@ -3367,5 +3329,163 @@
       color: var(--text-muted);
       border-top: 1px solid var(--border-color, #111827);
     }
+  }
+}
+
+// ── NOTE OVERFLOW DROPDOWN MENU (rendered in portal at body root) ──
+.note-overflow-menu {
+  background: linear-gradient(180deg, #1a1d24 0%, #14171c 100%);
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(130, 161, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  position: relative;
+  overflow: hidden;
+  animation: overflowMenuIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(130, 161, 255, 0.5) 50%,
+      transparent 100%);
+  }
+
+  .overflow-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    color: #a6accd;
+    background: transparent;
+    border: none;
+    width: 100%;
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    border-radius: 5px;
+    transition:
+      background 0.15s ease,
+      color 0.15s ease,
+      transform 0.1s ease,
+      padding-left 0.15s ease;
+    position: relative;
+
+    svg {
+      flex-shrink: 0;
+      font-size: 0.85rem;
+      width: 14px;
+      color: #6b7080;
+      transition: color 0.15s ease;
+    }
+
+    span {
+      flex: 1;
+      text-align: left;
+      font-weight: 500;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 2px;
+      height: 0;
+      background: #82a1ff;
+      border-radius: 0 2px 2px 0;
+      transition: height 0.2s ease;
+    }
+
+    &:hover {
+      background: rgba(130, 161, 255, 0.08);
+      color: #ffffff;
+      padding-left: 16px;
+
+      svg {
+        color: #82a1ff;
+      }
+
+      &::before {
+        height: 60%;
+      }
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+
+      &:hover {
+        background: transparent;
+        color: #a6accd;
+        padding-left: 12px;
+
+        svg { color: #6b7080; }
+        &::before { height: 0; }
+      }
+    }
+
+    &.is-active {
+      color: #16a34a;
+
+      svg { color: #16a34a; }
+    }
+
+    & + .overflow-item {
+      margin-top: 2px;
+    }
+  }
+}
+
+// Light theme variant
+body.theme-light .note-overflow-menu,
+.theme-light .note-overflow-menu {
+  background: linear-gradient(180deg, #ffffff 0%, #f6f7fb 100%);
+  border-color: #d0d4dc;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.12),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
+
+  .overflow-item {
+    color: #4a5160;
+
+    svg { color: #6b7080; }
+
+    &:hover {
+      background: rgba(59, 130, 246, 0.08);
+      color: #111827;
+
+      svg { color: #3b82f6; }
+
+      &::before { background: #3b82f6; }
+    }
+  }
+}
+
+@keyframes overflowMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
