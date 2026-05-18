@@ -184,6 +184,36 @@ const Notion = () => {
   const [loadingImage, setLoadingImage] = useState(null);
   const [loadingItems, setLoadingItems] = useState(true);
 
+  // Page title — persisted locally so it survives reloads without backend changes
+  const [pageTitle, setPageTitle] = useState(() => {
+    try {
+      return localStorage.getItem("notion.pageTitle") || "";
+    } catch {
+      return "";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("notion.pageTitle", pageTitle);
+    } catch {
+      /* ignore */
+    }
+  }, [pageTitle]);
+
+  // Sync status — visible badge near the title: 'saved' | 'saving' | 'error'
+  const [syncStatus, setSyncStatus] = useState("saved");
+
+  // Stats — block count + word + character count, recomputed when items/newContent change
+  const stats = useMemo(() => {
+    const text = items
+      .map((it) => newContent[it.id] ?? it.content ?? "")
+      .filter((c) => typeof c === "string")
+      .join(" ");
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+    return { blocks: items.length, words, chars };
+  }, [items, newContent]);
+
   // Slash menu state
   const [slashMenuFor, setSlashMenuFor] = useState(null);
   const [slashQuery, setSlashQuery] = useState("");
@@ -627,10 +657,13 @@ const Notion = () => {
 
   const saveItems = async (updatedItems, showNoti) => {
     if (!apiAvailable) return;
+    setSyncStatus("saving");
     try {
       await axiosInstance.post("/api/Items/bulk", updatedItems);
+      setSyncStatus("saved");
     } catch (error) {
       console.error("Error saving items:", error);
+      setSyncStatus("error");
       if (showNoti) message.error("Error saving items", 1);
     }
   };
@@ -908,6 +941,33 @@ const Notion = () => {
         onDragOver={handleGlobalDragOver}
         onPaste={handleGlobalPaste}
       >
+        <div className="notion-doc-header">
+          <div className="notion-doc-meta">
+            <span className={`sync-badge sync-${syncStatus}`}>
+              <span className="sync-dot" />
+              {syncStatus === "saving"
+                ? "Saving…"
+                : syncStatus === "error"
+                ? "Save failed"
+                : apiAvailable
+                ? "Saved"
+                : "Offline"}
+            </span>
+            {pageTitle && (
+              <span className="doc-stats-inline">
+                {stats.blocks} {stats.blocks === 1 ? "block" : "blocks"} ·{" "}
+                {stats.words} {stats.words === 1 ? "word" : "words"}
+              </span>
+            )}
+          </div>
+          <input
+            className="notion-doc-title"
+            value={pageTitle}
+            onChange={(e) => setPageTitle(e.target.value)}
+            placeholder="Untitled"
+            spellCheck={false}
+          />
+        </div>
         {loadingItems ? (
           <ul className="droppable-list">
             {[0, 1, 2].map((i) => (
@@ -1020,10 +1080,43 @@ const Notion = () => {
                     </Draggable>
                   ))}
                   {provided.placeholder}
+                  <li className="draggable-item ghost-add-item ghost-add-tail">
+                    <div className="container-block">
+                      <button
+                        type="button"
+                        className="ghost-add-btn"
+                        onClick={() =>
+                          addItem(items.length ? items[items.length - 1].id : null)
+                        }
+                      >
+                        <PlusOutlined />
+                        <span>Add another block at the end</span>
+                      </button>
+                    </div>
+                  </li>
                 </ul>
               )}
             </Droppable>
           </DragDropContext>
+        )}
+        {!loadingItems && (
+          <div className="notion-doc-footer">
+            <span>
+              <strong>{stats.blocks}</strong>{" "}
+              {stats.blocks === 1 ? "block" : "blocks"}
+            </span>
+            <span>
+              <strong>{stats.words}</strong>{" "}
+              {stats.words === 1 ? "word" : "words"}
+            </span>
+            <span>
+              <strong>{stats.chars}</strong>{" "}
+              {stats.chars === 1 ? "char" : "chars"}
+            </span>
+            <span className="footer-hint">
+              Press <kbd>/</kbd> for commands · <kbd>Enter</kbd> to add a block
+            </span>
+          </div>
         )}
       </div>
     </>
