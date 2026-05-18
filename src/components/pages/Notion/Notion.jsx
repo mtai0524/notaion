@@ -45,6 +45,8 @@ const DEFAULT_PREFS = {
   background: "plain",      // plain | dots | grid | lines
   accent: "#3b82f6",        // any hex
   focusMode: false,         // hides controls + ghost-add
+  layout: "single",         // single | columns2 | columns3
+  showOutline: false,       // outline (TOC) sidebar visibility
 };
 
 const ACCENT_SWATCHES = [
@@ -215,6 +217,53 @@ const SlashMenu = ({ query, selectedIndex, onSelect, onClose, anchorRef }) => {
   );
 };
 
+// ── Outline / Table of contents sidebar ──────────────────────────────
+const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
+  const headings = useMemo(() => {
+    return items
+      .map((it) => {
+        if (!it.heading || !String(it.heading).startsWith("heading-")) return null;
+        const level = parseInt(it.heading.replace("heading-", ""), 10);
+        if (!level || level < 1 || level > 3) return null;
+        const raw = newContent[it.id] ?? it.content ?? "";
+        const text = String(raw).trim().replace(/\s+/g, " ").slice(0, 80);
+        return text ? { id: it.id, level, text } : null;
+      })
+      .filter(Boolean);
+  }, [items, newContent]);
+
+  return (
+    <aside className="notion-outline">
+      <div className="outline-header">
+        <span className="outline-title">On this page</span>
+        <button type="button" className="outline-close" onClick={onClose}>
+          <CloseOutlined />
+        </button>
+      </div>
+      {headings.length === 0 ? (
+        <div className="outline-empty">
+          Add a heading with <kbd>/</kbd> to build an outline.
+        </div>
+      ) : (
+        <nav className="outline-list">
+          {headings.map((h) => (
+            <button
+              key={h.id}
+              type="button"
+              className={`outline-item level-${h.level}`}
+              onClick={() => onJump(h.id)}
+              title={h.text}
+            >
+              <span className="outline-bar" />
+              <span className="outline-text">{h.text}</span>
+            </button>
+          ))}
+        </nav>
+      )}
+    </aside>
+  );
+};
+
 // ── Settings panel ───────────────────────────────────────────────────
 const SegGroup = ({ label, value, options, onChange }) => (
   <div className="prefs-row">
@@ -319,6 +368,28 @@ const NotionPrefsPanel = ({ prefs, onChange, onReset, onClose }) => {
           ]}
         />
 
+        <SegGroup
+          label="Layout"
+          value={prefs.layout}
+          onChange={(v) => onChange({ layout: v })}
+          options={[
+            { value: "single", label: "1 col" },
+            { value: "columns2", label: "2 cols" },
+            { value: "columns3", label: "3 cols" },
+          ]}
+        />
+
+        <div className="prefs-row">
+          <div className="prefs-label">Outline (Table of contents)</div>
+          <button
+            type="button"
+            className={`prefs-toggle ${prefs.showOutline ? "is-on" : ""}`}
+            onClick={() => onChange({ showOutline: !prefs.showOutline })}
+          >
+            <span className="prefs-toggle-thumb" />
+          </button>
+        </div>
+
         <div className="prefs-row">
           <div className="prefs-label">Accent</div>
           <div className="prefs-swatches">
@@ -400,10 +471,21 @@ const Notion = () => {
     `font-${prefs.font}`,
     `size-${prefs.fontSize}`,
     `bg-${prefs.background}`,
+    `layout-${prefs.layout}`,
     prefs.focusMode ? "is-focus-mode" : "",
+    prefs.showOutline ? "has-outline" : "",
   ]
     .filter(Boolean)
     .join(" ");
+
+  const jumpToBlock = useCallback((id) => {
+    const el = document.querySelector(`[data-block-id="${id}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const textarea = editTextareaRefs.current[id];
+      if (textarea) setTimeout(() => textarea.focus(), 350);
+    }
+  }, []);
 
   // Slash menu state
   const [slashMenuFor, setSlashMenuFor] = useState(null);
@@ -1139,6 +1221,14 @@ const Notion = () => {
           onClose={() => setShowPrefs(false)}
         />
       )}
+      {prefs.showOutline && !loadingItems && (
+        <OutlineSidebar
+          items={items}
+          newContent={newContent}
+          onJump={jumpToBlock}
+          onClose={() => updatePref({ showOutline: false })}
+        />
+      )}
       <div
         className={pageClass}
         style={pageStyleVars}
@@ -1183,6 +1273,7 @@ const Notion = () => {
                         <li
                           ref={provided.innerRef}
                           {...provided.draggableProps}
+                          data-block-id={item.id}
                           className="draggable-item"
                         >
                           <div className="block-controls">

@@ -110,6 +110,179 @@
   }
 }
 
+/* ───────── Layout: multi-column ─────────
+   Reflows blocks into 2 or 3 columns to reduce vertical scrolling.
+   Uses CSS columns property — drag-drop still reorders, just flows visually. */
+.notion-page.layout-columns2 .droppable-list,
+.notion-page.layout-columns3 .droppable-list {
+  display: block;
+  column-gap: 24px;
+  column-fill: balance;
+}
+
+.notion-page.layout-columns2 .droppable-list { column-count: 2; max-width: 1200px; }
+.notion-page.layout-columns3 .droppable-list { column-count: 3; max-width: 1400px; }
+
+.notion-page.layout-columns2 .draggable-item,
+.notion-page.layout-columns3 .draggable-item {
+  display: block;
+  break-inside: avoid;
+  page-break-inside: avoid;
+  padding-left: 40px;
+}
+
+.notion-page.layout-columns2 .ghost-add-item,
+.notion-page.layout-columns3 .ghost-add-item {
+  column-span: all;
+}
+
+/* ───────── Outline / Table of contents sidebar ───────── */
+.notion-page.has-outline {
+  padding-left: 260px;
+}
+
+.notion-outline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 240px;
+  z-index: 80;
+  background: var(--container-bg);
+  border-right: 1px solid rgba(127, 127, 127, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: outlineSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+
+  .outline-header {
+    padding: 18px 16px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(127, 127, 127, 0.12);
+  }
+
+  .outline-title {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  .outline-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background: rgba(127, 127, 127, 0.12);
+      color: var(--text-color);
+    }
+  }
+
+  .outline-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 8px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(127, 127, 127, 0.3);
+      border-radius: 2px;
+    }
+  }
+
+  .outline-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    padding: 5px 8px;
+    border-radius: 5px;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    line-height: 1.35;
+    transition: background 0.15s ease, color 0.15s ease;
+    font-family: inherit;
+    width: 100%;
+
+    .outline-bar {
+      width: 2px;
+      height: 14px;
+      background: currentColor;
+      opacity: 0.3;
+      border-radius: 1px;
+      flex-shrink: 0;
+    }
+
+    .outline-text {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:hover {
+      background: rgba(127, 127, 127, 0.08);
+      color: var(--text-color);
+
+      .outline-bar { opacity: 1; }
+    }
+
+    &.level-1 {
+      padding-left: 8px;
+      font-weight: 600;
+      color: var(--text-color);
+      font-size: 0.82rem;
+    }
+    &.level-2 {
+      padding-left: 20px;
+      font-size: 0.76rem;
+    }
+    &.level-3 {
+      padding-left: 32px;
+      font-size: 0.72rem;
+      opacity: 0.85;
+    }
+  }
+
+  .outline-empty {
+    padding: 16px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.5;
+
+    kbd {
+      display: inline-block;
+      padding: 1px 5px;
+      background: var(--bg-color);
+      border: 1px solid rgba(127, 127, 127, 0.25);
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 0.7rem;
+      color: var(--text-color);
+    }
+  }
+}
+
+@keyframes outlineSlideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
 /* ───────── Accent override ───────── */
 .notion-page .slash-item.is-selected {
   box-shadow: inset 2px 0 0 var(--notion-accent, var(--accent-color));
@@ -934,6 +1107,23 @@
     right: 12px;
     left: 12px;
     width: auto;
+  }
+
+  /* Multi-column collapses to single on mobile */
+  .notion-page.layout-columns2 .droppable-list,
+  .notion-page.layout-columns3 .droppable-list {
+    column-count: 1;
+  }
+
+  /* Outline becomes a slide-over on mobile */
+  .notion-page.has-outline {
+    padding-left: 12px;
+  }
+
+  .notion-outline {
+    width: 80vw;
+    max-width: 280px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
   }
 
   .droppable-list {
