@@ -1841,7 +1841,7 @@
       line-height: var(--note-line-height, 1.6);
       resize: none;
       outline: none;
-      font-family: var(--note-font-family, inherit);
+      font-family: var(--note-font-family, 'JetBrains Mono', 'Fira Code', monospace);
 
       &::placeholder {
         color: var(--text-muted);
@@ -1853,10 +1853,14 @@
       font-size: var(--note-font-size, 0.85rem);
       line-height: var(--note-line-height, 1.6);
       color: var(--custom-text-color, var(--text-color));
-      font-family: var(--note-font-family, inherit);
+      font-family: var(--note-font-family, 'JetBrains Mono', 'Fira Code', monospace);
       overflow-y: auto;
       overflow-x: hidden;
       padding-right: 5px;
+
+      p, ul, ol, li, h1, h2, h3, h4, h5, h6, strong, em, blockquote, code, pre {
+        font-family: inherit;
+      }
 
       &::-webkit-scrollbar {
         width: 4px;
