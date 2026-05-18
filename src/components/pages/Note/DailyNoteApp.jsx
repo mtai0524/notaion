@@ -155,6 +155,45 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const imgInputRef = useRef(null);
   const fileInputRef = useRef(null);
 
+  // Local draft for the textarea — avoids re-rendering the entire notes tree on every keystroke.
+  // Only flushed to parent (and the debounced backend save) on blur or after a typing pause.
+  const [draftContent, setDraftContent] = useState(note.content || '');
+  const draftRef = useRef(draftContent);
+  const flushTimerRef = useRef(null);
+
+  // Resync draft when the note prop changes from outside (e.g. SignalR update) and we're not editing.
+  useEffect(() => {
+    if (!isEditing) {
+      setDraftContent(note.content || '');
+      draftRef.current = note.content || '';
+    }
+  }, [note.content, isEditing]);
+
+  const flushDraft = useCallback(() => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+    if (draftRef.current !== (note.content || '')) {
+      onUpdate(note.id, { content: draftRef.current });
+    }
+  }, [note.id, note.content, onUpdate]);
+
+  const handleDraftChange = (e) => {
+    const value = e.target.value;
+    setDraftContent(value);
+    draftRef.current = value;
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(flushDraft, 400);
+  };
+
+  useEffect(() => () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushDraft();
+    }
+  }, [flushDraft]);
+
   // Re-render fullscreen note when window resizes so it tracks viewport size.
   useEffect(() => {
     if (!note.isFullscreen) return;
@@ -765,11 +804,14 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
               {isEditing ? (
                 <textarea
                   className="note-content-area"
-                  value={note.content || ''}
-                  onChange={(e) => onUpdate(note.id, { content: e.target.value })}
+                  value={draftContent}
+                  onChange={handleDraftChange}
                   placeholder="> waiting for input... (paste image/file to attach)"
                   autoFocus
-                  onBlur={() => setIsEditing(false)}
+                  onBlur={() => {
+                    flushDraft();
+                    setIsEditing(false);
+                  }}
                 />
               ) : (
                 <div className="markdown-preview">
