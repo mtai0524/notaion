@@ -154,6 +154,8 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const [uploading, setUploading] = useState(false);
   const imgInputRef = useRef(null);
   const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
+  const [formatMenu, setFormatMenu] = useState(null); // { x, y } or null
 
   // Local draft for the textarea — avoids re-rendering the entire notes tree on every keystroke.
   // Only flushed to parent (and the debounced backend save) on blur or after a typing pause.
@@ -186,6 +188,130 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(flushDraft, 400);
   };
+
+  // Apply markdown formatting at the textarea's current selection.
+  // mode: 'wrap' (left/right around selection), 'linePrefix' (prepend to each line), 'replace' (insert text)
+  const applyFormat = useCallback((spec) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const value = draftRef.current ?? '';
+    const selected = value.slice(start, end);
+    let next = value;
+    let nextStart = start;
+    let nextEnd = end;
+
+    if (spec.mode === 'wrap') {
+      const { left, right = left, placeholder = '' } = spec;
+      const inner = selected || placeholder;
+      next = value.slice(0, start) + left + inner + right + value.slice(end);
+      nextStart = start + left.length;
+      nextEnd = nextStart + inner.length;
+    } else if (spec.mode === 'linePrefix') {
+      const { prefix } = spec;
+      const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+      const block = value.slice(lineStart, end);
+      const transformed = block
+        .split('\n')
+        .map((ln) => (ln.startsWith(prefix) ? ln : prefix + ln))
+        .join('\n');
+      next = value.slice(0, lineStart) + transformed + value.slice(end);
+      nextStart = lineStart;
+      nextEnd = lineStart + transformed.length;
+    } else if (spec.mode === 'replace') {
+      const { text } = spec;
+      next = value.slice(0, start) + text + value.slice(end);
+      nextStart = start + text.length;
+      nextEnd = nextStart;
+    }
+
+    setDraftContent(next);
+    draftRef.current = next;
+    if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = setTimeout(flushDraft, 400);
+    requestAnimationFrame(() => {
+      const t = textareaRef.current;
+      if (!t) return;
+      t.focus();
+      t.setSelectionRange(nextStart, nextEnd);
+    });
+  }, [flushDraft]);
+
+  const FORMAT_ACTIONS = {
+    bold:      { mode: 'wrap', left: '**', placeholder: 'bold', key: 'Ctrl+B' },
+    italic:    { mode: 'wrap', left: '*', placeholder: 'italic', key: 'Ctrl+I' },
+    code:      { mode: 'wrap', left: '`', placeholder: 'code', key: 'Ctrl+E' },
+    strike:    { mode: 'wrap', left: '~~', placeholder: 'strike', key: 'Ctrl+Shift+X' },
+    highlight: { mode: 'wrap', left: '==', placeholder: 'highlight', key: 'Ctrl+Shift+H' },
+    link:      { mode: 'wrap', left: '[', right: '](url)', placeholder: 'text', key: 'Ctrl+K' },
+    image:     { mode: 'replace', text: '![alt](https://)', key: 'Ctrl+Shift+I' },
+    h1:        { mode: 'linePrefix', prefix: '# ', key: 'Ctrl+Alt+1' },
+    h2:        { mode: 'linePrefix', prefix: '## ', key: 'Ctrl+Alt+2' },
+    h3:        { mode: 'linePrefix', prefix: '### ', key: 'Ctrl+Alt+3' },
+    bullet:    { mode: 'linePrefix', prefix: '- ', key: 'Ctrl+Shift+L' },
+    numbered:  { mode: 'linePrefix', prefix: '1. ', key: 'Ctrl+Shift+O' },
+    quote:     { mode: 'linePrefix', prefix: '> ', key: 'Ctrl+Shift+Q' },
+    task:      { mode: 'linePrefix', prefix: '- [ ] ', key: 'Ctrl+Shift+T' },
+    codeblock: { mode: 'wrap', left: '\n```\n', right: '\n```\n', placeholder: 'code', key: 'Ctrl+/' },
+    hr:        { mode: 'replace', text: '\n---\n', key: 'Ctrl+Shift+-' },
+  };
+
+  const runFormat = useCallback((id) => {
+    const spec = FORMAT_ACTIONS[id];
+    if (spec) applyFormat(spec);
+  }, [applyFormat]);
+
+  const handleEditorKeyDown = (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (!mod) return;
+    const k = e.key.toLowerCase();
+    const shift = e.shiftKey;
+    const alt = e.altKey;
+    let id = null;
+    if (!shift && !alt && k === 'b') id = 'bold';
+    else if (!shift && !alt && k === 'i') id = 'italic';
+    else if (!shift && !alt && k === 'e') id = 'code';
+    else if (!shift && !alt && k === 'k') id = 'link';
+    else if (!shift && !alt && k === '/') id = 'codeblock';
+    else if (shift && !alt && k === 'x') id = 'strike';
+    else if (shift && !alt && k === 'h') id = 'highlight';
+    else if (shift && !alt && k === 'i') id = 'image';
+    else if (shift && !alt && k === 'l') id = 'bullet';
+    else if (shift && !alt && k === 'o') id = 'numbered';
+    else if (shift && !alt && k === 'q') id = 'quote';
+    else if (shift && !alt && k === 't') id = 'task';
+    else if (shift && !alt && (k === '-' || k === '_')) id = 'hr';
+    else if (alt && !shift && k === '1') id = 'h1';
+    else if (alt && !shift && k === '2') id = 'h2';
+    else if (alt && !shift && k === '3') id = 'h3';
+    else if (!shift && !alt && k === 'enter') {
+      e.preventDefault();
+      onUpdate(note.id, { isFullscreen: !note.isFullscreen });
+      return;
+    }
+    if (id) {
+      e.preventDefault();
+      runFormat(id);
+    }
+  };
+
+  const openFormatMenu = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setFormatMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  useEffect(() => {
+    if (!formatMenu) return;
+    const close = () => setFormatMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [formatMenu]);
 
   useEffect(() => () => {
     if (flushTimerRef.current) {
@@ -364,14 +490,18 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   };
 
   // Popup defaults: slide-in drawer docked to the right edge, full viewport height.
-  const defaultPopupW = Math.min(620, Math.max(360, Math.round(window.innerWidth * 0.42)));
-  const defaultPopupH = window.innerHeight;
-  const popupW = note.popupWidth || defaultPopupW;
-  const popupH = note.popupHeight || defaultPopupH;
-  const defaultPopupX = Math.max(0, window.innerWidth - popupW);
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const defaultPopupW = vw < 720
+    ? Math.max(280, Math.round(vw * 0.92))
+    : Math.min(640, Math.max(420, Math.round(vw * 0.42)));
+  const defaultPopupH = vh;
+  const popupW = Math.min(note.popupWidth || defaultPopupW, vw);
+  const popupH = Math.min(note.popupHeight || defaultPopupH, vh);
+  const defaultPopupX = Math.max(0, vw - popupW);
   const defaultPopupY = 0;
-  const popupX = note.popupX != null ? note.popupX : defaultPopupX;
-  const popupY = note.popupY != null ? note.popupY : defaultPopupY;
+  const popupX = note.popupX != null ? Math.min(note.popupX, vw - popupW) : defaultPopupX;
+  const popupY = note.popupY != null ? Math.min(note.popupY, vh - popupH) : defaultPopupY;
 
   return (
     <>
@@ -806,12 +936,18 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
               </div>
             )}
 
-            <div className="content-container" onClick={startEditing}>
+            <div
+              className="content-container"
+              onClick={startEditing}
+              onContextMenu={note.isFullscreen ? openFormatMenu : undefined}
+            >
               {isEditing ? (
                 <textarea
+                  ref={textareaRef}
                   className="note-content-area"
                   value={draftContent}
                   onChange={handleDraftChange}
+                  onKeyDown={handleEditorKeyDown}
                   placeholder="> waiting for input... (paste image/file to attach)"
                   autoFocus
                   onBlur={() => {
@@ -869,6 +1005,114 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
         )}
       </div>
     </Rnd>
+    {formatMenu && (
+      <div
+        className="note-format-menu"
+        style={{ top: formatMenu.y, left: formatMenu.x }}
+        onClick={(e) => e.stopPropagation()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        <div className="fmt-section">
+          <button className="fmt-btn" onClick={() => { runFormat('bold'); setFormatMenu(null); }}>
+            <span className="fmt-icon" style={{ fontWeight: 700 }}>B</span>
+            <span className="fmt-label">Bold</span>
+            <span className="fmt-shortcut">Ctrl+B</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('italic'); setFormatMenu(null); }}>
+            <span className="fmt-icon" style={{ fontStyle: 'italic' }}>I</span>
+            <span className="fmt-label">Italic</span>
+            <span className="fmt-shortcut">Ctrl+I</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('code'); setFormatMenu(null); }}>
+            <span className="fmt-icon" style={{ fontFamily: 'monospace' }}>{'<>'}</span>
+            <span className="fmt-label">Inline code</span>
+            <span className="fmt-shortcut">Ctrl+E</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('strike'); setFormatMenu(null); }}>
+            <span className="fmt-icon" style={{ textDecoration: 'line-through' }}>S</span>
+            <span className="fmt-label">Strike</span>
+            <span className="fmt-shortcut">Ctrl+Shift+X</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('highlight'); setFormatMenu(null); }}>
+            <span className="fmt-icon" style={{ background: 'rgba(250,204,21,0.4)', padding: '0 4px' }}>H</span>
+            <span className="fmt-label">Highlight</span>
+            <span className="fmt-shortcut">Ctrl+Shift+H</span>
+          </button>
+        </div>
+        <div className="fmt-divider" />
+        <div className="fmt-section">
+          <button className="fmt-btn" onClick={() => { runFormat('h1'); setFormatMenu(null); }}>
+            <span className="fmt-icon">H1</span>
+            <span className="fmt-label">Heading 1</span>
+            <span className="fmt-shortcut">Ctrl+Alt+1</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('h2'); setFormatMenu(null); }}>
+            <span className="fmt-icon">H2</span>
+            <span className="fmt-label">Heading 2</span>
+            <span className="fmt-shortcut">Ctrl+Alt+2</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('h3'); setFormatMenu(null); }}>
+            <span className="fmt-icon">H3</span>
+            <span className="fmt-label">Heading 3</span>
+            <span className="fmt-shortcut">Ctrl+Alt+3</span>
+          </button>
+        </div>
+        <div className="fmt-divider" />
+        <div className="fmt-section">
+          <button className="fmt-btn" onClick={() => { runFormat('bullet'); setFormatMenu(null); }}>
+            <span className="fmt-icon">•</span>
+            <span className="fmt-label">Bullet list</span>
+            <span className="fmt-shortcut">Ctrl+Shift+L</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('numbered'); setFormatMenu(null); }}>
+            <span className="fmt-icon">1.</span>
+            <span className="fmt-label">Numbered list</span>
+            <span className="fmt-shortcut">Ctrl+Shift+O</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('task'); setFormatMenu(null); }}>
+            <span className="fmt-icon">☐</span>
+            <span className="fmt-label">Task list</span>
+            <span className="fmt-shortcut">Ctrl+Shift+T</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('quote'); setFormatMenu(null); }}>
+            <span className="fmt-icon">❝</span>
+            <span className="fmt-label">Quote</span>
+            <span className="fmt-shortcut">Ctrl+Shift+Q</span>
+          </button>
+        </div>
+        <div className="fmt-divider" />
+        <div className="fmt-section">
+          <button className="fmt-btn" onClick={() => { runFormat('link'); setFormatMenu(null); }}>
+            <span className="fmt-icon">🔗</span>
+            <span className="fmt-label">Link</span>
+            <span className="fmt-shortcut">Ctrl+K</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('image'); setFormatMenu(null); }}>
+            <span className="fmt-icon">🖼</span>
+            <span className="fmt-label">Image</span>
+            <span className="fmt-shortcut">Ctrl+Shift+I</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('codeblock'); setFormatMenu(null); }}>
+            <span className="fmt-icon">{'{}'}</span>
+            <span className="fmt-label">Code block</span>
+            <span className="fmt-shortcut">Ctrl+/</span>
+          </button>
+          <button className="fmt-btn" onClick={() => { runFormat('hr'); setFormatMenu(null); }}>
+            <span className="fmt-icon">―</span>
+            <span className="fmt-label">Divider</span>
+            <span className="fmt-shortcut">Ctrl+Shift+-</span>
+          </button>
+        </div>
+        <div className="fmt-divider" />
+        <div className="fmt-section">
+          <button className="fmt-btn" onClick={() => { onUpdate(note.id, { isFullscreen: false }); setFormatMenu(null); }}>
+            <span className="fmt-icon">⤢</span>
+            <span className="fmt-label">Exit fullscreen</span>
+            <span className="fmt-shortcut">Ctrl+Enter</span>
+          </button>
+        </div>
+      </div>
+    )}
     </>
   );
 };
