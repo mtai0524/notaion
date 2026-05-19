@@ -904,16 +904,18 @@ const Header = () => {
               className="mr-5"
             >
               <a className="ant-dropdown-link" onClick={(e) => e.preventDefault()}>
-                <Tooltip title="user" placement="bottom">
-                  <UserOutlined
-                    style={{
-                      backgroundColor: "#faf8f7",
-                      padding: "10px",
-                      cursor: "pointer",
-                    }}
+                <Tooltip title={token ? (currentUserName || "user") : "Chưa đăng nhập — click để login"} placement="bottom">
+                  <div
                     ref={ref1}
-                    className="text-black text-lg rounded-full"
-                  />
+                    className={`nav-user-badge ${token ? "is-authed" : "is-anon"}`}
+                  >
+                    {token && avatar ? (
+                      <img src={avatar} alt="avatar" className="nav-user-avatar" />
+                    ) : (
+                      <UserOutlined className="nav-user-icon" />
+                    )}
+                    <span className={`nav-user-status ${token ? "is-online" : "is-offline"}`} />
+                  </div>
                 </Tooltip>
               </a>
             </Dropdown>

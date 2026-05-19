@@ -4,6 +4,60 @@
   justify-content: center;
 }
 
+.nav-user-badge {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background-color: #faf8f7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: visible;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &.is-authed {
+    border-color: #22c55e;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.15);
+  }
+
+  &.is-anon {
+    border-color: #cbd5e1;
+  }
+
+  .nav-user-avatar {
+    width: 100%;
+    height: 100%;
+    border-radius: 999px;
+    object-fit: cover;
+  }
+
+  .nav-user-icon {
+    color: #111827;
+    font-size: 18px;
+  }
+
+  .nav-user-status {
+    position: absolute;
+    right: -2px;
+    bottom: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    border: 2px solid var(--container-bg, #ffffff);
+
+    &.is-online {
+      background-color: #22c55e;
+    }
+
+    &.is-offline {
+      background-color: #9ca3af;
+    }
+  }
+}
+
 .nav-bell-badge {
   position: absolute;
   top: 2px;
