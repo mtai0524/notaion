@@ -155,6 +155,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const imgInputRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
+  const savedSelectionRef = useRef({ start: 0, end: 0 });
   const [formatMenu, setFormatMenu] = useState(null); // { x, y } or null
 
   // Local draft for the textarea — avoids re-rendering the entire notes tree on every keystroke.
@@ -193,9 +194,12 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   // mode: 'wrap' (left/right around selection), 'linePrefix' (prepend to each line), 'replace' (insert text)
   const applyFormat = useCallback((spec) => {
     const ta = textareaRef.current;
-    if (!ta) return;
-    const start = ta.selectionStart;
-    const end = ta.selectionEnd;
+    // Use live selection if textarea is mounted, else fall back to the saved range
+    // captured when the format menu opened (textarea may have been unmounted by blur).
+    const liveStart = ta ? ta.selectionStart : savedSelectionRef.current.start;
+    const liveEnd = ta ? ta.selectionEnd : savedSelectionRef.current.end;
+    const start = liveStart;
+    const end = liveEnd;
     const value = draftRef.current ?? '';
     const selected = value.slice(start, end);
     let next = value;
@@ -228,6 +232,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
 
     setDraftContent(next);
     draftRef.current = next;
+    savedSelectionRef.current = { start: nextStart, end: nextEnd };
     if (flushTimerRef.current) clearTimeout(flushTimerRef.current);
     flushTimerRef.current = setTimeout(flushDraft, 400);
     requestAnimationFrame(() => {
@@ -299,6 +304,15 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
   const openFormatMenu = (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const ta = textareaRef.current;
+    if (ta) {
+      savedSelectionRef.current = { start: ta.selectionStart, end: ta.selectionEnd };
+    } else if (!isEditing) {
+      // Not in edit mode yet — switch in so the format actions land on a real textarea.
+      setIsEditing(true);
+      const len = (draftRef.current || '').length;
+      savedSelectionRef.current = { start: len, end: len };
+    }
     setFormatMenu({ x: e.clientX, y: e.clientY });
   };
 
@@ -1009,6 +1023,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       <div
         className="note-format-menu"
         style={{ top: formatMenu.y, left: formatMenu.x }}
+        onMouseDown={(e) => e.preventDefault()}
         onClick={(e) => e.stopPropagation()}
         onContextMenu={(e) => e.preventDefault()}
       >
