@@ -363,13 +363,13 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
     return val || 'solid';
   };
 
-  // Popup defaults: centered in viewport. Capped to viewport with margin.
-  const defaultPopupW = Math.min(880, window.innerWidth - 80);
-  const defaultPopupH = Math.min(660, window.innerHeight - 100);
+  // Popup defaults: slide-in drawer docked to the right edge, full viewport height.
+  const defaultPopupW = Math.min(620, Math.max(360, Math.round(window.innerWidth * 0.42)));
+  const defaultPopupH = window.innerHeight;
   const popupW = note.popupWidth || defaultPopupW;
   const popupH = note.popupHeight || defaultPopupH;
-  const defaultPopupX = Math.max(20, (window.innerWidth - popupW) / 2);
-  const defaultPopupY = Math.max(20, (window.innerHeight - popupH) / 2);
+  const defaultPopupX = Math.max(0, window.innerWidth - popupW);
+  const defaultPopupY = 0;
   const popupX = note.popupX != null ? note.popupX : defaultPopupX;
   const popupY = note.popupY != null ? note.popupY : defaultPopupY;
 
@@ -493,7 +493,13 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                   </button>
                   <button
                     className="overflow-item"
-                    onClick={(e) => { e.stopPropagation(); onUpdate(note.id, { isFullscreen: !note.isFullscreen }); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const turningOn = !note.isFullscreen;
+                      onUpdate(note.id, turningOn
+                        ? { isFullscreen: true, popupX: null, popupY: null, popupWidth: null, popupHeight: null }
+                        : { isFullscreen: false });
+                    }}
                   >
                     {note.isFullscreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
                     <span>{note.isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}</span>
