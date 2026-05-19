@@ -4,6 +4,7 @@ import { message, Spin } from "antd";
 import axiosInstance from "../../../axiosConfig";
 import { useAuth } from "../../../contexts/AuthContext";
 import "./Login.scss";
+import LoginScene from "./LoginScene";
 import Cookies from "js-cookie";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
@@ -119,7 +120,8 @@ const Login = () => {
 
   return (
     <div className="login-container">
-      <div>
+      <LoginScene />
+      <div className="login-panel">
         <h1 className="font-bold text-xl text-center">Login</h1>
         <br />
         <Spin spinning={loading}>

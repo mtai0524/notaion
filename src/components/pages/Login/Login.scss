@@ -2,10 +2,44 @@
 
 .login-container {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
+  gap: 40px;
   margin-bottom: 10px;
+  padding: 20px;
+
+  @media (max-width: 860px) {
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+.login-scene {
+  width: 420px;
+  height: 420px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #111827;
+  box-shadow: -3px 3px 0 0 #111827;
+  background: #0b1020;
+
+  canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  @media (max-width: 860px) {
+    width: 100%;
+    max-width: 340px;
+    height: 280px;
+  }
+}
+
+.login-panel {
+  display: flex;
+  flex-direction: column;
 }
 
 .login-form {
