@@ -1,0 +1,79 @@
+.linked-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.linked-accounts-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.linked-account-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--global-border-radius, 6px);
+  background: var(--container-bg);
+}
+
+.linked-account-badge {
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border: 2px solid #000;
+  border-radius: var(--global-border-radius, 4px);
+  white-space: nowrap;
+}
+
+.linked-account-status {
+  flex: 1;
+  font-size: 0.82rem;
+  font-weight: 700;
+
+  &.on {
+    color: #2e7d4f;
+  }
+  &.off {
+    color: var(--text-muted);
+  }
+}
+
+.linked-account-btn {
+  font-weight: 800;
+  font-size: 0.78rem;
+  padding: 6px 14px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--global-border-radius, 4px);
+  cursor: pointer;
+  background: var(--container-bg);
+  color: var(--text-color);
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+
+  &.link {
+    background: #5865f2;
+    color: #fff;
+    border-color: #111827;
+  }
+
+  &.unlink {
+    background: transparent;
+    color: var(--danger-color, #ef4444);
+    border-color: var(--danger-color, #ef4444);
+  }
+
+  &:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 2px 2px 0 var(--shadow-color);
+  }
+}
+
+.linked-account-warn {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 6px 2px;
+}

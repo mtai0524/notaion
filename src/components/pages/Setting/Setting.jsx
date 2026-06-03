@@ -2,9 +2,10 @@ import { Switch, Tooltip } from "antd";
 import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette, faGamepad } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette, faGamepad, faLink } from "@fortawesome/free-solid-svg-icons";
 import { applyGlobalSettings } from "../../../utils/applyGlobalSettings";
 import PixelThemePicker from "../../pixel/PixelThemePicker";
+import LinkedAccounts from "../../pixel/LinkedAccounts";
 
 const broadcastSettingsChange = () => {
   applyGlobalSettings();
@@ -106,6 +107,18 @@ const Setting = () => {
 
   const categories = [
     {
+      title: "Linked Accounts",
+      items: [
+        {
+          label: "Connected accounts",
+          key: "linkedAccounts",
+          type: "linked-accounts",
+          icon: faLink,
+          desc: "Liên kết Discord vào tài khoản để đăng nhập nhanh hơn.",
+        },
+      ],
+    },
+    {
       title: "Pixel Themes",
       items: [
         {
@@ -179,7 +192,7 @@ const Setting = () => {
               <h2 className="section-title">{cat.title}</h2>
               <div className="setting-list">
                 {cat.items.map((item) => (
-                  <div key={item.key} className={`setting-item-card ${(item.value === true) ? 'active' : ''} ${item.type === 'pixel-picker' ? 'full-width-card' : ''}`}>
+                  <div key={item.key} className={`setting-item-card ${(item.value === true) ? 'active' : ''} ${(item.type === 'pixel-picker' || item.type === 'linked-accounts') ? 'full-width-card' : ''}`}>
                     <div className="item-icon">
                       <FontAwesomeIcon icon={item.icon} />
                     </div>
@@ -219,6 +232,8 @@ const Setting = () => {
                           value={item.value}
                           onChange={(id) => handleStyleChange(item.key, id)}
                         />
+                      ) : item.type === 'linked-accounts' ? (
+                        <LinkedAccounts />
                       ) : item.type === 'presets' ? (
                         <div className="preset-container" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {item.options.map(opt => (
