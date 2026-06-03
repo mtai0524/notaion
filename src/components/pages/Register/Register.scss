@@ -23,3 +23,47 @@
   margin-left: 10px !important;
   padding-left: 10px !important;
 }
+
+/* The email field is an antd <AutoComplete> (.ant-select) while username /
+   password are plain <input>s. Normalize it to a single clean box that matches
+   .form-group input (same border / radius / height / transparent bg) instead
+   of antd's nested selector + inner search box, which looked like a different
+   widget. Scoped to the form so it applies in every theme. */
+.login-form .form-group .ant-select {
+  width: 100% !important;
+
+  .ant-select-selector {
+    height: 30px !important;
+    min-height: 30px !important;
+    border: 2px solid #a8a8a8 !important;
+    border-radius: 4px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 8px !important;
+  }
+
+  .ant-select-selection-search {
+    inset-inline-start: 8px !important;
+    inset-inline-end: 8px !important;
+    left: 8px !important;
+    right: 8px !important;
+  }
+
+  .ant-select-selection-search-input,
+  .ant-select-selection-item,
+  .ant-select-selection-placeholder {
+    height: 28px !important;
+    line-height: 28px !important;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+}
+
+.login-form .form-group .ant-select-focused .ant-select-selector {
+  border-color: #a8a8a8 !important;
+  box-shadow: none !important;
+}
