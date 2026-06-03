@@ -252,6 +252,16 @@ body.pixel-mode-active .ant-btn-primary {
   box-shadow: 3px 3px 0 var(--shadow-color) !important;
 }
 
+/* Login/Register: the email field is an antd <AutoComplete> (.ant-select), so
+   the generic pixel input frame above gave it a heavy black border + offset
+   shadow while the plain username/password <input>s stayed light. Bring it in
+   line with those inputs so all three fields look identical. */
+body.pixel-mode-active .login-form .ant-select-selector {
+  border: 2px solid #a8a8a8 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
 /* Accent-driven primary buttons / switches read from the active palette. */
 body.pixel-mode-active .ant-btn-primary,
 body.pixel-mode-active .ant-switch-checked {

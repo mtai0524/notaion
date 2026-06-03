@@ -170,8 +170,7 @@ const Register = () => {
               <AutoComplete
                 className="text-sm "
                 style={{
-                  width: "108%",
-                  marginLeft: '-10px',
+                  width: "100%",
                   outline: 'none',
                   border: 'none',
                 }}
