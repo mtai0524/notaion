@@ -195,17 +195,27 @@ body.pixel-mode-active *:not(svg):not(path):not(.svg-inline--fa) {
   border-radius: 0 !important;
 }
 
-/* Pixelate raster art: crisp upscaling + an 8-bit block filter.
-   Excludes the picker's own sprite canvases and SVG icons. */
+/* Pixelate raster art: crisp upscaling + an 8-bit block filter. */
 body.pixel-mode-active img,
-body.pixel-mode-active video,
-body.pixel-mode-active .ant-avatar img {
+body.pixel-mode-active video {
   image-rendering: pixelated;
   filter: url(#pixelate-filter);
 }
 
 body.pixel-mode-active canvas:not(.pixel-card-sprite) {
   image-rendering: pixelated;
+}
+
+/* Keep small UI chrome (avatars, notification/profile images, status dots)
+   visible — the block filter destroys tiny images and washed avatars white.
+   They still render crisp via pixelated upscaling, just no destructive filter. */
+body.pixel-mode-active .nav-user-avatar,
+body.pixel-mode-active .noti-avatar img,
+body.pixel-mode-active .ant-avatar img,
+body.pixel-mode-active .ant-image img,
+body.pixel-mode-active img.no-pixelate {
+  filter: none !important;
+  image-rendering: auto !important;
 }
 
 /* Blocky containers with hard offset shadow. */
@@ -222,12 +232,13 @@ body.pixel-mode-active .ant-card {
   box-shadow: 4px 4px 0 var(--shadow-color) !important;
 }
 
-/* Blocky buttons + inputs. */
-body.pixel-mode-active button:not(.pixel-card),
-body.pixel-mode-active .ant-btn,
+/* Blocky form fields + primary/CTA buttons only.
+   Bare icon buttons (chat header, toolbars) stay flat so the UI doesn't
+   turn into a wall of boxed icons. */
 body.pixel-mode-active input,
 body.pixel-mode-active select,
-body.pixel-mode-active textarea {
+body.pixel-mode-active textarea,
+body.pixel-mode-active .ant-btn-primary {
   border: 2px solid var(--border-color) !important;
   box-shadow: 3px 3px 0 var(--shadow-color) !important;
 }
@@ -313,9 +324,17 @@ body.pixel-theme-ink {
 
 /* In the monochrome theme, push images to grayscale too. */
 body.pixel-theme-ink.pixel-mode-active img,
-body.pixel-theme-ink.pixel-mode-active video,
-body.pixel-theme-ink.pixel-mode-active .ant-avatar img {
+body.pixel-theme-ink.pixel-mode-active video {
   filter: url(#pixelate-filter) grayscale(1) contrast(1.25);
+}
+
+/* Ink-theme avatars: grayscale but NOT pixelate-filtered, so they stay visible. */
+body.pixel-theme-ink.pixel-mode-active .nav-user-avatar,
+body.pixel-theme-ink.pixel-mode-active .noti-avatar img,
+body.pixel-theme-ink.pixel-mode-active .ant-avatar img,
+body.pixel-theme-ink.pixel-mode-active .ant-image img {
+  filter: grayscale(1) contrast(1.2) !important;
+  image-rendering: auto !important;
 }
 
 /* Faint grid is too bright on white paper — darken it for the ink theme. */
