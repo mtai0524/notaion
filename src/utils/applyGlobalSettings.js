@@ -14,6 +14,8 @@ const BG_THEMES = [
 
 const BG_SCOPES = ['bg-scope-all', 'bg-scope-base'];
 
+const PIXEL_THEMES = ['forest', 'ocean', 'lava', 'candy', 'void', 'gameboy'];
+
 const CSS_VAR_MAP = {
   globalBorderColor: { var: '--global-border-color', fallback: '#111827' },
   globalBorderStyle: { var: '--global-border-style', fallback: 'solid' },
@@ -57,11 +59,21 @@ export const applyGlobalSettings = () => {
     body.classList.add(bgTheme);
     body.classList.add(`bg-scope-${bgScope}`);
   }
+
+  // Pixel theme: one selected theme turns the WHOLE app pixel-styled.
+  body.classList.remove('pixel-mode-active');
+  PIXEL_THEMES.forEach((t) => body.classList.remove(`pixel-theme-${t}`));
+  const pixelTheme = localStorage.getItem('pixelTheme') || 'none';
+  if (PIXEL_THEMES.includes(pixelTheme)) {
+    body.classList.add('pixel-mode-active');
+    body.classList.add(`pixel-theme-${pixelTheme}`);
+  }
 };
 
 export const SETTING_KEYS = {
   modes: Object.keys(MODE_CLASS_MAP),
   cssVars: Object.keys(CSS_VAR_MAP),
   bg: ['globalBgTheme', 'globalBgScope'],
+  pixel: ['pixelTheme'],
   flags: ['isBubbleMenuVisible', 'isControlsMenuVisible', 'forceDelete']
 };

@@ -2,8 +2,9 @@ import { Switch, Tooltip } from "antd";
 import "./Setting.scss";
 import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette } from "@fortawesome/free-solid-svg-icons";
+import { faGear, faEye, faBullseye, faKeyboard, faFillDrip, faMoon, faSun, faFeatherPointed, faMagic, faCode, faGhost, faImage, faDesktop, faPalette, faGamepad } from "@fortawesome/free-solid-svg-icons";
 import { applyGlobalSettings } from "../../../utils/applyGlobalSettings";
+import PixelThemePicker from "../../pixel/PixelThemePicker";
 
 const broadcastSettingsChange = () => {
   applyGlobalSettings();
@@ -37,10 +38,11 @@ const Setting = () => {
   const [globalBgScope, setGlobalBgScope] = useState(localStorage.getItem("globalBgScope") || "all");
   const [globalShadowX, setGlobalShadowX] = useState(localStorage.getItem("globalShadowX") || "-4px");
   const [globalShadowY, setGlobalShadowY] = useState(localStorage.getItem("globalShadowY") || "4px");
+  const [pixelTheme, setPixelTheme] = useState(localStorage.getItem("pixelTheme") || "none");
 
   useEffect(() => {
     applyGlobalSettings();
-  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalShadowX, globalShadowY, globalBgTheme, globalBgScope]);
+  }, [eyeProtection, darkMode, focusMode, partyMode, hackerMode, horrorMode, globalBorderColor, globalBorderStyle, globalBorderWidth, globalBorderRadius, globalShadowX, globalShadowY, globalBgTheme, globalBgScope, pixelTheme]);
 
   const SWITCH_MAP = {
     bubble:         { storageKey: "isBubbleMenuVisible",  setter: setBubble },
@@ -62,7 +64,8 @@ const Setting = () => {
     bgTheme:      { storageKey: "globalBgTheme",      setter: setGlobalBgTheme },
     bgScope:      { storageKey: "globalBgScope",      setter: setGlobalBgScope },
     shadowX:      { storageKey: "globalShadowX",      setter: setGlobalShadowX },
-    shadowY:      { storageKey: "globalShadowY",      setter: setGlobalShadowY }
+    shadowY:      { storageKey: "globalShadowY",      setter: setGlobalShadowY },
+    pixelTheme:   { storageKey: "pixelTheme",         setter: setPixelTheme }
   };
 
   const handleSwitchChange = (key, value) => {
@@ -102,6 +105,19 @@ const Setting = () => {
   };
 
   const categories = [
+    {
+      title: "Pixel Themes",
+      items: [
+        {
+          label: "Pixel Theme",
+          key: "pixelTheme",
+          type: "pixel-picker",
+          value: pixelTheme,
+          icon: faGamepad,
+          desc: "Turn the whole app 8-bit. Pick a palette or OFF to disable.",
+        },
+      ],
+    },
     {
       title: "Theme Presets",
       items: [
@@ -163,7 +179,7 @@ const Setting = () => {
               <h2 className="section-title">{cat.title}</h2>
               <div className="setting-list">
                 {cat.items.map((item) => (
-                  <div key={item.key} className={`setting-item-card ${(item.value === true) ? 'active' : ''}`}>
+                  <div key={item.key} className={`setting-item-card ${(item.value === true) ? 'active' : ''} ${item.type === 'pixel-picker' ? 'full-width-card' : ''}`}>
                     <div className="item-icon">
                       <FontAwesomeIcon icon={item.icon} />
                     </div>
@@ -198,6 +214,11 @@ const Setting = () => {
                             </Tooltip>
                           ))}
                         </div>
+                      ) : item.type === 'pixel-picker' ? (
+                        <PixelThemePicker
+                          value={item.value}
+                          onChange={(id) => handleStyleChange(item.key, id)}
+                        />
                       ) : item.type === 'presets' ? (
                         <div className="preset-container" style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                           {item.options.map(opt => (

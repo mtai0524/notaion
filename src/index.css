@@ -156,3 +156,147 @@ body.bg-scope-all .shortcut-page {
   font-size: 1.1rem;
   line-height: 1.6;
 }
+
+/* =====================================================================
+   PIXEL MODE
+   One selected pixel theme turns the WHOLE app retro/8-bit.
+   `pixel-mode-active` drives the structural pixel look (font, sharp
+   corners, hard shadows, pixelated images); `pixel-theme-<id>` only
+   supplies the color palette. Both classes are toggled together in
+   utils/applyGlobalSettings.js.
+   ===================================================================== */
+
+body.pixel-mode-active {
+  /* Re-fonts all text through the existing `* { font-family: var(--font-main) }`
+     rule WITHOUT !important, so FontAwesome's own icon font still wins. */
+  --font-main: "Press Start 2P", "Source Code Pro", monospace;
+  --global-border-radius: 0px;
+  letter-spacing: 0.5px;
+  image-rendering: pixelated;
+  /* faint pixel grid backdrop */
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* PS2P is wide/tall — calm down sizes & spacing a touch so layouts survive. */
+body.pixel-mode-active,
+body.pixel-mode-active .item-label,
+body.pixel-mode-active .item-desc,
+body.pixel-mode-active p,
+body.pixel-mode-active span,
+body.pixel-mode-active a,
+body.pixel-mode-active li,
+body.pixel-mode-active button {
+  line-height: 1.7;
+}
+
+body.pixel-mode-active h1 { font-size: 1.3rem; }
+body.pixel-mode-active h2 { font-size: 1.05rem; }
+body.pixel-mode-active h3 { font-size: 0.9rem; }
+body.pixel-mode-active .item-desc { font-size: 0.62rem; opacity: 0.85; }
+
+/* Sharp pixel corners everywhere (icons/svg unaffected by radius). */
+body.pixel-mode-active *:not(svg):not(path):not(.svg-inline--fa) {
+  border-radius: 0 !important;
+}
+
+/* Crisp scaling for raster art. */
+body.pixel-mode-active img,
+body.pixel-mode-active canvas,
+body.pixel-mode-active video {
+  image-rendering: pixelated;
+}
+
+/* Blocky containers with hard offset shadow. */
+body.pixel-mode-active .home-container,
+body.pixel-mode-active .files-page-container,
+body.pixel-mode-active .guide-container,
+body.pixel-mode-active .setting-page-wrapper,
+body.pixel-mode-active .shortcut-page,
+body.pixel-mode-active .setting-item-card,
+body.pixel-mode-active .ant-modal-content,
+body.pixel-mode-active .ant-dropdown-menu,
+body.pixel-mode-active .ant-card {
+  border: 3px solid var(--border-color) !important;
+  box-shadow: 4px 4px 0 var(--shadow-color) !important;
+}
+
+/* Blocky buttons + inputs. */
+body.pixel-mode-active button:not(.pixel-card),
+body.pixel-mode-active .ant-btn,
+body.pixel-mode-active input,
+body.pixel-mode-active select,
+body.pixel-mode-active textarea {
+  border: 2px solid var(--border-color) !important;
+  box-shadow: 3px 3px 0 var(--shadow-color) !important;
+}
+
+/* Accent-driven primary buttons / switches read from the active palette. */
+body.pixel-mode-active .ant-btn-primary,
+body.pixel-mode-active .ant-switch-checked {
+  background-color: var(--accent-color) !important;
+  border-color: var(--shadow-color) !important;
+}
+
+/* ---- Per-theme palettes: recolor the entire app ---- */
+body.pixel-theme-forest {
+  --bg-color: #0c1810;
+  --container-bg: #13251a;
+  --text-color: #d6f5e3;
+  --text-muted: #4caf6d;
+  --border-color: #2e7d4f;
+  --shadow-color: #06120b;
+  --accent-color: #4caf6d;
+}
+
+body.pixel-theme-ocean {
+  --bg-color: #06182e;
+  --container-bg: #0c2444;
+  --text-color: #d6ecff;
+  --text-muted: #90caf9;
+  --border-color: #1976d2;
+  --shadow-color: #03101f;
+  --accent-color: #2196f3;
+}
+
+body.pixel-theme-lava {
+  --bg-color: #1a0805;
+  --container-bg: #2a0f08;
+  --text-color: #ffe8b3;
+  --text-muted: #ff9800;
+  --border-color: #e53935;
+  --shadow-color: #0f0402;
+  --accent-color: #ff9800;
+}
+
+body.pixel-theme-candy {
+  --bg-color: #2a0a1d;
+  --container-bg: #3d1029;
+  --text-color: #ffe0ef;
+  --text-muted: #f48fb1;
+  --border-color: #ec407a;
+  --shadow-color: #1a0512;
+  --accent-color: #ec407a;
+}
+
+body.pixel-theme-void {
+  --bg-color: #050505;
+  --container-bg: #141414;
+  --text-color: #e8e8e8;
+  --text-muted: #9a9a9a;
+  --border-color: #5a5a5a;
+  --shadow-color: #000000;
+  --accent-color: #e8e8e8;
+}
+
+body.pixel-theme-gameboy {
+  --bg-color: #0f380f;
+  --container-bg: #173f17;
+  --text-color: #9bbc0f;
+  --text-muted: #8bac0f;
+  --border-color: #8bac0f;
+  --shadow-color: #052905;
+  --accent-color: #9bbc0f;
+}
