@@ -233,11 +233,16 @@ body.pixel-mode-active .ant-card {
 }
 
 /* Blocky form fields + primary/CTA buttons only.
-   Bare icon buttons (chat header, toolbars) stay flat so the UI doesn't
-   turn into a wall of boxed icons. */
-body.pixel-mode-active input,
+   Scope to antd inputs, native <select>, and primary buttons. We deliberately
+   do NOT touch bare <input>/<textarea>: many already live inside themed,
+   self-bordered wrappers (e.g. DailyNoteApp's .search-box-cyber), and forcing
+   a second frame there produced an ugly box-in-a-box. Bare icon buttons stay
+   flat too, so the UI doesn't become a wall of framed icons. */
 body.pixel-mode-active select,
-body.pixel-mode-active textarea,
+body.pixel-mode-active .ant-input,
+body.pixel-mode-active .ant-input-affix-wrapper,
+body.pixel-mode-active .ant-input-number,
+body.pixel-mode-active .ant-select-selector,
 body.pixel-mode-active .ant-btn-primary {
   border: 2px solid var(--border-color) !important;
   box-shadow: 3px 3px 0 var(--shadow-color) !important;
