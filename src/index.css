@@ -190,8 +190,12 @@ body.pixel-mode-active {
   line-height: 1.4;
 }
 
-/* Sharp pixel corners everywhere (icons/svg unaffected by radius). */
-body.pixel-mode-active *:not(svg):not(path):not(.svg-inline--fa) {
+/* Sharp pixel corners on everything — including <svg> icons.
+   FontAwesome icons render as <svg class="svg-inline--fa"> and some carry a
+   circular background (e.g. header help/mail with Tailwind `rounded-full`).
+   Squaring the svg box only affects that background, not the glyph, so the
+   whole UI stays consistently blocky instead of mixing round + square. */
+body.pixel-mode-active * {
   border-radius: 0 !important;
 }
 
