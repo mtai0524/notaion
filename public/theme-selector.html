@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PIXEL THEME SELECT</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0b0d12;
+    --panel: #14161f;
+    --accent: #4caf6d;
+    --accent-dark: #2e7d4f;
+    --text: #e8e8e8;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Press Start 2P', monospace;
+    image-rendering: pixelated;
+    -webkit-font-smoothing: none;
+    transition: background 0.35s steps(4), color 0.35s steps(4);
+  }
+
+  /* Pixel grid backdrop */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 16px 16px;
+    z-index: 0;
+  }
+
+  .wrap {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  h1 {
+    font-size: clamp(16px, 3.5vw, 28px);
+    line-height: 1.6;
+    margin: 0 0 14px;
+    color: var(--accent);
+    text-shadow: 3px 3px 0 #000;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    font-size: 9px;
+    line-height: 1.8;
+    color: #8a8f9c;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 22px;
+  }
+
+  /* ---- Theme Card ---- */
+  .card {
+    position: relative;
+    background: var(--card-bg);
+    border: 4px solid var(--card-border);
+    padding: 16px 16px 18px;
+    cursor: pointer;
+    image-rendering: pixelated;
+    /* hard pixel shadow */
+    box-shadow: 6px 6px 0 #000;
+    transition: transform 0.08s steps(2), box-shadow 0.08s steps(2);
+    outline: none;
+  }
+
+  .card:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #000;
+  }
+
+  .card:active {
+    transform: translate(2px, 2px);
+    box-shadow: 3px 3px 0 #000;
+  }
+
+  .card.selected {
+    border-color: var(--card-accent);
+    box-shadow: 0 0 0 2px var(--card-accent), 6px 6px 0 #000,
+                0 0 18px var(--card-accent);
+  }
+
+  /* Checkmark badge */
+  .check {
+    position: absolute;
+    top: -14px;
+    right: -14px;
+    width: 30px;
+    height: 30px;
+    background: var(--card-accent);
+    border: 3px solid #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: #000;
+    font-size: 12px;
+    image-rendering: pixelated;
+    box-shadow: 2px 2px 0 #000;
+  }
+
+  .card.selected .check { display: flex; }
+
+  /* Sprite preview area */
+  .preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 14px 0 16px;
+    background: var(--card-screen);
+    border: 3px solid #000;
+    margin-bottom: 14px;
+    image-rendering: pixelated;
+  }
+
+  .preview canvas {
+    width: 128px;
+    height: 128px;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
+  /* Palette swatch bar */
+  .palette {
+    display: flex;
+    height: 18px;
+    border: 3px solid #000;
+    margin-bottom: 14px;
+    image-rendering: pixelated;
+  }
+
+  .palette span {
+    flex: 1;
+  }
+
+  /* Theme name label */
+  .name {
+    font-size: 11px;
+    line-height: 1.5;
+    text-align: center;
+    color: var(--card-text);
+    text-shadow: 2px 2px 0 #000;
+  }
+
+  /* ---- Confirm button ---- */
+  .footer {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .chosen-label {
+    font-size: 9px;
+    color: #8a8f9c;
+    line-height: 1.8;
+  }
+
+  .chosen-label b { color: var(--accent); }
+
+  .confirm-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 14px;
+    color: #000;
+    background: var(--accent);
+    border: 4px solid #000;
+    padding: 18px 34px;
+    cursor: pointer;
+    image-rendering: pixelated;
+    box-shadow: 6px 6px 0 #000;
+    transition: transform 0.07s steps(2), box-shadow 0.07s steps(2),
+                background 0.2s steps(3);
+    letter-spacing: 1px;
+  }
+
+  .confirm-btn:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 8px 8px 0 #000;
+    background: var(--accent-dark);
+    color: #fff;
+  }
+
+  .confirm-btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 2px 2px 0 #000;
+  }
+
+  /* ---- Toast banner ---- */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+    transform: translateX(-50%) translateY(140%);
+    background: var(--accent);
+    color: #000;
+    border: 4px solid #000;
+    padding: 16px 24px;
+    font-size: 11px;
+    line-height: 1.6;
+    box-shadow: 6px 6px 0 #000;
+    z-index: 10;
+    transition: transform 0.25s steps(5);
+    text-align: center;
+    max-width: 90vw;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>SELECT YOUR THEME</h1>
+      <div class="subtitle">&#9654; PICK A PALETTE &nbsp;&bull;&nbsp; PRESS CONFIRM TO APPLY</div>
+    </header>
+
+    <div class="grid" id="grid"></div>
+
+    <div class="footer">
+      <div class="chosen-label">CURRENT: <b id="chosen">DARK FOREST</b></div>
+      <button class="confirm-btn" id="confirm">&#9654; CONFIRM</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   THEME DATA
+   Each theme: palette (5 swatches), accents, and a 16x16 sprite.
+   Sprite chars map to per-theme colors ('.' = transparent).
+   ============================================================ */
+
+const THEMES = [
+  {
+    id: 'forest',
+    name: 'DARK FOREST',
+    palette: ['#0b1d12', '#1b4d2e', '#2e7d4f', '#4caf6d', '#7fd99a'],
+    bg: '#0c1810', border: '#2e7d4f', accent: '#4caf6d',
+    accentDark: '#2e7d4f', screen: '#06120b', text: '#7fd99a',
+    colors: { c:'#7fd99a', b:'#2e7d4f', a:'#1b4d2e', d:'#3d2914', e:'#5a3a1a' },
+    sprite: [
+      '................',
+      '.......cc.......',
+      '......cbbc......',
+      '......cbbc......',
+      '.....cbbbbc.....',
+      '....cbbbbbbc....',
+      '....cabbabac....',
+      '...cbbbbbbbbc...',
+      '..cbbbbbbbbbbc..',
+      '..cabbabbababc..',
+      '.cbbbbbbbbbbbbc.',
+      'cbbbbbbbbbbbbbbc',
+      '......deed......',
+      '......deed......',
+      '......deed......',
+      '................',
+    ],
+  },
+  {
+    id: 'ocean',
+    name: 'DEEP OCEAN',
+    palette: ['#06203f', '#0d47a1', '#1976d2', '#2196f3', '#90caf9'],
+    bg: '#06182e', border: '#1976d2', accent: '#2196f3',
+    accentDark: '#0d47a1', screen: '#03101f', text: '#90caf9',
+    colors: { a:'#0d47a1', b:'#2196f3', c:'#90caf9' },
+    sprite: [
+      '.......a........',
+      '.......aa.......',
+      '......aba.......',
+      '......abba......',
+      '.....abbba......',
+      '.....abccba.....',
+      '....abbccbba....',
+      '....abbccbba....',
+      '...abbbccbbba...',
+      '...abbbbbbbba...',
+      '..abbbbbbbbbba..',
+      '..abbbbbbbbbba..',
+      '...abbbbbbbba...',
+      '....abbbbbba....',
+      '.....abbbba.....',
+      '......aaaa......',
+    ],
+  },
+  {
+    id: 'lava',
+    name: 'LAVA CORE',
+    palette: ['#2b0a06', '#7a1f0a', '#e53935', '#ff9800', '#ffeb3b'],
+    bg: '#1a0805', border: '#e53935', accent: '#ff9800',
+    accentDark: '#e53935', screen: '#0f0402', text: '#ffeb3b',
+    colors: { d:'#e53935', c:'#ff9800', b:'#ffc107', a:'#fff59d' },
+    sprite: [
+      '.......dd.......',
+      '......dddd......',
+      '......dddd......',
+      '.....ddccdd.....',
+      '.....dccccd.....',
+      '....dccbbccd....',
+      '....dcbbbbcd....',
+      '...dcbbaabbcd...',
+      '...dcbbaabbcd...',
+      '..dccbbaabbccd..',
+      '..dccbbbbbbccd..',
+      '..dccbbbbbbccd..',
+      '...dccbbbbccd...',
+      '....dccccccd....',
+      '.....dccccd.....',
+      '......dddd......',
+    ],
+  },
+  {
+    id: 'candy',
+    name: 'CANDY POP',
+    palette: ['#5a0b34', '#ad1457', '#ec407a', '#f48fb1', '#ffd6e8'],
+    bg: '#2a0a1d', border: '#ec407a', accent: '#ec407a',
+    accentDark: '#ad1457', screen: '#1a0512', text: '#ffd6e8',
+    colors: { a:'#ad1457', b:'#ec407a', c:'#f48fb1', d:'#f8bbd0', w:'#ffffff', e:'#bcaaa4' },
+    sprite: [
+      '.....aaaaaa.....',
+      '...aabbbbbbaa...',
+      '..abbccccccbba..',
+      '..abccddddccba..',
+      '.abbcdwwwwdcbba.',
+      '.abccdwwwwdccba.',
+      '.abcdwwwwwwdcba.',
+      '.abcdwwwwwwdcba.',
+      '.abccdwwwwdccba.',
+      '.abbcdwwwwdcbba.',
+      '..abccddddccba..',
+      '..abbccccccbba..',
+      '...aabbbbbbaa...',
+      '.....aeea.......',
+      '......ee........',
+      '......ee........',
+    ],
+  },
+  {
+    id: 'void',
+    name: 'THE VOID',
+    palette: ['#000000', '#2a2a2a', '#5a5a5a', '#9a9a9a', '#e8e8e8'],
+    bg: '#050505', border: '#5a5a5a', accent: '#e8e8e8',
+    accentDark: '#9a9a9a', screen: '#000000', text: '#e8e8e8',
+    colors: { d:'#e8e8e8', c:'#9a9a9a', a:'#000000', b:'#5a5a5a' },
+    sprite: [
+      '....dddddddd....',
+      '...dccccccccd...',
+      '..dccccccccccd..',
+      '..dccddddddccd..',
+      '..dcaaddddaacd..',
+      '..dcaaddddaacd..',
+      '..dccddddddccd..',
+      '..dcccddddcccd..',
+      '..dccddaaddccd..',
+      '..dccddaaddccd..',
+      '...dccddddccd...',
+      '....dadadada....',
+      '....dadadada....',
+      '.....dccccd.....',
+      '......dddd......',
+      '................',
+    ],
+  },
+  {
+    id: 'gameboy',
+    name: 'RETRO GAMEBOY',
+    palette: ['#0f380f', '#306230', '#5a7a1a', '#8bac0f', '#9bbc0f'],
+    bg: '#1b2b0e', border: '#8bac0f', accent: '#9bbc0f',
+    accentDark: '#306230', screen: '#9bbc0f', text: '#0f380f',
+    colors: { e:'#8bac0f', f:'#306230', d:'#9bbc0f', a:'#0f380f', b:'#306230', o:'#0f380f' },
+    sprite: [
+      '..ffffffffffff..',
+      '..feeeeeeeeeef..',
+      '..feddddddddef..',
+      '..fedaaaaaadef..',
+      '..fedaaaaaadef..',
+      '..fedaaaaaadef..',
+      '..fedaaaaaadef..',
+      '..feddddddddef..',
+      '..feeeeeeeeeef..',
+      '..feeaeeeooeef..',
+      '..feaaaeeooeef..',
+      '..feeaeeeeeeef..',
+      '..feeeeeeeeeef..',
+      '..feebbbbbbeef..',
+      '..ffffffffffff..',
+      '................',
+    ],
+  },
+];
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+
+const PX = 16; // sprite is 16x16
+
+function drawSprite(canvas, theme) {
+  canvas.width = PX;
+  canvas.height = PX;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, PX, PX);
+  const rows = theme.sprite;
+  for (let y = 0; y < rows.length; y++) {
+    const row = rows[y];
+    for (let x = 0; x < row.length; x++) {
+      const ch = row[x];
+      if (ch === '.') continue;
+      const color = theme.colors[ch];
+      if (!color) continue;
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, 1, 1);
+    }
+  }
+}
+
+const grid = document.getElementById('grid');
+const chosenEl = document.getElementById('chosen');
+const cards = [];
+let selectedIndex = 0;
+
+THEMES.forEach((theme, i) => {
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.tabIndex = 0;
+  card.setAttribute('role', 'button');
+  card.setAttribute('aria-label', theme.name);
+  card.style.setProperty('--card-bg', theme.bg);
+  card.style.setProperty('--card-border', theme.border);
+  card.style.setProperty('--card-accent', theme.accent);
+  card.style.setProperty('--card-screen', theme.screen);
+  card.style.setProperty('--card-text', theme.text);
+
+  // checkmark badge
+  const check = document.createElement('div');
+  check.className = 'check';
+  check.innerHTML = '&#10004;';
+  card.appendChild(check);
+
+  // sprite preview
+  const preview = document.createElement('div');
+  preview.className = 'preview';
+  const canvas = document.createElement('canvas');
+  drawSprite(canvas, theme);
+  preview.appendChild(canvas);
+  card.appendChild(preview);
+
+  // palette swatch bar
+  const palette = document.createElement('div');
+  palette.className = 'palette';
+  theme.palette.forEach((c) => {
+    const sw = document.createElement('span');
+    sw.style.background = c;
+    palette.appendChild(sw);
+  });
+  card.appendChild(palette);
+
+  // name label
+  const name = document.createElement('div');
+  name.className = 'name';
+  name.textContent = theme.name;
+  card.appendChild(name);
+
+  card.addEventListener('click', () => select(i));
+  card.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); select(i); }
+  });
+
+  grid.appendChild(card);
+  cards.push(card);
+});
+
+function select(i) {
+  selectedIndex = i;
+  cards.forEach((c, idx) => c.classList.toggle('selected', idx === i));
+  chosenEl.textContent = THEMES[i].name;
+  // live-preview the page accent on the footer
+  const t = THEMES[i];
+  document.documentElement.style.setProperty('--accent', t.accent);
+  document.documentElement.style.setProperty('--accent-dark', t.accentDark);
+}
+
+/* ============================================================
+   CONFIRM ACTION — apply the theme to the whole page
+   ============================================================ */
+
+const toast = document.getElementById('toast');
+let toastTimer = null;
+
+function applyTheme(t) {
+  const root = document.documentElement.style;
+  root.setProperty('--bg', t.bg);
+  root.setProperty('--panel', t.screen);
+  root.setProperty('--accent', t.accent);
+  root.setProperty('--accent-dark', t.accentDark);
+  root.setProperty('--text', t.text);
+}
+
+document.getElementById('confirm').addEventListener('click', () => {
+  const t = THEMES[selectedIndex];
+  applyTheme(t);
+
+  // fire a custom event so a host app could hook in
+  document.dispatchEvent(new CustomEvent('themeselected', { detail: t }));
+
+  toast.textContent = '✔ ' + t.name + ' APPLIED!';
+  toast.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 2600);
+});
+
+// boot: select the first theme
+select(0);
+</script>
+</body>
+</html>
