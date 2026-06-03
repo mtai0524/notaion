@@ -61,11 +61,11 @@ const Content = () => {
     formData.append("files", file);
     const hideMsg = message.loading("Uploading cover…", 0);
     try {
-      const res = await axiosInstance.post("/api/files/upload", formData, {
+      const res = await axiosInstance.post("/api/files/upload/cloudinary", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const d = res.data[0];
-      const url = `${axiosInstance.defaults.baseURL}/api/files/download/${d.savedName}?name=${encodeURIComponent(d.originalName)}`;
+      const url = d.cloudUrl;
       saveCover(url);
     } catch {
       message.error("Failed to upload cover image");

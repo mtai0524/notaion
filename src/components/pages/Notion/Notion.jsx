@@ -743,11 +743,11 @@ const Notion = () => {
     formData.append("files", file);
 
     try {
-      const response = await axiosInstance.post("/api/files/upload", formData, {
+      const response = await axiosInstance.post("/api/files/upload/cloudinary", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const fileData = response.data[0];
-      const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+      const fileUrl = fileData.cloudUrl;
       if (id) {
         if (file.type.startsWith("image/")) {
           responseDataImage({ data: { url: fileUrl } }, e, id);
@@ -809,9 +809,9 @@ const Notion = () => {
         ]);
         setLoadingImage(newBlockId);
         try {
-          const response = await axiosInstance.post("/api/files/upload", formData);
+          const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
           const fileData = response.data[0];
-          const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+          const fileUrl = fileData.cloudUrl;
           setItems((prevItems) => {
             const updated = prevItems.map((item) =>
               item.id === newBlockId ? { ...item, content: fileUrl } : item
@@ -1053,9 +1053,9 @@ const Notion = () => {
     const formData = new FormData();
     formData.append("files", file);
     try {
-      const response = await axiosInstance.post("/api/files/upload", formData);
+      const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
       const fileData = response.data[0];
-      const fileUrl = `${axiosInstance.defaults.baseURL}/api/files/download/${fileData.savedName}?name=${encodeURIComponent(fileData.originalName)}`;
+      const fileUrl = fileData.cloudUrl;
       setItems((prevItems) => {
         const updated = prevItems.map((it) =>
           it.id === targetId ? { ...it, content: fileUrl } : it
