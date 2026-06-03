@@ -85,7 +85,7 @@
     align-items: center;
     justify-content: center;
     background: var(--pc-accent, #fff);
-    color: #000;
+    color: var(--pc-check-fg, #000);
     border: 2px solid #000;
     font-size: 9px;
     box-shadow: 1px 1px 0 #000;

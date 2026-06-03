@@ -11,7 +11,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Press+Start+2P&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Source+Code+Pro:ital,wght@0,200..900;1,200..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Press+Start+2P&family=VT323&display=swap"
       rel="stylesheet"
     />
 
@@ -33,6 +33,24 @@
     ></script>
   </head>
   <body>
+    <!-- Pixelation filter used by pixel mode to make raster images look 8-bit -->
+    <svg
+      class="pixel-svg-defs"
+      aria-hidden="true"
+      width="0"
+      height="0"
+      style="position: absolute; width: 0; height: 0; overflow: hidden"
+    >
+      <defs>
+        <filter id="pixelate-filter" x="0" y="0">
+          <feFlood x="4" y="4" height="2" width="2" />
+          <feComposite width="10" height="10" />
+          <feTile result="a" />
+          <feComposite in="SourceGraphic" in2="a" operator="in" />
+          <feMorphology operator="dilate" radius="5" />
+        </filter>
+      </defs>
+    </svg>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

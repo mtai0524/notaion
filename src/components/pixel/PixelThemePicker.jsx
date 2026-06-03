@@ -59,6 +59,7 @@ export default function PixelThemePicker({ value, onChange }) {
               "--pc-screen": theme.screen,
               "--pc-accent": theme.accent,
               "--pc-bg": theme.palette[0],
+              "--pc-check-fg": theme.checkFg || "#000",
             }}
             onClick={() => onChange(theme.id)}
             aria-label={theme.name}

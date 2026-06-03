@@ -14,7 +14,7 @@ const BG_THEMES = [
 
 const BG_SCOPES = ['bg-scope-all', 'bg-scope-base'];
 
-const PIXEL_THEMES = ['forest', 'ocean', 'lava', 'candy', 'void', 'gameboy'];
+const PIXEL_THEMES = ['ink', 'forest', 'ocean', 'lava', 'candy', 'void', 'gameboy'];
 
 const CSS_VAR_MAP = {
   globalBorderColor: { var: '--global-border-color', fallback: '#111827' },

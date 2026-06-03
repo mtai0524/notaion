@@ -15,6 +15,33 @@
 
 export const PIXEL_THEMES = [
   {
+    id: "ink",
+    name: "NOTAION B&W",
+    palette: ["#ffffff", "#c0c0c0", "#808080", "#404040", "#000000"],
+    accent: "#000000",
+    checkFg: "#ffffff",
+    screen: "#ffffff",
+    colors: { a: "#000000", w: "#ffffff", b: "#808080" },
+    sprite: [
+      "..aaaaaaaaaaa...",
+      "..awwwwwwwaaa...",
+      "..awwwwwwwaba...",
+      "..awwwwwwwwwa...",
+      "..awbbbbbbbwa...",
+      "..awwwwwwwwwa...",
+      "..awbbbbbbbwa...",
+      "..awwwwwwwwwa...",
+      "..awbbbbbbbwa...",
+      "..awwwwwwwwwa...",
+      "..awbbbbbwwwa...",
+      "..awwwwwwwwwa...",
+      "..aaaaaaaaaaa...",
+      "................",
+      "................",
+      "................",
+    ],
+  },
+  {
     id: "forest",
     name: "DARK FOREST",
     palette: ["#0b1d12", "#1b4d2e", "#2e7d4f", "#4caf6d", "#7fd99a"],

@@ -167,45 +167,44 @@ body.bg-scope-all .shortcut-page {
    ===================================================================== */
 
 body.pixel-mode-active {
-  /* Re-fonts all text through the existing `* { font-family: var(--font-main) }`
-     rule WITHOUT !important, so FontAwesome's own icon font still wins. */
-  --font-main: "Press Start 2P", "Source Code Pro", monospace;
+  /* VT323 is a pixel/terminal font WITH a Vietnamese subset and normal
+     metrics (unlike Press Start 2P, which lacks Vietnamese and renders huge).
+     Re-fonts all text through the existing `* { font-family: var(--font-main) }`
+     rule WITHOUT !important, so FontAwesome's own icon font still wins.
+     Mali / Source Code Pro stay in the fallback chain to cover any glyph
+     VT323 might miss. */
+  --font-main: "VT323", "Mali", "Source Code Pro", monospace;
   --global-border-radius: 0px;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   image-rendering: pixelated;
   /* faint pixel grid backdrop */
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(127, 127, 127, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(127, 127, 127, 0.06) 1px, transparent 1px);
   background-size: 16px 16px;
 }
 
-/* PS2P is wide/tall — calm down sizes & spacing a touch so layouts survive. */
-body.pixel-mode-active,
-body.pixel-mode-active .item-label,
-body.pixel-mode-active .item-desc,
-body.pixel-mode-active p,
-body.pixel-mode-active span,
-body.pixel-mode-active a,
-body.pixel-mode-active li,
-body.pixel-mode-active button {
-  line-height: 1.7;
+/* VT323 has a small x-height; nudge body text up slightly for readability. */
+body.pixel-mode-active {
+  font-size: 1.05rem;
+  line-height: 1.4;
 }
-
-body.pixel-mode-active h1 { font-size: 1.3rem; }
-body.pixel-mode-active h2 { font-size: 1.05rem; }
-body.pixel-mode-active h3 { font-size: 0.9rem; }
-body.pixel-mode-active .item-desc { font-size: 0.62rem; opacity: 0.85; }
 
 /* Sharp pixel corners everywhere (icons/svg unaffected by radius). */
 body.pixel-mode-active *:not(svg):not(path):not(.svg-inline--fa) {
   border-radius: 0 !important;
 }
 
-/* Crisp scaling for raster art. */
+/* Pixelate raster art: crisp upscaling + an 8-bit block filter.
+   Excludes the picker's own sprite canvases and SVG icons. */
 body.pixel-mode-active img,
-body.pixel-mode-active canvas,
-body.pixel-mode-active video {
+body.pixel-mode-active video,
+body.pixel-mode-active .ant-avatar img {
+  image-rendering: pixelated;
+  filter: url(#pixelate-filter);
+}
+
+body.pixel-mode-active canvas:not(.pixel-card-sprite) {
   image-rendering: pixelated;
 }
 
@@ -299,4 +298,29 @@ body.pixel-theme-gameboy {
   --border-color: #8bac0f;
   --shadow-color: #052905;
   --accent-color: #9bbc0f;
+}
+
+/* Black & white "ink" theme: white paper, black ink, pixel everything. */
+body.pixel-theme-ink {
+  --bg-color: #ffffff;
+  --container-bg: #ffffff;
+  --text-color: #000000;
+  --text-muted: #555555;
+  --border-color: #000000;
+  --shadow-color: #000000;
+  --accent-color: #000000;
+}
+
+/* In the monochrome theme, push images to grayscale too. */
+body.pixel-theme-ink.pixel-mode-active img,
+body.pixel-theme-ink.pixel-mode-active video,
+body.pixel-theme-ink.pixel-mode-active .ant-avatar img {
+  filter: url(#pixelate-filter) grayscale(1) contrast(1.25);
+}
+
+/* Faint grid is too bright on white paper — darken it for the ink theme. */
+body.pixel-theme-ink.pixel-mode-active {
+  background-image:
+    linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
 }
