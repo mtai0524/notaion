@@ -159,6 +159,13 @@ const Login = () => {
             >
               Login with Discord
             </button>
+            <button
+              type="button"
+              className="github-login-button"
+              onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/github-login`}
+            >
+              Login with GitHub
+            </button>
           </form>
         </Spin>
         <div className="flex justify-end w-full">

@@ -83,7 +83,8 @@
   &::after { right: 0; }
 }
 
-.discord-login-button {
+.discord-login-button,
+.github-login-button {
   width: 100%;
   padding: 10px;
   background: #5865F2;
@@ -103,4 +104,9 @@
     transform: translate(-2px, 2px);
     box-shadow: none;
   }
+}
+
+.github-login-button {
+  margin-top: 10px;
+  background: #24292e;
 }

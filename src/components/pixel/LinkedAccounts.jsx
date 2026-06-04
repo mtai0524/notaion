@@ -7,7 +7,10 @@ import "./LinkedAccounts.scss";
 // Providers that are actually wired on the backend (Discord OAuth). Add more
 // here as the backend grows ({ key, label, color }). `key` must match the
 // route segment: /api/account/<key.toLowerCase()>-link.
-const PROVIDERS = [{ key: "Discord", label: "Discord", color: "#5865F2" }];
+const PROVIDERS = [
+  { key: "Discord", label: "Discord", color: "#5865F2" },
+  { key: "GitHub", label: "GitHub", color: "#24292e" },
+];
 
 export default function LinkedAccounts() {
   const [loading, setLoading] = useState(true);
