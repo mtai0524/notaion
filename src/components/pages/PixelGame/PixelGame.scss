@@ -1,0 +1,121 @@
+.pixel-game {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1020;
+  overflow: hidden;
+  font-family: monospace;
+
+  &__canvas {
+    // Scale the fixed logical canvas up to fit the viewport while keeping
+    // crisp pixels.
+    width: min(100vw, calc(100vh * (800 / 480)));
+    height: auto;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    box-shadow: 0 0 0 4px #111827, 0 14px 40px rgba(0, 0, 0, 0.6);
+  }
+
+  &__hud {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+  }
+
+  .pg-badge {
+    background: #111827;
+    color: #fff;
+    border: 2px solid #fff;
+    box-shadow: -3px 3px 0 0 #000;
+    padding: 6px 10px;
+    font-weight: 900;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+
+    &.on {
+      background: #1b7f3b;
+    }
+    &.off {
+      background: #7a2020;
+    }
+    &.warn {
+      background: #8a6d1b;
+    }
+  }
+
+  &__hint {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(17, 24, 39, 0.85);
+    color: #e5e7eb;
+    padding: 8px 14px;
+    border: 2px solid #374151;
+    font-size: 13px;
+    white-space: nowrap;
+    z-index: 5;
+  }
+
+  &__note {
+    position: absolute;
+    top: 60px;
+    left: 14px;
+    background: rgba(138, 109, 27, 0.92);
+    color: #fff;
+    padding: 6px 10px;
+    border: 2px solid #fff;
+    font-size: 12px;
+    max-width: 240px;
+    z-index: 5;
+  }
+
+  &__overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 10;
+  }
+
+  .pg-finish {
+    background: #111827;
+    color: #fff;
+    border: 3px solid #fff;
+    box-shadow: -6px 6px 0 0 #000;
+    padding: 28px 40px;
+    text-align: center;
+
+    h2 {
+      margin: 0 0 8px;
+      font-size: 28px;
+    }
+    p {
+      margin: 0 0 18px;
+      font-size: 16px;
+    }
+    button {
+      background: #2ecc71;
+      color: #06210f;
+      border: 2px solid #06210f;
+      box-shadow: -3px 3px 0 0 #06210f;
+      padding: 10px 22px;
+      font-weight: 900;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      &:hover {
+        transform: translate(-2px, 2px);
+        box-shadow: none;
+      }
+    }
+  }
+}

@@ -29,6 +29,7 @@ import FilesPage from "./pages/FilesPage";
 import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
 import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
 import MiniGame from "./components/pages/MiniGame/MiniGame";
+import PixelGame from "./components/pages/PixelGame/PixelGame";
 import { applyGlobalSettings } from "./utils/applyGlobalSettings";
 
 
@@ -162,6 +163,7 @@ const MainApp = () => {
         <Route path="/daily-note" element={<DailyNoteApp />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/game" element={<MiniGame />} />
+        <Route path="/pixel-game" element={<PixelGame />} />
 
         <Route path="*" element={<NotFound />}></Route>
       </Routes>
