@@ -3,6 +3,7 @@ import * as signalR from "@microsoft/signalr";
 import PropTypes from "prop-types";
 import jwt_decode from "jwt-decode";
 import Cookies from "js-cookie";
+import config from "../config";
 
 const SignalRContext = createContext(null);
 
@@ -14,9 +15,7 @@ export const SignalRProvider = ({ children }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
 
   useEffect(() => {
-    const isLocal = window.location.hostname === "localhost";
-    const baseUrl = isLocal ? "https://localhost:7059" : "https://notaion.runasp.net";
-    const signalRUrl = `${baseUrl}/chathub`;
+    const signalRUrl = config.SIGNALR_URL;
 
     const connect = new signalR.HubConnectionBuilder()
       .withUrl(signalRUrl, {

@@ -31,6 +31,7 @@ import { faEnvelope } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import axiosInstance from "../../../axiosConfig";
 import { useSignalR } from "../../../contexts/SignalRContext";
+import config from "../../../config";
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -188,7 +189,7 @@ const Header = () => {
   };
 
   useEffect(() => {
-    const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+    const signalRUrl = config.SIGNALR_URL;
     const connection = new HubConnectionBuilder()
       .withUrl(signalRUrl)
       .withAutomaticReconnect()

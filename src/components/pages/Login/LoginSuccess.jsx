@@ -5,6 +5,7 @@ import Cookies from "js-cookie";
 import { message, Spin } from "antd";
 import jwt_decode from "jwt-decode";
 import * as signalR from "@microsoft/signalr";
+import config from "../../../config";
 
 const LoginSuccess = () => {
   const navigate = useNavigate();
@@ -31,7 +32,7 @@ const LoginSuccess = () => {
   }, [location, navigate, setToken]);
 
   const handleSignalRRegistration = async (token) => {
-    const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+    const signalRUrl = config.SIGNALR_URL;
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(signalRUrl, { withCredentials: true })
       .withAutomaticReconnect()

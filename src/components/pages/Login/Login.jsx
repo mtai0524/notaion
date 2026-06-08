@@ -10,6 +10,7 @@ import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import * as signalR from "@microsoft/signalr";
 import jwt_decode from "jwt-decode";
+import config from "../../../config";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -31,8 +32,7 @@ const Login = () => {
   }, []);
 
   const handleLoginSuccess = async () => {
-    const signalRUrl =
-      import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+    const signalRUrl = config.SIGNALR_URL;
     const connection = new signalR.HubConnectionBuilder()
       .withUrl(signalRUrl, { withCredentials: true })
       .withAutomaticReconnect()

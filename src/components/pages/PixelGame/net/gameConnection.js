@@ -5,8 +5,7 @@ import config from "../../../../config";
 // Thin wrapper around the SignalR /gameHub connection. Mirrors how the rest of
 // the app builds hub connections (accessTokenFactory + automatic reconnect).
 export function createGameConnection(handlers = {}) {
-  const baseUrl =
-    window.location.hostname === "localhost" ? config.API_LOCAL : config.API_HOSTING;
+  const baseUrl = config.API_BASE_URL;
 
   const connection = new signalR.HubConnectionBuilder()
     .withUrl(`${baseUrl}/gameHub`, {

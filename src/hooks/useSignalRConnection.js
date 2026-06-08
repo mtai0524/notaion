@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import * as signalR from "@microsoft/signalr";
+import config from "../config";
 
 export const useSignalRConnection = () => {
     const [onlineUsers, setOnlineUsers] = useState([]);
 
     useEffect(() => {
-        const signalRUrl = import.meta.env.VITE_SIGNALR_URL || "https://localhost:7059/chathub";
+        const signalRUrl = config.SIGNALR_URL;
 
         const connect = new signalR.HubConnectionBuilder()
             .withUrl(signalRUrl, { withCredentials: true })
