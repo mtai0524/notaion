@@ -24,6 +24,7 @@ import {
 import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "../../../axiosConfig";
+import { downloadFile } from "../../../services/fileService";
 import debounce from "lodash.debounce";
 import { Rnd } from "react-rnd";
 
@@ -1196,19 +1197,13 @@ const Notion = () => {
     }
   };
 
-  const onDownload = (imgUrl) => {
-    fetch(imgUrl)
-      .then((response) => response.blob())
-      .then((blob) => {
-        const url = URL.createObjectURL(new Blob([blob]));
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = "image.png";
-        document.body.appendChild(link);
-        link.click();
-        URL.revokeObjectURL(url);
-        link.remove();
-      });
+  const onDownload = async (url, fileName = "file", savedName = "", cloudUrl = "") => {
+    try {
+      await downloadFile(savedName || fileName, fileName, cloudUrl || url);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      message.error("Failed to download file");
+    }
   };
 
   const renderItemContent = (item) => {
@@ -1264,7 +1259,20 @@ const Notion = () => {
       attachment?.contentType?.includes("text/html") ||
       /\.html?($|[?#])/i.test(attachment?.originalName || "")
     ) {
-      return <HtmlPreview url={item.content} title={attachment?.originalName || "HTML preview"} />;
+      return (
+        <div className="html-preview-shell">
+          <HtmlPreview url={item.content} title={attachment?.originalName || "HTML preview"} />
+          <div className="html-preview-actions">
+            <button
+              type="button"
+              className="download-btn"
+              onClick={() => onDownload(item.content, attachment?.originalName || "preview.html", attachment?.savedName, attachment?.cloudUrl)}
+            >
+              Download
+            </button>
+          </div>
+        </div>
+      );
     }
     if (typeof item.content === "string" && item.content.match(/\bhttps?:\/\/\S+/)) {
       if (item.content.includes("/api/files/download/")) {
@@ -1294,9 +1302,13 @@ const Notion = () => {
               <span className="file-meta">{fileExt.toUpperCase()} · attachment</span>
             </div>
             <div className="file-actions">
-              <a href={item.content} download className="download-btn">
+              <button
+                type="button"
+                className="download-btn"
+                onClick={() => onDownload(item.content, fileName, attachment?.savedName, attachment?.cloudUrl)}
+              >
                 Download
-              </a>
+              </button>
             </div>
           </div>
         );
