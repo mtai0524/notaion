@@ -36,6 +36,74 @@ const reorder = (list, startIndex, endIndex) => {
 
 const generateRandomId = () => uuidv4();
 
+const isHtmlFileUrl = (value) => {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  if (/\.html?($|[?#])/i.test(trimmed)) return true;
+  if (/^data:text\/html[;,]/i.test(trimmed)) return true;
+  return false;
+};
+
+const HtmlPreview = ({ url, title = "HTML preview" }) => {
+  const [html, setHtml] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setHtml("");
+    setError("");
+
+    if (!url) {
+      setError("No HTML source");
+      return () => {};
+    }
+
+    if (/^data:text\/html[;,]/i.test(url)) {
+      const commaIndex = url.indexOf(",");
+      const raw = commaIndex >= 0 ? url.slice(commaIndex + 1) : "";
+      const decoded = url.includes(";base64,")
+        ? atob(raw)
+        : decodeURIComponent(raw);
+      if (!cancelled) setHtml(decoded);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    fetch(url)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.text();
+      })
+      .then((text) => {
+        if (!cancelled) setHtml(text);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err.message || "Failed to load HTML");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  return (
+    <div className="html-preview-container">
+      {error ? (
+        <div className="html-preview-error">{error}</div>
+      ) : (
+        <iframe
+          title={title}
+          srcDoc={html}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+          referrerPolicy="no-referrer"
+        />
+      )}
+    </div>
+  );
+};
+
 // ── View preference catalog ──────────────────────────────────────────
 const DEFAULT_PREFS = {
   density: "comfortable",   // compact | comfortable | spacious
@@ -1144,6 +1212,7 @@ const Notion = () => {
   };
 
   const renderItemContent = (item) => {
+    const attachment = (item.attachments || []).find((att) => att.url === item.content);
     if (
       item.content &&
       item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i) != null
@@ -1189,6 +1258,13 @@ const Notion = () => {
           />
         </div>
       );
+    }
+    if (
+      isHtmlFileUrl(item.content) ||
+      attachment?.contentType?.includes("text/html") ||
+      /\.html?($|[?#])/i.test(attachment?.originalName || "")
+    ) {
+      return <HtmlPreview url={item.content} title={attachment?.originalName || "HTML preview"} />;
     }
     if (typeof item.content === "string" && item.content.match(/\bhttps?:\/\/\S+/)) {
       if (item.content.includes("/api/files/download/")) {
