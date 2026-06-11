@@ -1197,12 +1197,15 @@ const DailyNoteApp = () => {
   }, [urlDateStr]);
 
   const [notesByDate, setNotesByDate] = useState({});
+  const [allNotesIndex, setAllNotesIndex] = useState([]);
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState('cyan');
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('saved');
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchScope, setSearchScope] = useState(() => localStorage.getItem('daily-note-search-scope') || 'day');
+  const [showGlobalSearchResults, setShowGlobalSearchResults] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [canvasBg, setCanvasBg] = useState(() => localStorage.getItem('daily-note-canvas-bg') || '');
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -1223,11 +1226,8 @@ const DailyNoteApp = () => {
   const canvasRef = React.useRef(null);
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
-  const currentNotes = allCurrentNotes.filter(n =>
-    !n.isDeleted &&
-    (n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.content?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const currentNotes = allCurrentNotes.filter(n => !n.isDeleted);
+  const isAllTimeSearch = searchScope === 'all';
 
   // Sidebar States
   const [showSidebar, setShowSidebar] = useState(() => localStorage.getItem('daily-note-sidebar') === 'true');
@@ -1423,6 +1423,60 @@ const DailyNoteApp = () => {
   useEffect(() => {
     fetchNotes(dateKey);
   }, [dateKey]);
+
+  const fetchAllNotes = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get('/api/DailyNote/all');
+      setAllNotesIndex(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('[ERROR] Failed to fetch all notes:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllNotes();
+  }, [fetchAllNotes]);
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
+  const searchResults = normalizedSearchQuery
+    ? searchPool
+        .filter(n => !n.isDeleted)
+        .filter(n => {
+          const haystack = [
+            n.title,
+            n.content,
+            n.category,
+            n.customCategory,
+            n.timestamp,
+            n.date,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(normalizedSearchQuery);
+        })
+        .slice(0, 50)
+    : [];
+  const visibleNotes = normalizedSearchQuery ? searchResults : currentNotes;
+
+  const openSearchResult = async (note) => {
+    if (!note?.date) return;
+    const targetDate = new Date(note.date);
+    if (isNaN(targetDate)) return;
+    await fetchNotes(format(targetDate, 'yyyy-MM-dd'));
+    setCurrentDate(targetDate);
+    setShowGlobalSearchResults(false);
+    setTimeout(() => {
+      locateNote(note.id);
+    }, 250);
+  };
+
+  const handleSearchScopeChange = (scope) => {
+    setSearchScope(scope);
+    localStorage.setItem('daily-note-search-scope', scope);
+    setShowGlobalSearchResults(false);
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -1761,7 +1815,7 @@ const DailyNoteApp = () => {
     const y1 = Math.min(selectionRect.startY, pt.y);
     const y2 = Math.max(selectionRect.startY, pt.y);
 
-    const ids = currentNotes.filter(n => {
+    const ids = visibleNotes.filter(n => {
       const nx = n.x;
       const ny = n.y;
       const nw = n.width || 250;
@@ -1922,7 +1976,7 @@ const DailyNoteApp = () => {
           <div className="current-date-display">
             <h2>{format(currentDate, 'yyyy_MM_dd')}</h2>
             <div className="status-indicator-container">
-              <span className="note-count">ACTIVE_ENTRIES: {currentNotes.length}</span>
+              <span className="note-count">ACTIVE_ENTRIES: {normalizedSearchQuery ? searchResults.length : currentNotes.length}</span>
               <span className={`sync-status ${syncStatus}`}>
                 {syncStatus === 'saving' && ' [ SYNCING... ]'}
                 {syncStatus === 'saved' && ' [ SYNC_COMPLETE ]'}
@@ -1953,11 +2007,65 @@ const DailyNoteApp = () => {
               <FaSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="SEARCH_NOTES..."
+                placeholder={isAllTimeSearch ? "SEARCH_ALL_NOTES..." : "SEARCH_THIS_DAY..."}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowGlobalSearchResults(true);
+                }}
+                onFocus={() => setShowGlobalSearchResults(true)}
+                onBlur={() => {
+                  window.setTimeout(() => setShowGlobalSearchResults(false), 150);
+                }}
               />
+              <div className="search-scope-toggle" role="tablist" aria-label="Search scope">
+                <button
+                  type="button"
+                  className={`search-scope-btn ${!isAllTimeSearch ? 'active' : ''}`}
+                  onClick={() => handleSearchScopeChange('day')}
+                  title="Search only this day"
+                >
+                  DAY
+                </button>
+                <button
+                  type="button"
+                  className={`search-scope-btn ${isAllTimeSearch ? 'active' : ''}`}
+                  onClick={() => handleSearchScopeChange('all')}
+                  title="Search all notes"
+                >
+                  ALL
+                </button>
+              </div>
             </div>
+            {showGlobalSearchResults && normalizedSearchQuery && (
+              <div className="global-search-dropdown" onMouseDown={(e) => e.preventDefault()}>
+                <div className="global-search-header">
+                  <span>{isAllTimeSearch ? 'ALL_NOTES_RESULTS' : 'THIS_DAY_RESULTS'}</span>
+                  <span>{searchResults.length}</span>
+                </div>
+                <div className="global-search-list">
+                  {searchResults.length === 0 ? (
+                    <div className="global-search-empty">No matches found</div>
+                  ) : (
+                    searchResults.map(note => (
+                      <button
+                        key={`${note.date}-${note.id}`}
+                        className="global-search-item"
+                        onClick={() => openSearchResult(note)}
+                      >
+                        <div className="global-search-item-top">
+                          <span className="global-search-title">{note.title || 'Untitled'}</span>
+                          <span className="global-search-date">{note.date}</span>
+                        </div>
+                        <div className="global-search-snippet">
+                          {(note.content || '').toString().replace(/\s+/g, ' ').slice(0, 120) || '(empty)'}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-picker-container">
@@ -2315,14 +2423,14 @@ const DailyNoteApp = () => {
           {viewMode === 'canvas' ? (
             <div className="notes-canvas">
               {renderNoteLinks()}
-              {currentNotes.length === 0 && !loading ? (
+              {visibleNotes.length === 0 && !loading ? (
                 <div className="empty-state-cyber">
                   <div className="empty-icon"><FaTerminal /></div>
-                  <h3>NO_DATA_FOUND</h3>
-                  <p>Initialize a new entry to begin data logging.</p>
+                  <h3>{normalizedSearchQuery ? 'NO_MATCHES_FOUND' : 'NO_DATA_FOUND'}</h3>
+                  <p>{normalizedSearchQuery ? 'Try a different keyword or clear the search.' : 'Initialize a new entry to begin data logging.'}</p>
                 </div>
               ) : (
-                currentNotes.map(note => (
+                visibleNotes.map(note => (
                   <Note
                     key={note.id}
                     note={{ ...note, isSelected: selectedIds.includes(note.id) }}
@@ -2359,7 +2467,7 @@ const DailyNoteApp = () => {
               }} />
             </div>
           ) : (
-            <KanbanBoard notes={currentNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
+            <KanbanBoard notes={visibleNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
           )}
         </main>
       </div>
