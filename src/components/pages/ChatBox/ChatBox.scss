@@ -711,13 +711,65 @@ body.dark-mode-active {
 }
 
 /* ── Settings menu polish ── */
+/* Chat settings dropdown — Notaion neo-brutalist style. */
 .chatbox-settings-menu {
-  min-width: 220px;
+  min-width: 240px;
+  padding: 6px;
+  background: var(--container-bg);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
+  border-radius: var(--global-border-radius, 8px);
+  box-shadow: var(--box-shadow);
+
+  .chat-menu-section-title {
+    font-size: 0.66rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
+    padding: 8px 10px 4px;
+  }
 
   .ant-dropdown-menu-item {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
+    border-radius: var(--global-border-radius, 6px);
+    font-weight: 700;
+    color: var(--text-color);
+    margin: 2px 0;
+
+    &:hover {
+      background: rgba(127, 127, 127, 0.1);
+    }
+  }
+
+  .chat-menu-icon {
+    width: 16px;
+    text-align: center;
+    color: var(--text-muted);
+  }
+
+  .chat-menu-text {
+    flex: 1;
+  }
+
+  /* Active filter toggle: accent the icon + checkmark */
+  .chat-menu-toggle.ant-dropdown-menu-item {
+    .ant-dropdown-menu-item-icon {
+      color: var(--accent-color);
+    }
+  }
+
+  .ant-dropdown-menu-item-divider {
+    background: var(--border-color);
+    opacity: 0.5;
+    margin: 6px 2px;
+  }
+
+  /* Danger item (Clear all) */
+  .ant-dropdown-menu-item-danger {
+    .chat-menu-icon { color: var(--danger-color, #ef4444); }
+    &:hover { background: rgba(239, 68, 68, 0.1); }
   }
 }
 

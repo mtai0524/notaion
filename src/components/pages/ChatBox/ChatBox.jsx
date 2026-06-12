@@ -5,7 +5,7 @@ import "./ChatBox.scss";
 import { useChat } from "../../../contexts/ChatContext";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faDownload, faVolumeHigh, faVolumeXmark, faCompressArrowsAlt, faExpandArrowsAlt, faCheck, faPaperclip, faUsers, faFilter } from "@fortawesome/free-solid-svg-icons";
+import { faArrowsLeftRight, faBan, faBookOpen, faCompress, faEraser, faExpand, faGear, faRobot, faXmark, faSearch, faCopy, faRedo, faArrowDown, faCheck, faPaperclip, faUsers, faFilter } from "@fortawesome/free-solid-svg-icons";
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
@@ -222,23 +222,16 @@ const ChatBox = ({ onClose }) => {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Chat preferences (persisted)
-  const [compactMode, setCompactMode] = useState(() => localStorage.getItem("chatCompactMode") === "true");
-  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("chatSoundEnabled") === "true");
-  const [autoScroll, setAutoScroll] = useState(() => {
-    const v = localStorage.getItem("chatAutoScroll");
-    return v === null ? true : v === "true";
-  });
+  // Behaviour defaults (auto-scroll on, ping on new message) — persisted, no UI toggle.
+  const autoScroll = localStorage.getItem("chatAutoScroll") !== "false";
+  const soundEnabled = localStorage.getItem("chatSoundEnabled") === "true";
+  // Message-type filters: show/hide AI Bot vs human-user messages.
+  const [showBot, setShowBot] = useState(() => localStorage.getItem("chatShowBot") !== "false");
+  const [showUsers, setShowUsers] = useState(() => localStorage.getItem("chatShowUsers") !== "false");
   const autoScrollRef = useRef(autoScroll);
   const soundEnabledRef = useRef(soundEnabled);
   useEffect(() => { autoScrollRef.current = autoScroll; }, [autoScroll]);
   useEffect(() => { soundEnabledRef.current = soundEnabled; }, [soundEnabled]);
-
-  const togglePref = useCallback((key, current, setter) => {
-    const next = !current;
-    setter(next);
-    localStorage.setItem(key, String(next));
-  }, []);
 
   const playPing = useCallback(() => {
     try {
@@ -261,27 +254,22 @@ const ChatBox = ({ onClose }) => {
     }
   }, []);
 
-  const exportChat = useCallback(() => {
-    if (!messages || messages.length === 0) {
-      notification.info({ message: "Không có tin nhắn để export", duration: 2 });
-      return;
-    }
-    const lines = messages.map((m) => {
-      const ts = m.sentDate ? new Date(m.sentDate).toLocaleString("en-GB") : "";
-      const who = m.userName || "anonymous";
-      const body = (m.content || "").replace(/^\/bot\s*/i, "");
-      return `### ${who} — ${ts}\n\n${body}\n`;
+
+  const toggleShowBot = useCallback(() => {
+    setShowBot((v) => {
+      const next = !v;
+      localStorage.setItem("chatShowBot", String(next));
+      return next;
     });
-    const blob = new Blob([`# Chat export\n\n${lines.join("\n---\n\n")}`], { type: "text/markdown;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `chat-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
-    document.body.appendChild(link);
-    link.click();
-    link.parentNode.removeChild(link);
-    URL.revokeObjectURL(url);
-  }, [messages]);
+  }, []);
+
+  const toggleShowUsers = useCallback(() => {
+    setShowUsers((v) => {
+      const next = !v;
+      localStorage.setItem("chatShowUsers", String(next));
+      return next;
+    });
+  }, []);
 
   // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
   useEffect(() => {
@@ -655,17 +643,11 @@ const ChatBox = ({ onClose }) => {
 
   const handleMenuClick = async (e) => {
     switch (e.key) {
-      case "compact":
-        togglePref("chatCompactMode", compactMode, setCompactMode);
+      case "filter-bot":
+        toggleShowBot();
         return;
-      case "sound":
-        togglePref("chatSoundEnabled", soundEnabled, setSoundEnabled);
-        return;
-      case "autoscroll":
-        togglePref("chatAutoScroll", autoScroll, setAutoScroll);
-        return;
-      case "export":
-        exportChat();
+      case "filter-users":
+        toggleShowUsers();
         return;
       default:
         break;
@@ -800,29 +782,23 @@ const ChatBox = ({ onClose }) => {
   );
 
   const menuProfile = (
-    <Menu onClick={handleMenuClick} className="custom-dropdown-menu chatbox-settings-menu">
-      <Menu.Item key="compact" icon={checkMark(compactMode)}>
-        <FontAwesomeIcon icon={compactMode ? faCompressArrowsAlt : faExpandArrowsAlt} style={{ marginRight: 8 }} />
-        Compact mode
+    <Menu onClick={handleMenuClick} className="custom-dropdown-menu chatbox-settings-menu" selectable={false}>
+      <div className="chat-menu-section-title">Lọc tin nhắn</div>
+      <Menu.Item key="filter-bot" className="chat-menu-toggle" icon={checkMark(showBot)}>
+        <FontAwesomeIcon icon={faRobot} className="chat-menu-icon" />
+        <span className="chat-menu-text">Tin nhắn AI Bot</span>
       </Menu.Item>
-      <Menu.Item key="sound" icon={checkMark(soundEnabled)}>
-        <FontAwesomeIcon icon={soundEnabled ? faVolumeHigh : faVolumeXmark} style={{ marginRight: 8 }} />
-        Sound on new message
+      <Menu.Item key="filter-users" className="chat-menu-toggle" icon={checkMark(showUsers)}>
+        <FontAwesomeIcon icon={faUsers} className="chat-menu-icon" />
+        <span className="chat-menu-text">Tin nhắn người dùng</span>
       </Menu.Item>
-      <Menu.Item key="autoscroll" icon={checkMark(autoScroll)}>
-        <FontAwesomeIcon icon={faArrowDown} style={{ marginRight: 8 }} />
-        Auto-scroll
-      </Menu.Item>
+
       <Menu.Divider />
-      <Menu.Item key="export" icon={<FontAwesomeIcon icon={faDownload} />}>
-        Export chat (.md)
+      <Menu.Item key="clear-me" icon={<FontAwesomeIcon icon={faEraser} className="chat-menu-icon" />}>
+        <span className="chat-menu-text">Clear my chats</span>
       </Menu.Item>
-      <Menu.Divider />
-      <Menu.Item key="clear-me" icon={<FontAwesomeIcon icon={faEraser} />}>
-        Clear my chats
-      </Menu.Item>
-      <Menu.Item danger key="clear" icon={<FontAwesomeIcon icon={faBan} />}>
-        Clear
+      <Menu.Item danger key="clear" icon={<FontAwesomeIcon icon={faBan} className="chat-menu-icon" />}>
+        <span className="chat-menu-text">Clear all</span>
       </Menu.Item>
     </Menu>
   );
@@ -910,7 +886,7 @@ const ChatBox = ({ onClose }) => {
 
 
   return (
-    <div className={`chat-box ${isExpanded ? "expanded" : ""} ${compactMode ? "compact" : ""}`}>
+    <div className={`chat-box ${isExpanded ? "expanded" : ""}`}>
       <div className="chat-header">
         <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
         <div className="section">
@@ -1057,15 +1033,28 @@ const ChatBox = ({ onClose }) => {
           ) : (() => {
             const q = searchQuery.trim().toLowerCase();
             let filtered = messages;
+            // Message-type filter: hide AI Bot and/or human-user messages.
+            filtered = filtered.filter((m) =>
+              m.userName === "Chatbot" ? showBot : showUsers
+            );
             if (userFilter) filtered = filtered.filter((m) => m.userName === userFilter);
             if (q) filtered = filtered.filter((m) => (m.content || "").toLowerCase().includes(q) || (m.userName || "").toLowerCase().includes(q));
 
             if (filtered.length === 0) {
               const label = userFilter || (q ? `"${searchQuery}"` : "");
+              const hiddenByType = !showBot && !showUsers
+                ? "Đã ẩn tất cả tin nhắn — bật lại bộ lọc trong cài đặt"
+                : !showBot
+                  ? "Đã ẩn tin nhắn AI Bot"
+                  : !showUsers
+                    ? "Đã ẩn tin nhắn người dùng"
+                    : null;
               return (
                 <div className="no-messages flex flex-col">
                   <Empty description={false} />
-                  <h1 className="font-semibold">{label ? `No matches for ${label}` : "Empty"}</h1>
+                  <h1 className="font-semibold">
+                    {hiddenByType || (label ? `No matches for ${label}` : "Empty")}
+                  </h1>
                 </div>
               );
             }
