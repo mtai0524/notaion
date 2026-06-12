@@ -2044,7 +2044,7 @@ const DailyNoteApp = () => {
               <FaSearch className="search-icon" />
               <input
                 type="text"
-                placeholder={isAllTimeSearch ? "SEARCH_ALL_NOTES..." : "SEARCH_THIS_DAY..."}
+                placeholder={isAllTimeSearch ? "SEARCH_ALL..." : "SEARCH..."}
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);

@@ -196,28 +196,31 @@
         position: relative;
         display: flex;
         align-items: center;
+        gap: 6px;
         background: transparent;
         border: var(--global-border-width, 1px) var(--global-border-style, solid) var(--global-border-color, var(--border-color));
         border-radius: var(--global-border-radius, 4px);
-        padding: 0 10px;
+        padding: 0 6px 0 10px;
         height: 36px;
-        width: 180px;
-        transition: all 0.2s;
+        width: 300px;
+        transition: width 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 
         .search-icon {
           font-size: 0.8rem;
           color: var(--text-muted);
+          flex-shrink: 0;
         }
 
         input {
+          flex: 1;
+          min-width: 0;
           background: transparent;
           border: none;
           color: inherit;
           font-family: inherit;
           font-size: 0.75rem;
-          padding-left: 10px;
+          padding-left: 8px;
           outline: none;
-          width: 100%;
 
           &::placeholder {
             color: var(--input-placeholder);
@@ -226,7 +229,7 @@
 
         &:focus-within {
           border-color: var(--accent-color);
-          width: 320px;
+          width: 380px;
         }
 
         &.is-active {
@@ -242,29 +245,29 @@
           border: none;
           color: var(--text-muted);
           cursor: pointer;
-          padding: 2px 4px;
-          font-size: 0.7rem;
+          padding: 2px;
+          font-size: 0.68rem;
           flex-shrink: 0;
 
           &:hover { color: var(--text-color); }
         }
 
         .search-cat-select {
-          height: 24px;
-          margin-left: 6px;
+          height: 26px;
           padding: 0 4px;
           border: 1px solid var(--border-color);
           border-radius: 3px;
           background: var(--container-bg);
           color: var(--text-muted);
           font-family: inherit;
-          font-size: 0.62rem;
+          font-size: 0.6rem;
           font-weight: 800;
           letter-spacing: 0.3px;
           cursor: pointer;
           outline: none;
           flex-shrink: 0;
-          max-width: 96px;
+          max-width: 92px;
+          transition: all 0.15s ease;
 
           &.active {
             color: var(--text-color);
@@ -273,24 +276,25 @@
           }
         }
 
+        /* DAY / ALL — segmented pill */
         .search-scope-toggle {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          margin-left: 8px;
-          padding-left: 8px;
-          border-left: 1px solid var(--border-color);
           flex-shrink: 0;
+          padding: 2px;
+          gap: 2px;
+          background: rgba(127, 127, 127, 0.1);
+          border-radius: 4px;
         }
 
         .search-scope-btn {
-          height: 24px;
-          min-width: 34px;
-          padding: 0 8px;
-          border: 1px solid transparent;
+          height: 22px;
+          min-width: 32px;
+          padding: 0 7px;
+          border: none;
           background: transparent;
           color: var(--text-muted);
-          font-size: 0.65rem;
+          font-size: 0.62rem;
           font-weight: 800;
           letter-spacing: 0.4px;
           border-radius: 3px;
@@ -299,13 +303,11 @@
 
           &:hover {
             color: var(--text-color);
-            border-color: var(--border-color);
           }
 
           &.active {
-            color: var(--text-color);
-            background: rgba(var(--accent-rgb, 59, 130, 246), 0.12);
-            border-color: var(--accent-color);
+            color: #fff;
+            background: var(--accent-color);
           }
         }
       }
