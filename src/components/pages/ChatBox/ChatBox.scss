@@ -1,7 +1,7 @@
 .chat-box {
-  box-shadow: -2px 2px 0 0 #111827 !important;
-  border: 2px solid #111827 !important;
-  border-radius: 6px;
+  box-shadow: var(--box-shadow) !important;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color) !important;
+  border-radius: var(--global-border-radius, 6px);
   max-width: 390px;
   width: 93%;
   height: 60px;
@@ -38,8 +38,8 @@
   justify-content: space-between;
   align-items: center;
   padding: 10px;
-  color: #111827;
-  border-bottom: 1px dashed #111827;
+  color: var(--text-color);
+  border-bottom: var(--global-border-width, 1px) dashed var(--border-color);
 }
 
 .chat-messages {
@@ -53,10 +53,10 @@
 }
 
 .sent-message .chat-user {
-  background-color: white;
+  background-color: var(--container-bg);
   padding: 5px;
-  border: 2px solid black;
-  border-radius: 5px;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
+  border-radius: var(--global-border-radius, 5px);
   transform: rotate(3deg);
   margin-left: auto;
   margin-bottom: 5px;
@@ -107,10 +107,10 @@
 
 .chat-user {
   display: inline-block;
-  background-color: white;
+  background-color: var(--container-bg);
   padding: 5px;
-  border: 2px solid black;
-  border-radius: 5px;
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
+  border-radius: var(--global-border-radius, 5px);
   transform: rotate(-3deg);
   font-size: 0.8em;
   margin-bottom: 5px;
@@ -159,7 +159,7 @@
 .chat-input {
   background-color: white !important;
   width: 100%;
-  border-top: 1px solid #bcbcbd;
+  border-top: var(--global-border-width, 1px) var(--global-border-style, solid) var(--border-color);
   display: flex;
 }
 
