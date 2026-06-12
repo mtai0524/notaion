@@ -1189,7 +1189,7 @@ const ChatBox = ({ onClose }) => {
           onChange={handleChange}
           onKeyPress={handleKeyPress}
           onPaste={handlePaste}
-          placeholder={aiMode ? "Hỏi AI bất cứ điều gì... (Shift+Enter để xuống dòng)" : "Type a message — paste/drop ảnh để gửi"}
+          placeholder={aiMode ? "Ask AI anything..." : "Type a message..."}
           rows={1}
           style={{ overflow: "hidden", resize: "none" }}
         />
