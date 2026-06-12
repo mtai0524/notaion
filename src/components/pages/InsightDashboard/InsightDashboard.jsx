@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
-  FaRocket, FaChartLine, FaTasks, FaHistory,
-  FaPlus, FaChevronRight, FaRegCalendarAlt, FaFire,
+  FaRocket, FaChartLine, FaHistory,
+  FaPlus, FaChevronRight, FaRegCalendarAlt,
   FaFileAlt, FaBrain, FaSearch, FaEllipsisV, FaChevronLeft, FaGlobe, FaServer,
-  FaTrophy, FaBullseye, FaTags, FaClock, FaSun, FaMoon, FaDownload, FaCheckCircle,
+  FaDownload, FaCheckCircle,
   FaFolderOpen, FaCalendarDay
 } from 'react-icons/fa';
 import { NavLink, useNavigate } from 'react-router-dom';
@@ -44,12 +44,6 @@ const InsightDashboard = () => {
     return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
   }, []);
 
-  const [stats, setStats] = useState({
-    totalNotes: 0,
-    activeTasks: 0,
-    completedTasks: 0,
-    ideas: 0
-  });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -65,14 +59,6 @@ const InsightDashboard = () => {
 
       const filesRes = await axiosInstance.get('/api/files');
       setRecentFiles(filesRes.data.slice(0, 5));
-
-      const tasks = notes.filter(n => n.category === 'TASK' || n.customCategory === 'TASK');
-      setStats({
-        totalNotes: notes.length,
-        activeTasks: tasks.filter(t => !t.isCompleted).length,
-        completedTasks: tasks.filter(t => t.isCompleted).length,
-        ideas: notes.filter(n => n.category === 'IDEA' || n.customCategory === 'IDEA').length
-      });
 
       // Fetch Heatmap Data
       const heatmapRes = await axiosInstance.get('/api/Analytics/heatmap');
@@ -164,68 +150,6 @@ const InsightDashboard = () => {
       .slice(0, term ? 8 : 4);
   }, [allNotes, searchTerm]);
 
-  const streakInfo = useMemo(() => {
-    const dates = new Set(allNotes.filter(n => n.date).map(n => n.date));
-    if (dates.size === 0) return { current: 0, best: 0 };
-
-    let current = 0;
-    let cursor = new Date();
-    while (dates.has(format(cursor, 'yyyy-MM-dd'))) {
-      current++;
-      cursor = subDays(cursor, 1);
-    }
-    if (current === 0 && dates.has(format(subDays(new Date(), 1), 'yyyy-MM-dd'))) {
-      cursor = subDays(new Date(), 1);
-      while (dates.has(format(cursor, 'yyyy-MM-dd'))) {
-        current++;
-        cursor = subDays(cursor, 1);
-      }
-    }
-
-    const sorted = [...dates].sort();
-    let best = 0, run = 0, prev = null;
-    for (const d of sorted) {
-      const diff = prev ? Math.round((new Date(d) - new Date(prev)) / 86400000) : null;
-      run = diff === 1 ? run + 1 : 1;
-      if (run > best) best = run;
-      prev = d;
-    }
-    return { current, best };
-  }, [allNotes]);
-
-  const categoryDistribution = useMemo(() => {
-    const map = {};
-    allNotes.forEach(n => {
-      const cat = (n.customCategory || n.category || 'MEMO').toUpperCase();
-      map[cat] = (map[cat] || 0) + 1;
-    });
-    const total = allNotes.length || 1;
-    return Object.entries(map)
-      .map(([name, count]) => ({ name, count, pct: Math.round((count / total) * 100) }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 6);
-  }, [allNotes]);
-
-  const timeOfDayDistribution = useMemo(() => {
-    const buckets = [
-      { key: 'Morning', range: 'h. 06–12', icon: <FaSun />, count: 0 },
-      { key: 'Afternoon', range: 'h. 12–18', icon: <FaSun />, count: 0 },
-      { key: 'Evening', range: 'h. 18–22', icon: <FaMoon />, count: 0 },
-      { key: 'Night', range: 'h. 22–06', icon: <FaMoon />, count: 0 },
-    ];
-    allNotes.forEach(n => {
-      if (!n.timestamp) return;
-      const hour = parseInt(String(n.timestamp).split(':')[0], 10);
-      if (Number.isNaN(hour)) return;
-      if (hour >= 6 && hour < 12) buckets[0].count++;
-      else if (hour >= 12 && hour < 18) buckets[1].count++;
-      else if (hour >= 18 && hour < 22) buckets[2].count++;
-      else buckets[3].count++;
-    });
-    const max = Math.max(1, ...buckets.map(b => b.count));
-    return buckets.map(b => ({ ...b, pct: Math.round((b.count / max) * 100) }));
-  }, [allNotes]);
-
   const todayFocus = useMemo(() => {
     const today = format(new Date(), 'yyyy-MM-dd');
     return allNotes
@@ -309,57 +233,6 @@ const InsightDashboard = () => {
         </div>
       </div>
 
-      <div className="stats-grid">
-        <div className="stat-card neo-blue">
-          <div className="stat-icon"><FaFileAlt /></div>
-          <div className="stat-info">
-            <span className="label">Total Notes</span>
-            <span className="value">{stats.totalNotes}</span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-        <div className="stat-card neo-purple">
-          <div className="stat-icon"><FaTasks /></div>
-          <div className="stat-info">
-            <span className="label">Active Tasks</span>
-            <span className="value">{stats.activeTasks}</span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-        <div className="stat-card neo-green">
-          <div className="stat-icon"><FaBrain /></div>
-          <div className="stat-info">
-            <span className="label">Ideas</span>
-            <span className="value">{stats.ideas}</span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-        <div className="stat-card neo-orange">
-          <div className="stat-icon"><FaFire /></div>
-          <div className="stat-info">
-            <span className="label">Completed</span>
-            <span className="value">{stats.completedTasks}</span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-        <div className="stat-card neo-streak">
-          <div className="stat-icon"><FaBullseye /></div>
-          <div className="stat-info">
-            <span className="label">Current Streak</span>
-            <span className="value">{streakInfo.current}<small> days</small></span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-        <div className="stat-card neo-best">
-          <div className="stat-icon"><FaTrophy /></div>
-          <div className="stat-info">
-            <span className="label">Best Streak</span>
-            <span className="value">{streakInfo.best}<small> days</small></span>
-          </div>
-          <div className="stat-progress"></div>
-        </div>
-      </div>
-
       <div className="dashboard-content">
         <div className="main-col">
           <section className="section-panel">
@@ -417,52 +290,6 @@ const InsightDashboard = () => {
               ) : (
                 <div className="empty-state">Nothing pending for today. Nice.</div>
               )}
-            </div>
-          </section>
-
-          <section className="section-panel mt-4 breakdown-section">
-            <div className="panel-header">
-              <h2><FaTags /> Category Breakdown</h2>
-              <span className="view-all" style={{ cursor: 'default' }}>{allNotes.length} total</span>
-            </div>
-            {categoryDistribution.length > 0 ? (
-              <div className="bar-list">
-                {categoryDistribution.map(c => (
-                  <div className="bar-row" key={c.name}>
-                    <div className="bar-label">
-                      <span className="bar-name">{c.name}</span>
-                      <span className="bar-meta">{c.count} · {c.pct}%</span>
-                    </div>
-                    <div className="bar-track">
-                      <div className="bar-fill" style={{ width: `${c.pct}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="empty-state">No category data yet.</div>
-            )}
-          </section>
-
-          <section className="section-panel mt-4 timeofday-section">
-            <div className="panel-header">
-              <h2><FaClock /> Time of Day Activity</h2>
-              <span className="view-all" style={{ cursor: 'default' }}>{allNotes.filter(n => n.timestamp).length} notes</span>
-            </div>
-            <div className="tod-grid">
-              {timeOfDayDistribution.map(b => (
-                <div className="tod-card" key={b.key}>
-                  <div className="tod-head">
-                    <span className="tod-icon">{b.icon}</span>
-                    <span className="tod-label">{b.key}</span>
-                  </div>
-                  <div className="tod-count">{b.count}</div>
-                  <div className="tod-range">{b.range}</div>
-                  <div className="bar-track sm">
-                    <div className="bar-fill" style={{ width: `${b.pct}%` }} />
-                  </div>
-                </div>
-              ))}
             </div>
           </section>
 
@@ -583,10 +410,6 @@ const InsightDashboard = () => {
               <NavLink to="/notion" className="quick-link">
                 <div className="ql-icon"><FaFileAlt /></div>
                 <span>Notion Workspace</span>
-              </NavLink>
-              <NavLink to="/signal" className="quick-link">
-                <div className="ql-icon"><FaChartLine /></div>
-                <span>AI Analytics</span>
               </NavLink>
               <NavLink to="/files" className="quick-link">
                 <div className="ql-icon"><FaHistory /></div>
