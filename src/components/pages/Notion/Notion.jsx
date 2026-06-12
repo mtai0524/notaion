@@ -113,7 +113,7 @@ const DEFAULT_PREFS = {
   font: "sans",             // sans | serif | mono
   fontSize: "md",           // sm | md | lg
   background: "plain",      // plain | dots | grid | lines
-  accent: "#3b82f6",        // any hex
+  accent: "#111827",        // any hex — defaults to Notaion ink (not blue)
   focusMode: false,         // hides controls + ghost-add
   layout: "single",         // single | columns2 | columns3 | canvas | slideshow
   showOutline: false,       // outline (TOC) sidebar visibility
@@ -375,7 +375,11 @@ const SegGroup = ({ label, value, options, onChange }) => (
 
 const NotionPrefsPanel = ({ prefs, onChange, onReset, onClose }) => {
   return (
-    <div className="notion-prefs-panel" onMouseDown={(e) => e.stopPropagation()}>
+    <div
+      className="notion-prefs-panel"
+      style={{ "--notion-accent": prefs.accent }}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <div className="prefs-header">
         <div className="prefs-title">
           <BgColorsOutlined />
