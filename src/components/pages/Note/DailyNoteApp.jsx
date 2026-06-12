@@ -145,8 +145,9 @@ function DrawingCanvas({ data, onChange, color }) {
   );
 }
 
-const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
+const Note = ({ note, onUpdate, onDelete, onFocus, appTheme, locateNote }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDrawing, setShowDrawing] = useState(false);
   const [showProps, setShowProps] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState('STYLE');
@@ -562,12 +563,12 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
           });
         }
       }}
-      disableResizing={note.isMinimized || note.locked}
+      disableResizing={note.isMinimized || note.locked || note.isFullscreen}
       dragHandleClassName="note-header"
       minWidth={note.isFullscreen ? 360 : 200}
       minHeight={note.isMinimized ? 40 : (note.isFullscreen ? 280 : 150)}
       bounds={false}
-      disableDragging={note.locked}
+      disableDragging={note.locked || note.isFullscreen}
       style={{
         zIndex: note.isFullscreen ? 9999 : note.zIndex,
         position: note.isFullscreen ? 'fixed' : 'absolute',
@@ -577,6 +578,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
       onResizeStart={() => onFocus(note.id)}
     >
       <div
+        id={`note-card-${note.id}`}
         className={`daily-note-card-cyber ${note.isSelected ? 'is-selected' : ''} ${note.isFocused ? 'is-focused' : ''} ${note.isDeleting ? 'deleting' : ''} ${note.isMinimized ? 'minimized' : ''} ${getBorderStyle(note.borderStyle) === 'dashed' ? 'border-dashed' : ''} ${note.isCompleted ? 'is-completed' : ''} ${note.glow ? 'glow-active' : ''} ${note.highlighted ? 'is-highlighted' : ''} ${note.compact ? 'is-compact' : ''} ${note.hideCategory ? 'category-hidden' : ''} ${note.isFullscreen ? 'is-fullscreen-popup' : ''} bg-pattern-${note.pattern === 1 ? 'dots' : note.pattern === 2 ? 'stripes' : note.pattern === 3 ? 'grid' : note.pattern === 4 ? 'cross' : 'none'} note-theme-${note.noteTheme === 1 ? 'light' : (note.noteTheme === 2 ? 'sticky' : 'dark')}`}
         data-category={note.customCategory || note.category}
         style={{
@@ -606,12 +608,16 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
             )}
           </div>
           <div className="header-actions">
+            <button className={`action-btn drawing-btn ${showDrawing ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setShowDrawing(!showDrawing); }} title="Doodle / Draw">
+              <FaPalette />
+            </button>
             <button className="action-btn config-btn" onClick={() => setShowProps(!showProps)} title="Settings">
               <FaCog />
             </button>
             <Dropdown
               trigger={['click']}
               placement="bottomRight"
+              overlayClassName={`note-overflow-dropdown theme-${appTheme}`}
               dropdownRender={() => (
                 <div className="note-overflow-menu" onClick={(e) => e.stopPropagation()}>
                   <button className={`overflow-item ${copied ? 'is-active' : ''}`} onClick={handleCopy}>
@@ -952,10 +958,18 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
 
             <div
               className="content-container"
-              onClick={startEditing}
-              onContextMenu={note.isFullscreen ? openFormatMenu : undefined}
+              onClick={showDrawing ? undefined : startEditing}
+              onContextMenu={note.isFullscreen && !showDrawing ? openFormatMenu : undefined}
             >
-              {isEditing ? (
+              {showDrawing ? (
+                <div className="note-drawing-container" onClick={(e) => e.stopPropagation()} style={{ height: '100%', minHeight: '180px', position: 'relative' }}>
+                  <DrawingCanvas
+                    data={note.drawingData}
+                    onChange={(data) => onUpdate(note.id, { drawingData: data })}
+                    color={accentColor}
+                  />
+                </div>
+              ) : isEditing ? (
                 <textarea
                   ref={textareaRef}
                   className="note-content-area"
@@ -971,14 +985,45 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme }) => {
                 />
               ) : (
                 <div className="markdown-preview">
+                  {note.drawingData && (
+                    <div className="note-drawing-preview-wrapper" onClick={(e) => { e.stopPropagation(); setShowDrawing(true); }} title="Click to edit sketch">
+                      <img src={note.drawingData} alt="Sketch" className="note-doodle-img" />
+                    </div>
+                  )}
                   {note.content ? (
                     <ReactMarkdown>{note.content}</ReactMarkdown>
                   ) : (
-                    <span className="placeholder-text">{'> waiting for input...'}</span>
+                    !note.drawingData && <span className="placeholder-text">{'> waiting for input...'}</span>
                   )}
                 </div>
               )}
             </div>
+
+            {/* Linked Notes Section */}
+            {note.linkedNoteIds && note.linkedNoteIds.split(',').filter(Boolean).length > 0 && (
+              <div className="note-linked-chips" onClick={(e) => e.stopPropagation()}>
+                <span className="linked-title"><FaLink /> LINKS:</span>
+                <div className="chips-container">
+                  {note.linkedNoteIds.split(',').filter(Boolean).map(linkId => {
+                    const target = window.allCurrentNotesGlobal?.find(n => n.id === linkId);
+                    if (!target) return null;
+                    const targetTheme = COLORS.find(c => c.id === target.color) || COLORS[0];
+                    const targetColor = target.customColor || targetTheme.color;
+                    return (
+                      <button
+                        key={linkId}
+                        className="link-chip"
+                        style={{ '--link-color': targetColor }}
+                        onClick={() => locateNote && locateNote(linkId)}
+                        title={`Go to ${target.title || 'Untitled'}`}
+                      >
+                        {target.title || 'Untitled'}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {fileAttachments.length > 0 && (
               <div className="note-file-attachments">
@@ -1152,12 +1197,15 @@ const DailyNoteApp = () => {
   }, [urlDateStr]);
 
   const [notesByDate, setNotesByDate] = useState({});
+  const [allNotesIndex, setAllNotesIndex] = useState([]);
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState('cyan');
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('saved');
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchScope, setSearchScope] = useState(() => localStorage.getItem('daily-note-search-scope') || 'day');
+  const [showGlobalSearchResults, setShowGlobalSearchResults] = useState(false);
   const [showGrid, setShowGrid] = useState(true);
   const [canvasBg, setCanvasBg] = useState(() => localStorage.getItem('daily-note-canvas-bg') || '');
   const [showBgPicker, setShowBgPicker] = useState(false);
@@ -1178,11 +1226,30 @@ const DailyNoteApp = () => {
   const canvasRef = React.useRef(null);
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
-  const currentNotes = allCurrentNotes.filter(n =>
-    !n.isDeleted &&
-    (n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      n.content?.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const currentNotes = allCurrentNotes.filter(n => !n.isDeleted);
+  const isAllTimeSearch = searchScope === 'all';
+
+  // Sidebar States
+  const [showSidebar, setShowSidebar] = useState(() => localStorage.getItem('daily-note-sidebar') === 'true');
+  const [sidebarQuery, setSidebarQuery] = useState('');
+  const [sidebarFilterCat, setSidebarFilterCat] = useState('ALL');
+
+  const filteredSidebarNotes = allCurrentNotes.filter(n => {
+    if (n.isDeleted) return false;
+    const queryMatch = sidebarQuery.trim() === '' || 
+      n.title?.toLowerCase().includes(sidebarQuery.toLowerCase()) ||
+      n.content?.toLowerCase().includes(sidebarQuery.toLowerCase());
+    const catMatch = sidebarFilterCat === 'ALL' || (n.customCategory || n.category) === sidebarFilterCat;
+    return queryMatch && catMatch;
+  });
+
+  const toggleSidebar = () => {
+    setShowSidebar(v => {
+      const next = !v;
+      localStorage.setItem('daily-note-sidebar', String(next));
+      return next;
+    });
+  };
 
   // Default text color based on current app theme
   const defaultTextColor = (t) => t === 'light' ? '#0f172a' : '#a6accd';
@@ -1357,6 +1424,60 @@ const DailyNoteApp = () => {
     fetchNotes(dateKey);
   }, [dateKey]);
 
+  const fetchAllNotes = useCallback(async () => {
+    try {
+      const response = await axiosInstance.get('/api/DailyNote/all');
+      setAllNotesIndex(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('[ERROR] Failed to fetch all notes:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAllNotes();
+  }, [fetchAllNotes]);
+
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
+  const searchResults = normalizedSearchQuery
+    ? searchPool
+        .filter(n => !n.isDeleted)
+        .filter(n => {
+          const haystack = [
+            n.title,
+            n.content,
+            n.category,
+            n.customCategory,
+            n.timestamp,
+            n.date,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+          return haystack.includes(normalizedSearchQuery);
+        })
+        .slice(0, 50)
+    : [];
+  const visibleNotes = normalizedSearchQuery ? searchResults : currentNotes;
+
+  const openSearchResult = async (note) => {
+    if (!note?.date) return;
+    const targetDate = new Date(note.date);
+    if (isNaN(targetDate)) return;
+    await fetchNotes(format(targetDate, 'yyyy-MM-dd'));
+    setCurrentDate(targetDate);
+    setShowGlobalSearchResults(false);
+    setTimeout(() => {
+      locateNote(note.id);
+    }, 250);
+  };
+
+  const handleSearchScopeChange = (scope) => {
+    setSearchScope(scope);
+    localStorage.setItem('daily-note-search-scope', scope);
+    setShowGlobalSearchResults(false);
+  };
+
   useEffect(() => {
     const onKey = (e) => {
       const t = e.target;
@@ -1389,6 +1510,7 @@ const DailyNoteApp = () => {
         b: () => r.setShowBgPicker(v => !v),
         r: () => r.setShowTrash(v => !v),
         c: () => r.setShowColorMenu(v => !v),
+        s: () => r.toggleSidebar(),
         '?': () => r.setShowHotkeyHelp(v => !v),
         '/': () => {
           const el = document.querySelector('.search-box-cyber input');
@@ -1605,6 +1727,20 @@ const DailyNoteApp = () => {
     });
   };
 
+  const locateNote = useCallback((id) => {
+    focusNote(id);
+    setTimeout(() => {
+      const el = document.getElementById(`note-card-${id}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+        el.classList.add('locate-glow-active');
+        setTimeout(() => {
+          el.classList.remove('locate-glow-active');
+        }, 2000);
+      }
+    }, 100);
+  }, [focusNote]);
+
   const deleteSelectedNotes = async () => {
     if (selectedIds.length === 0) return;
     if (!window.confirm(`ARE YOU SURE YOU WANT TO HIDE ${selectedIds.length} ENTRIES?`)) return;
@@ -1679,7 +1815,7 @@ const DailyNoteApp = () => {
     const y1 = Math.min(selectionRect.startY, pt.y);
     const y2 = Math.max(selectionRect.startY, pt.y);
 
-    const ids = currentNotes.filter(n => {
+    const ids = visibleNotes.filter(n => {
       const nx = n.x;
       const ny = n.y;
       const nw = n.width || 250;
@@ -1760,6 +1896,7 @@ const DailyNoteApp = () => {
     setShowToolsMenu,
     setShowNewMenu,
     setShowHotkeyHelp,
+    toggleSidebar,
   };
 
   const getAnchorPoints = (n) => {
@@ -1839,7 +1976,7 @@ const DailyNoteApp = () => {
           <div className="current-date-display">
             <h2>{format(currentDate, 'yyyy_MM_dd')}</h2>
             <div className="status-indicator-container">
-              <span className="note-count">ACTIVE_ENTRIES: {currentNotes.length}</span>
+              <span className="note-count">ACTIVE_ENTRIES: {normalizedSearchQuery ? searchResults.length : currentNotes.length}</span>
               <span className={`sync-status ${syncStatus}`}>
                 {syncStatus === 'saving' && ' [ SYNCING... ]'}
                 {syncStatus === 'saved' && ' [ SYNC_COMPLETE ]'}
@@ -1851,6 +1988,14 @@ const DailyNoteApp = () => {
         </div>
 
         <div className="toolbar-actions">
+          <button
+            className={`nav-btn sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}
+            onClick={toggleSidebar}
+            title="Toggle Sidebar Index (S)"
+          >
+            <FaListUl />
+          </button>
+
           {selectedIds.length > 0 && (
             <button className="nav-btn delete-selected-btn" onClick={deleteSelectedNotes} title="Delete Selected">
               <FaTrashAlt /> DELETE_SELECTED ({selectedIds.length})
@@ -1862,11 +2007,65 @@ const DailyNoteApp = () => {
               <FaSearch className="search-icon" />
               <input
                 type="text"
-                placeholder="SEARCH_NOTES..."
+                placeholder={isAllTimeSearch ? "SEARCH_ALL_NOTES..." : "SEARCH_THIS_DAY..."}
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowGlobalSearchResults(true);
+                }}
+                onFocus={() => setShowGlobalSearchResults(true)}
+                onBlur={() => {
+                  window.setTimeout(() => setShowGlobalSearchResults(false), 150);
+                }}
               />
+              <div className="search-scope-toggle" role="tablist" aria-label="Search scope">
+                <button
+                  type="button"
+                  className={`search-scope-btn ${!isAllTimeSearch ? 'active' : ''}`}
+                  onClick={() => handleSearchScopeChange('day')}
+                  title="Search only this day"
+                >
+                  DAY
+                </button>
+                <button
+                  type="button"
+                  className={`search-scope-btn ${isAllTimeSearch ? 'active' : ''}`}
+                  onClick={() => handleSearchScopeChange('all')}
+                  title="Search all notes"
+                >
+                  ALL
+                </button>
+              </div>
             </div>
+            {showGlobalSearchResults && normalizedSearchQuery && (
+              <div className="global-search-dropdown" onMouseDown={(e) => e.preventDefault()}>
+                <div className="global-search-header">
+                  <span>{isAllTimeSearch ? 'ALL_NOTES_RESULTS' : 'THIS_DAY_RESULTS'}</span>
+                  <span>{searchResults.length}</span>
+                </div>
+                <div className="global-search-list">
+                  {searchResults.length === 0 ? (
+                    <div className="global-search-empty">No matches found</div>
+                  ) : (
+                    searchResults.map(note => (
+                      <button
+                        key={`${note.date}-${note.id}`}
+                        className="global-search-item"
+                        onClick={() => openSearchResult(note)}
+                      >
+                        <div className="global-search-item-top">
+                          <span className="global-search-title">{note.title || 'Untitled'}</span>
+                          <span className="global-search-date">{note.date}</span>
+                        </div>
+                        <div className="global-search-snippet">
+                          {(note.content || '').toString().replace(/\s+/g, ' ').slice(0, 120) || '(empty)'}
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-picker-container">
@@ -2108,6 +2307,7 @@ const DailyNoteApp = () => {
               <div className="hk-group">
                 <div className="hk-group-title">Navigation</div>
                 <div className="hk-row"><kbd>/</kbd><span>Focus search</span></div>
+                <div className="hk-row"><kbd>S</kbd><span>Toggle Sidebar Index</span></div>
                 <div className="hk-row"><kbd>R</kbd><span>Open trash</span></div>
                 <div className="hk-row"><kbd>?</kbd><span>Open this help</span></div>
                 <div className="hk-row"><kbd>Esc</kbd><span>Close any open menu / blur input</span></div>
@@ -2120,65 +2320,157 @@ const DailyNoteApp = () => {
         </div>
       )}
 
-      <main
-        className={`note-canvas-cyber ${canvasBg ? 'has-custom-bg' : ''}`}
-        ref={canvasRef}
-        style={canvasBgStyle}
-        onContextMenu={handleContextMenu}
-        onMouseDown={handleCanvasMouseDown}
-        onMouseMove={handleCanvasMouseMove}
-        onMouseUp={handleCanvasMouseUp}
-        onMouseLeave={handleCanvasMouseUp}
-      >
-        {viewMode === 'canvas' ? (
-          <div className="notes-canvas">
-            {renderNoteLinks()}
-            {currentNotes.length === 0 && !loading ? (
-              <div className="empty-state-cyber">
-                <div className="empty-icon"><FaTerminal /></div>
-                <h3>NO_DATA_FOUND</h3>
-                <p>Initialize a new entry to begin data logging.</p>
-              </div>
-            ) : (
-              currentNotes.map(note => (
-                <Note
-                  key={note.id}
-                  note={{ ...note, isSelected: selectedIds.includes(note.id) }}
-                  onUpdate={updateNote}
-                  onDelete={deleteNote}
-                  onFocus={focusNote}
-                  appTheme={theme}
-                />
-              ))
-            )}
-
-            {/* Selection Box Rect */}
-            {selectionRect && selectionRect.active && (
-              <div
-                className="selection-marquee"
-                style={{
-                  left: Math.min(selectionRect.startX, selectionRect.endX),
-                  top: Math.min(selectionRect.startY, selectionRect.endY),
-                  width: Math.abs(selectionRect.startX - selectionRect.endX),
-                  height: Math.abs(selectionRect.startY - selectionRect.endY)
-                }}
+      <div className="daily-note-main-content-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
+        {showSidebar && (
+          <aside className="note-sidebar-cyber">
+            <div className="sidebar-header">
+              <span>NOTE INDEX</span>
+              <button className="close-sidebar-btn" onClick={() => setShowSidebar(false)}><FaTimes /></button>
+            </div>
+            
+            <div className="sidebar-search">
+              <input 
+                type="text" 
+                placeholder="Filter index..." 
+                value={sidebarQuery} 
+                onChange={(e) => setSidebarQuery(e.target.value)} 
               />
-            )}
+              {sidebarQuery && <FaTimes className="clear-search" onClick={() => setSidebarQuery('')} />}
+            </div>
 
-            <div style={{
-              position: 'absolute',
-              top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500,
-              left: 0,
-              width: 1,
-              height: 1,
-              opacity: 0,
-              pointerEvents: 'none'
-            }} />
-          </div>
-        ) : (
-          <KanbanBoard notes={currentNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
+            <div className="sidebar-filters">
+              <button className={`filter-cat-btn ${sidebarFilterCat === 'ALL' ? 'active' : ''}`} onClick={() => setSidebarFilterCat('ALL')}>ALL</button>
+              {CATEGORIES.map(cat => (
+                <button 
+                  key={cat} 
+                  className={`filter-cat-btn ${sidebarFilterCat === cat ? 'active' : ''}`}
+                  onClick={() => setSidebarFilterCat(cat)}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="sidebar-notes-list">
+              {filteredSidebarNotes.length === 0 ? (
+                <div className="sidebar-empty">No entries found</div>
+              ) : (
+                filteredSidebarNotes.map(n => {
+                  const nTheme = COLORS.find(c => c.id === n.color) || COLORS[0];
+                  const accent = n.customColor || nTheme.color;
+                  return (
+                    <div 
+                      key={n.id} 
+                      className={`sidebar-note-item ${n.isFocused ? 'active' : ''} ${n.isCompleted ? 'completed' : ''}`}
+                      onClick={() => locateNote(n.id)}
+                      style={{ '--accent-color': accent }}
+                    >
+                      <div className="note-item-meta">
+                        <span className="note-item-cat">{n.customCategory || n.category || 'MEMO'}</span>
+                        <span className="note-item-time">{n.timestamp}</span>
+                      </div>
+                      <div className="note-item-title">{n.title || 'Untitled Entry'}</div>
+                      <div className="note-item-snippet">{n.content ? (n.content.length > 60 ? n.content.substring(0, 60) + '...' : n.content) : '(Empty content)'}</div>
+                      
+                      <div className="note-item-actions" onClick={(e) => e.stopPropagation()}>
+                        <button 
+                          className={`item-action-btn ${n.pinned ? 'active' : ''}`}
+                          onClick={() => updateNote(n.id, { pinned: !n.pinned, locked: !n.locked })}
+                          title={n.pinned ? 'Unpin note' : 'Pin note'}
+                        >
+                          <FaDrawPolygon />
+                        </button>
+                        <button 
+                          className={`item-action-btn ${n.isMinimized ? 'active' : ''}`}
+                          onClick={() => updateNote(n.id, { isMinimized: !n.isMinimized })}
+                          title={n.isMinimized ? 'Maximize note' : 'Minimize note'}
+                        >
+                          {n.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
+                        </button>
+                        <button 
+                          className={`item-action-btn ${n.isCompleted ? 'active' : ''}`}
+                          onClick={() => updateNote(n.id, { isCompleted: !n.isCompleted })}
+                          title={n.isCompleted ? 'Mark incomplete' : 'Mark complete'}
+                        >
+                          <FaCheckCircle />
+                        </button>
+                        <button 
+                          className="item-action-btn danger" 
+                          onClick={() => deleteNote(n.id)}
+                          title="Delete note"
+                        >
+                          <FaTrashAlt />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </aside>
         )}
-      </main>
+
+        <main
+          className={`note-canvas-cyber ${canvasBg ? 'has-custom-bg' : ''}`}
+          ref={canvasRef}
+          style={canvasBgStyle}
+          onContextMenu={handleContextMenu}
+          onMouseDown={handleCanvasMouseDown}
+          onMouseMove={handleCanvasMouseMove}
+          onMouseUp={handleCanvasMouseUp}
+          onMouseLeave={handleCanvasMouseUp}
+        >
+          {viewMode === 'canvas' ? (
+            <div className="notes-canvas">
+              {renderNoteLinks()}
+              {visibleNotes.length === 0 && !loading ? (
+                <div className="empty-state-cyber">
+                  <div className="empty-icon"><FaTerminal /></div>
+                  <h3>{normalizedSearchQuery ? 'NO_MATCHES_FOUND' : 'NO_DATA_FOUND'}</h3>
+                  <p>{normalizedSearchQuery ? 'Try a different keyword or clear the search.' : 'Initialize a new entry to begin data logging.'}</p>
+                </div>
+              ) : (
+                visibleNotes.map(note => (
+                  <Note
+                    key={note.id}
+                    note={{ ...note, isSelected: selectedIds.includes(note.id) }}
+                    onUpdate={updateNote}
+                    onDelete={deleteNote}
+                    onFocus={focusNote}
+                    appTheme={theme}
+                    locateNote={locateNote}
+                  />
+                ))
+              )}
+
+              {/* Selection Box Rect */}
+              {selectionRect && selectionRect.active && (
+                <div
+                  className="selection-marquee"
+                  style={{
+                    left: Math.min(selectionRect.startX, selectionRect.endX),
+                    top: Math.min(selectionRect.startY, selectionRect.endY),
+                    width: Math.abs(selectionRect.startX - selectionRect.endX),
+                    height: Math.abs(selectionRect.startY - selectionRect.endY)
+                  }}
+                />
+              )}
+
+              <div style={{
+                position: 'absolute',
+                top: Math.max(...(allCurrentNotes.length > 0 ? allCurrentNotes.map(n => n.y + (n.height || 200)) : [0])) + 500,
+                left: 0,
+                width: 1,
+                height: 1,
+                opacity: 0,
+                pointerEvents: 'none'
+              }} />
+            </div>
+          ) : (
+            <KanbanBoard notes={visibleNotes} onUpdate={updateNote} onDelete={deleteNote} onFocus={focusNote} appTheme={theme} />
+          )}
+        </main>
+      </div>
     </div>
   );
 };
@@ -2377,11 +2669,8 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme, dragHandlePro
           ) : (
             <>
               {note.drawingData && (
-                <div className="k-drawing-preview" onClick={() => setShowDrawing(true)}>
-                  <div className="k-drawing-icon">
-                    <FaPalette style={{ color: accentColor }} />
-                    <span style={{ color: accentColor }}>EDIT DRAWING</span>
-                  </div>
+                <div className="k-drawing-preview" onClick={() => setShowDrawing(true)} title="Click to edit drawing">
+                  <img src={note.drawingData} alt="Sketch" className="note-doodle-img" style={{ maxWidth: '100%', maxHeight: '120px', borderRadius: '4px', border: '1px solid rgba(var(--accent-rgb), 0.15)', display: 'block', margin: '4px auto' }} />
                 </div>
               )}
               <div
