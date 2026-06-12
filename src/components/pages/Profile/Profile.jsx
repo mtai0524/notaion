@@ -14,6 +14,7 @@ import { faUserGroup } from "@fortawesome/free-solid-svg-icons";
 import { cardio } from 'ldrs';
 cardio.register();
 import { MoreOutlined } from '@ant-design/icons';
+import LinkedAccounts from "../../pixel/LinkedAccounts";
 
 const { Meta } = Card;
 
@@ -440,6 +441,19 @@ const Profile = () => {
           )}
         </div>
       </Card>
+
+      {showActions && (
+        <div className="linked-accounts-section">
+          <h2 className="linked-accounts-title">Linked Accounts</h2>
+          <div className="linked-accounts-panel">
+            <h3 className="linked-accounts-panel-title">Connected accounts</h3>
+            <p className="linked-accounts-panel-desc">
+              Liên kết Discord vào tài khoản để đăng nhập nhanh hơn.
+            </p>
+            <LinkedAccounts />
+          </div>
+        </div>
+      )}
 
       <div className="pages-container">
         <h2 className="text-center font-semibold mt-2">Public Pages</h2>

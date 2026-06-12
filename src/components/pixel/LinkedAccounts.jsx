@@ -63,7 +63,9 @@ export default function LinkedAccounts() {
       message.warning("Bạn cần đăng nhập trước.");
       return;
     }
-    const returnUrl = `${window.location.origin}/setting`;
+    // Return to wherever the user is now (Setting or their Profile) so the
+    // OAuth redirect lands them back on the same page.
+    const returnUrl = `${window.location.origin}${window.location.pathname}`;
     window.location.href =
       `${axiosInstance.defaults.baseURL}/api/account/${key.toLowerCase()}-link` +
       `?token=${encodeURIComponent(token)}&returnUrl=${encodeURIComponent(returnUrl)}`;

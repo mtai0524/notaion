@@ -112,3 +112,38 @@
   font-weight: 600;
   color: var(--text-muted);
 }
+.linked-accounts-section {
+  width: 80vw;
+  max-width: 800px;
+  margin: 10px auto 0;
+}
+
+.linked-accounts-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin-bottom: 12px;
+  padding-left: 10px;
+  border-left: 4px solid var(--accent-color, #4f7cff);
+  color: var(--accent-color, #4f7cff);
+}
+
+.linked-accounts-panel {
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--global-border-color, black);
+  border-radius: var(--global-border-radius, 6px);
+  background-color: var(--container-bg);
+  box-shadow: var(--box-shadow-sm);
+  padding: 18px 20px;
+}
+
+.linked-accounts-panel-title {
+  font-weight: 800;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: var(--text-color);
+}
+
+.linked-accounts-panel-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
