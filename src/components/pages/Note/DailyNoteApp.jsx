@@ -1201,14 +1201,14 @@ const DailyNoteApp = () => {
   const [notesByDate, setNotesByDate] = useState({});
   const [allNotesIndex, setAllNotesIndex] = useState([]);
   const [topZIndex, setTopZIndex] = useState(10);
-  const [selectedColor, setSelectedColor] = useState('cyan');
+  const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('daily-note-color') || 'cyan');
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('saved');
   const [theme, setTheme] = useState(() => localStorage.getItem('daily-note-theme') || 'dark');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchScope, setSearchScope] = useState(() => localStorage.getItem('daily-note-search-scope') || 'day');
   const [showGlobalSearchResults, setShowGlobalSearchResults] = useState(false);
-  const [showGrid, setShowGrid] = useState(true);
+  const [showGrid, setShowGrid] = useState(() => localStorage.getItem('daily-note-grid') !== 'false');
   const [canvasBg, setCanvasBg] = useState(() => localStorage.getItem('daily-note-canvas-bg') || '');
   const [showBgPicker, setShowBgPicker] = useState(false);
   const [customBgUrl, setCustomBgUrl] = useState('');
@@ -1222,7 +1222,7 @@ const DailyNoteApp = () => {
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
-  const [viewMode, setViewMode] = useState('canvas'); // 'canvas' or 'kanban'
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('daily-note-view-mode') || 'canvas'); // 'canvas' or 'kanban'
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectionRect, setSelectionRect] = useState(null);
   const canvasRef = React.useRef(null);
@@ -1266,6 +1266,11 @@ const DailyNoteApp = () => {
     if (sidebarFilterCat === cat) setSidebarFilterCat('ALL');
     if (searchCatFilter === cat) setSearchCatFilter('ALL');
   };
+
+  // Persist view-preference options so they survive a reload.
+  useEffect(() => { localStorage.setItem('daily-note-view-mode', viewMode); }, [viewMode]);
+  useEffect(() => { localStorage.setItem('daily-note-grid', String(showGrid)); }, [showGrid]);
+  useEffect(() => { localStorage.setItem('daily-note-color', selectedColor); }, [selectedColor]);
 
   const filteredSidebarNotes = allCurrentNotes.filter(n => {
     if (n.isDeleted) return false;
