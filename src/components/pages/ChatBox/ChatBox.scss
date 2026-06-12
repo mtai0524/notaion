@@ -512,9 +512,9 @@ body.dark-mode-active {
   bottom: 12px;
   right: 14px;
   z-index: 5;
-  background: #ffffff;
-  border: 2px solid #111827;
-  box-shadow: -2px 2px 0 0 #111827;
+  background: var(--container-bg);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
+  box-shadow: var(--box-shadow-sm);
   border-radius: 999px;
   width: 36px;
   height: 36px;
@@ -522,7 +522,7 @@ body.dark-mode-active {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #111827;
+  color: var(--text-color);
   transition: transform 0.15s ease;
 
   &:hover { transform: translate(1px, -1px); box-shadow: -3px 3px 0 0 #111827; }
