@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Rnd } from 'react-rnd';
 import ReactMarkdown from 'react-markdown';
@@ -146,6 +146,8 @@ function DrawingCanvas({ data, onChange, color }) {
 }
 
 const Note = ({ note, onUpdate, onDelete, onFocus, appTheme, locateNote }) => {
+  // Built-in + user-created categories shown as quick presets.
+  const presetCategories = [...CATEGORIES, ...loadCustomCategories().filter(c => !CATEGORIES.includes(c))];
   const [isEditing, setIsEditing] = useState(false);
   const [showDrawing, setShowDrawing] = useState(false);
   const [showProps, setShowProps] = useState(false);
@@ -887,7 +889,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme, locateNote }) => {
                     <div className="ins-field">
                       <label>CATEGORY_PRESETS</label>
                       <div className="ins-cat-grid">
-                        {CATEGORIES.map(cat => (
+                        {presetCategories.map(cat => (
                           <button key={cat} className={`cat-option ${(note.customCategory || note.category) === cat ? 'active' : ''}`} onClick={() => onUpdate(note.id, { customCategory: cat, category: cat })}>{cat}</button>
                         ))}
                       </div>
@@ -1234,6 +1236,37 @@ const DailyNoteApp = () => {
   const [sidebarQuery, setSidebarQuery] = useState('');
   const [sidebarFilterCat, setSidebarFilterCat] = useState('ALL');
 
+  // Custom (user-created) categories, persisted. Effective list = built-in + custom.
+  const [customCategories, setCustomCategories] = useState(loadCustomCategories);
+  const allCategories = useMemo(
+    () => [...CATEGORIES, ...customCategories.filter(c => !CATEGORIES.includes(c))],
+    [customCategories]
+  );
+  const [newCatInput, setNewCatInput] = useState('');
+  const [searchCatFilter, setSearchCatFilter] = useState('ALL'); // category filter for the search bar
+
+  const addCustomCategory = (raw) => {
+    const cat = String(raw || '').trim().toUpperCase().replace(/\s+/g, '_').slice(0, 16);
+    if (!cat) return;
+    if (allCategories.includes(cat)) { setNewCatInput(''); return; }
+    setCustomCategories(prev => {
+      const next = [...prev, cat];
+      localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(next));
+      return next;
+    });
+    setNewCatInput('');
+  };
+
+  const removeCustomCategory = (cat) => {
+    setCustomCategories(prev => {
+      const next = prev.filter(c => c !== cat);
+      localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(next));
+      return next;
+    });
+    if (sidebarFilterCat === cat) setSidebarFilterCat('ALL');
+    if (searchCatFilter === cat) setSearchCatFilter('ALL');
+  };
+
   const filteredSidebarNotes = allCurrentNotes.filter(n => {
     if (n.isDeleted) return false;
     const queryMatch = sidebarQuery.trim() === '' || 
@@ -1439,10 +1472,14 @@ const DailyNoteApp = () => {
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
-  const searchResults = normalizedSearchQuery
+  const searchCatActive = searchCatFilter !== 'ALL';
+  const searchActive = !!normalizedSearchQuery || searchCatActive;
+  const searchResults = searchActive
     ? searchPool
         .filter(n => !n.isDeleted)
+        .filter(n => !searchCatActive || (n.customCategory || n.category) === searchCatFilter)
         .filter(n => {
+          if (!normalizedSearchQuery) return true;
           const haystack = [
             n.title,
             n.content,
@@ -1458,7 +1495,7 @@ const DailyNoteApp = () => {
         })
         .slice(0, 50)
     : [];
-  const visibleNotes = normalizedSearchQuery ? searchResults : currentNotes;
+  const visibleNotes = searchActive ? searchResults : currentNotes;
 
   const openSearchResult = async (note) => {
     if (!note?.date) return;
@@ -1976,7 +2013,7 @@ const DailyNoteApp = () => {
           <div className="current-date-display">
             <h2>{format(currentDate, 'yyyy_MM_dd')}</h2>
             <div className="status-indicator-container">
-              <span className="note-count">ACTIVE_ENTRIES: {normalizedSearchQuery ? searchResults.length : currentNotes.length}</span>
+              <span className="note-count">ACTIVE_ENTRIES: {searchActive ? searchResults.length : currentNotes.length}</span>
               <span className={`sync-status ${syncStatus}`}>
                 {syncStatus === 'saving' && ' [ SYNCING... ]'}
                 {syncStatus === 'saved' && ' [ SYNC_COMPLETE ]'}
@@ -2003,7 +2040,7 @@ const DailyNoteApp = () => {
           )}
 
           <div className="toolbar-group toolbar-group-search">
-            <div className="search-box-cyber">
+            <div className={`search-box-cyber ${searchActive ? 'is-active' : ''}`}>
               <FaSearch className="search-icon" />
               <input
                 type="text"
@@ -2018,6 +2055,30 @@ const DailyNoteApp = () => {
                   window.setTimeout(() => setShowGlobalSearchResults(false), 150);
                 }}
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="search-clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  <FaTimes />
+                </button>
+              )}
+              <select
+                className={`search-cat-select ${searchCatActive ? 'active' : ''}`}
+                value={searchCatFilter}
+                onChange={(e) => {
+                  setSearchCatFilter(e.target.value);
+                  setShowGlobalSearchResults(true);
+                }}
+                title="Filter by category"
+              >
+                <option value="ALL">ALL_CATS</option>
+                {allCategories.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
               <div className="search-scope-toggle" role="tablist" aria-label="Search scope">
                 <button
                   type="button"
@@ -2037,7 +2098,7 @@ const DailyNoteApp = () => {
                 </button>
               </div>
             </div>
-            {showGlobalSearchResults && normalizedSearchQuery && (
+            {showGlobalSearchResults && searchActive && (
               <div className="global-search-dropdown" onMouseDown={(e) => e.preventDefault()}>
                 <div className="global-search-header">
                   <span>{isAllTimeSearch ? 'ALL_NOTES_RESULTS' : 'THIS_DAY_RESULTS'}</span>
@@ -2340,16 +2401,43 @@ const DailyNoteApp = () => {
 
             <div className="sidebar-filters">
               <button className={`filter-cat-btn ${sidebarFilterCat === 'ALL' ? 'active' : ''}`} onClick={() => setSidebarFilterCat('ALL')}>ALL</button>
-              {CATEGORIES.map(cat => (
-                <button 
-                  key={cat} 
-                  className={`filter-cat-btn ${sidebarFilterCat === cat ? 'active' : ''}`}
-                  onClick={() => setSidebarFilterCat(cat)}
-                >
-                  {cat}
-                </button>
-              ))}
+              {allCategories.map(cat => {
+                const isCustom = !CATEGORIES.includes(cat);
+                return (
+                  <button
+                    key={cat}
+                    className={`filter-cat-btn ${sidebarFilterCat === cat ? 'active' : ''} ${isCustom ? 'is-custom' : ''}`}
+                    style={isCustom ? { '--cat-accent': getCategoryAccent(cat).color } : undefined}
+                    onClick={() => setSidebarFilterCat(cat)}
+                    title={isCustom ? `Custom category — Alt+click to remove` : cat}
+                    onMouseDown={(e) => {
+                      if (isCustom && e.altKey) {
+                        e.preventDefault();
+                        removeCustomCategory(cat);
+                      }
+                    }}
+                  >
+                    {cat}
+                  </button>
+                );
+              })}
             </div>
+
+            <form
+              className="sidebar-add-cat"
+              onSubmit={(e) => { e.preventDefault(); addCustomCategory(newCatInput); }}
+            >
+              <input
+                className="add-cat-input"
+                value={newCatInput}
+                onChange={(e) => setNewCatInput(e.target.value)}
+                placeholder="NEW_CATEGORY..."
+                maxLength={16}
+              />
+              <button type="submit" className="add-cat-btn" title="Create category">
+                <FaPlus />
+              </button>
+            </form>
 
             <div className="sidebar-notes-list">
               {filteredSidebarNotes.length === 0 ? (
@@ -2426,8 +2514,8 @@ const DailyNoteApp = () => {
               {visibleNotes.length === 0 && !loading ? (
                 <div className="empty-state-cyber">
                   <div className="empty-icon"><FaTerminal /></div>
-                  <h3>{normalizedSearchQuery ? 'NO_MATCHES_FOUND' : 'NO_DATA_FOUND'}</h3>
-                  <p>{normalizedSearchQuery ? 'Try a different keyword or clear the search.' : 'Initialize a new entry to begin data logging.'}</p>
+                  <h3>{searchActive ? 'NO_MATCHES_FOUND' : 'NO_DATA_FOUND'}</h3>
+                  <p>{searchActive ? 'Try a different keyword/category or clear the search.' : 'Initialize a new entry to begin data logging.'}</p>
                 </div>
               ) : (
                 visibleNotes.map(note => (
@@ -2483,6 +2571,42 @@ const CATEGORY_ACCENTS = {
   SYSTEM: { color: '#ff5370', rgb: '255, 83, 112' },
 };
 
+// Deterministic accent for any category — built-in ones use the table above,
+// custom ones get a stable HSL color derived from the label so they look
+// distinct without needing a hand-picked palette.
+const hexFromHsl = (h, s, l) => {
+  const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+  const f = (n) => {
+    const k = (n + h / 30) % 12;
+    const c = l / 100 - a * Math.max(-1, Math.min(k - 3, 9 - k, 1));
+    return Math.round(255 * c).toString(16).padStart(2, '0');
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+};
+const getCategoryAccent = (cat) => {
+  if (CATEGORY_ACCENTS[cat]) return CATEGORY_ACCENTS[cat];
+  const label = String(cat || 'MEMO');
+  let hash = 0;
+  for (let i = 0; i < label.length; i++) hash = (hash * 31 + label.charCodeAt(i)) >>> 0;
+  const hue = hash % 360;
+  const color = hexFromHsl(hue, 60, 70);
+  const r = parseInt(color.slice(1, 3), 16);
+  const g = parseInt(color.slice(3, 5), 16);
+  const b = parseInt(color.slice(5, 7), 16);
+  return { color, rgb: `${r}, ${g}, ${b}` };
+};
+
+const CUSTOM_CATS_KEY = 'daily-note-custom-cats';
+const loadCustomCategories = () => {
+  try {
+    const raw = localStorage.getItem(CUSTOM_CATS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr.filter((c) => typeof c === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
 const sortByKanbanOrder = (a, b) => {
   const ao = typeof a.kanbanOrder === 'number' ? a.kanbanOrder : Number.MAX_SAFE_INTEGER;
   const bo = typeof b.kanbanOrder === 'number' ? b.kanbanOrder : Number.MAX_SAFE_INTEGER;
@@ -2491,7 +2615,16 @@ const sortByKanbanOrder = (a, b) => {
 };
 
 const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
-  const categories = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
+  // Built-in columns plus any custom category that actually appears in notes.
+  const categories = React.useMemo(() => {
+    const base = ['TASK', 'IDEA', 'LOG', 'MEMO', 'SYSTEM'];
+    const extra = [];
+    notes.forEach(n => {
+      const cat = n.customCategory || n.category;
+      if (cat && !base.includes(cat) && !extra.includes(cat)) extra.push(cat);
+    });
+    return [...base, ...extra];
+  }, [notes]);
 
   const grouped = React.useMemo(() => {
     const map = {};
@@ -2553,7 +2686,7 @@ const KanbanBoard = ({ notes, onUpdate, onDelete, onFocus, appTheme }) => {
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="kanban-container-cyber">
         {categories.map(cat => {
-          const accent = CATEGORY_ACCENTS[cat];
+          const accent = getCategoryAccent(cat);
           const colNotes = grouped[cat] || [];
           return (
             <div
