@@ -777,28 +777,29 @@ const ChatBox = ({ onClose }) => {
     return rows.sort((a, b) => b.lastTs - a.lastTs);
   }, [messages, allParticipants]);
 
-  const checkMark = (active) => (
-    <FontAwesomeIcon icon={faCheck} style={{ opacity: active ? 1 : 0.15 }} />
-  );
-
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu chatbox-settings-menu" selectable={false}>
       <div className="chat-menu-section-title">Lọc tin nhắn</div>
-      <Menu.Item key="filter-bot" className="chat-menu-toggle" icon={checkMark(showBot)}>
+      <Menu.Item key="filter-bot" className={`chat-menu-row chat-menu-toggle ${showBot ? "is-on" : ""}`}>
         <FontAwesomeIcon icon={faRobot} className="chat-menu-icon" />
         <span className="chat-menu-text">Tin nhắn AI Bot</span>
+        <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
       </Menu.Item>
-      <Menu.Item key="filter-users" className="chat-menu-toggle" icon={checkMark(showUsers)}>
+      <Menu.Item key="filter-users" className={`chat-menu-row chat-menu-toggle ${showUsers ? "is-on" : ""}`}>
         <FontAwesomeIcon icon={faUsers} className="chat-menu-icon" />
         <span className="chat-menu-text">Tin nhắn người dùng</span>
+        <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
       </Menu.Item>
 
       <Menu.Divider />
-      <Menu.Item key="clear-me" icon={<FontAwesomeIcon icon={faEraser} className="chat-menu-icon" />}>
-        <span className="chat-menu-text">Clear my chats</span>
+      <div className="chat-menu-section-title">Dọn dẹp</div>
+      <Menu.Item key="clear-me" className="chat-menu-row">
+        <FontAwesomeIcon icon={faEraser} className="chat-menu-icon" />
+        <span className="chat-menu-text">Xóa tin nhắn của tôi</span>
       </Menu.Item>
-      <Menu.Item danger key="clear" icon={<FontAwesomeIcon icon={faBan} className="chat-menu-icon" />}>
-        <span className="chat-menu-text">Clear all</span>
+      <Menu.Item danger key="clear" className="chat-menu-row">
+        <FontAwesomeIcon icon={faBan} className="chat-menu-icon" />
+        <span className="chat-menu-text">Xóa tất cả</span>
       </Menu.Item>
     </Menu>
   );

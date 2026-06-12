@@ -729,14 +729,20 @@ body.dark-mode-active {
     padding: 8px 10px 4px;
   }
 
-  .ant-dropdown-menu-item {
+  /* Every row shares one grid: [icon] [label …] [trailing state] */
+  .ant-dropdown-menu-item.chat-menu-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
+    padding: 8px 10px;
     border-radius: var(--global-border-radius, 6px);
     font-weight: 700;
+    font-size: 0.84rem;
     color: var(--text-color);
     margin: 2px 0;
+
+    /* kill antd's default left icon slot — we render our own inline */
+    .ant-dropdown-menu-title-content { display: contents; }
 
     &:hover {
       background: rgba(127, 127, 127, 0.1);
@@ -744,30 +750,47 @@ body.dark-mode-active {
   }
 
   .chat-menu-icon {
-    width: 16px;
+    flex: 0 0 18px;
+    width: 18px;
     text-align: center;
     color: var(--text-muted);
+    font-size: 0.95rem;
   }
 
   .chat-menu-text {
     flex: 1;
+    min-width: 0;
   }
 
-  /* Active filter toggle: accent the icon + checkmark */
-  .chat-menu-toggle.ant-dropdown-menu-item {
-    .ant-dropdown-menu-item-icon {
-      color: var(--accent-color);
+  /* Trailing checkmark for filter toggles */
+  .chat-menu-check {
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    opacity: 0;
+    color: var(--accent-color);
+    transition: opacity 0.12s ease;
+  }
+
+  .chat-menu-toggle {
+    .chat-menu-icon { color: var(--accent-color); }
+
+    &.is-on .chat-menu-check { opacity: 1; }
+
+    /* dimmed when the filter is off */
+    &:not(.is-on) {
+      .chat-menu-icon { color: var(--text-muted); }
+      .chat-menu-text { color: var(--text-muted); }
     }
   }
 
   .ant-dropdown-menu-item-divider {
     background: var(--border-color);
-    opacity: 0.5;
+    opacity: 0.4;
     margin: 6px 2px;
   }
 
-  /* Danger item (Clear all) */
-  .ant-dropdown-menu-item-danger {
+  /* Danger row (Xóa tất cả) */
+  .ant-dropdown-menu-item-danger.chat-menu-row {
     .chat-menu-icon { color: var(--danger-color, #ef4444); }
     &:hover { background: rgba(239, 68, 68, 0.1); }
   }
