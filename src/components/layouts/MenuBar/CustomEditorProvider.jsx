@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useEditor, EditorContent, ReactNodeViewRenderer } from "@tiptap/react";
+import { Node, mergeAttributes } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Image } from "@tiptap/extension-image";
 import TextStyle from "@tiptap/extension-text-style";
@@ -28,6 +29,80 @@ import { common, createLowlight } from "lowlight";
 import { useAuth } from "../../../contexts/AuthContext";
 import SlashCommand from "./SlashCommand";
 const lowlight = createLowlight(common);
+
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+};
+
+const FileAttachment = Node.create({
+  name: "fileAttachment",
+  group: "block",
+  atom: true,
+
+  addAttributes() {
+    return {
+      href: {
+        default: null,
+      },
+      name: {
+        default: "Attachment",
+      },
+      size: {
+        default: null,
+      },
+    };
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'a[data-type="file-attachment"]',
+        getAttrs: (element) => ({
+          href: element.getAttribute("href"),
+          name: element.getAttribute("data-name") || element.innerText || "Attachment",
+          size: element.getAttribute("data-size"),
+        }),
+      },
+    ];
+  },
+
+  renderHTML({ HTMLAttributes }) {
+    return [
+      "a",
+      mergeAttributes(HTMLAttributes, {
+        "data-type": "file-attachment",
+        "data-name": HTMLAttributes.name,
+        "data-size": HTMLAttributes.size,
+        class: "file-attachment-card",
+        target: "_blank",
+        rel: "noopener noreferrer",
+      }),
+      [
+        "div",
+        { class: "file-attachment-icon" },
+        "📁",
+      ],
+      [
+        "div",
+        { class: "file-attachment-info" },
+        [
+          "div",
+          { class: "file-attachment-name" },
+          HTMLAttributes.name || "Attachment",
+        ],
+        [
+          "div",
+          { class: "file-attachment-meta" },
+          HTMLAttributes.size ? `Download (${HTMLAttributes.size})` : "Click to download",
+        ],
+      ],
+    ];
+  },
+});
+
 const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,6 +130,7 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
 
   const editor = useEditor({
     extensions: [
+      FileAttachment,
       CodeBlockLowlight.extend({
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockComponent);
@@ -155,7 +231,14 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
               editor.chain().focus().setImage({ src: fileUrl }).run();
               message.success("Tải ảnh thành công");
             } else {
-              editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+              editor.chain().focus().insertContent({
+                type: "fileAttachment",
+                attrs: {
+                  href: fileUrl,
+                  name: fileData.originalName,
+                  size: fileData.sizeInBytes || fileData.size ? formatFileSize(fileData.sizeInBytes || fileData.size) : null,
+                },
+              }).run();
               message.success("Tải file thành công");
             }
           } catch (error) {
@@ -199,7 +282,14 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
             editor.chain().focus().setImage({ src: fileUrl }).run();
             message.success("Tải ảnh thành công");
           } else {
-            editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+            editor.chain().focus().insertContent({
+              type: "fileAttachment",
+              attrs: {
+                href: fileUrl,
+                name: fileData.originalName,
+                size: fileData.sizeInBytes || fileData.size ? formatFileSize(fileData.sizeInBytes || fileData.size) : null,
+              },
+            }).run();
             message.success("Tải file thành công");
           }
         } catch (error) {
@@ -236,7 +326,14 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
         editor.chain().focus().setImage({ src: fileUrl }).run();
         message.success("Tải ảnh thành công");
       } else {
-        editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+        editor.chain().focus().insertContent({
+          type: "fileAttachment",
+          attrs: {
+            href: fileUrl,
+            name: fileData.originalName,
+            size: fileData.sizeInBytes || fileData.size ? formatFileSize(fileData.sizeInBytes || fileData.size) : null,
+          },
+        }).run();
         message.success("Tải file thành công");
       }
     } catch (error) {

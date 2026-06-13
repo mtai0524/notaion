@@ -21,6 +21,13 @@ import PropTypes from "prop-types";
 import "./MenuBar.scss";
 import axiosInstance from "../../../axiosConfig";
 
+const formatFileSize = (bytes) => {
+  if (!bytes && bytes !== 0) return "";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+};
+
 const MenuBar = ({ editor }) => {
   const [highlightColor, setHighlightColor] = useState("#ffc078");
   const [isLoading, setIsLoading] = useState(false);
@@ -101,7 +108,14 @@ const MenuBar = ({ editor }) => {
         if (file.type.startsWith("image/")) {
           editor.chain().focus().setImage({ src: fileUrl }).run();
         } else {
-          editor.chain().focus().insertContent(`<a href="${fileUrl}" target="_blank" download="${fileData.originalName}">📂 ${fileData.originalName}</a> `).run();
+          editor.chain().focus().insertContent({
+            type: "fileAttachment",
+            attrs: {
+              href: fileUrl,
+              name: fileData.originalName,
+              size: fileData.sizeInBytes || fileData.size ? formatFileSize(fileData.sizeInBytes || fileData.size) : null,
+            },
+          }).run();
         }
       } catch (error) {
         console.error("Failed to upload file", error);
