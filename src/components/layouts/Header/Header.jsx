@@ -852,7 +852,7 @@ const Header = () => {
           </Link>
           <div className="flex items-center">
             {token && (
-              <Tooltip title="Daily Notes" placement="left">
+              <Tooltip title="daily notes" placement="left">
                 <FontAwesomeIcon
                   icon={faNewspaper}
                   onClick={() => navigate("/daily-note")}
