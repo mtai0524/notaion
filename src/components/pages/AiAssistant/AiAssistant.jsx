@@ -104,7 +104,7 @@ const AiAssistant = ({ userId, username }) => {
     <div className="ai-assistant">
       <div className="ai-assistant-header">
         <span className="ai-assistant-title">
-          <FontAwesomeIcon icon={faRobot} /> Trợ lý AI của bạn
+          <FontAwesomeIcon icon={faRobot} /> Notaion AI
         </span>
         {messages.length > 0 && (
           <button
