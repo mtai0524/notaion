@@ -1,0 +1,71 @@
+/* Private chat — attachment & markdown support
+   (the .chat-box / .chat-text / .image-container base styles come from ChatBox.scss) */
+
+.chat-box.drag-over {
+  outline: 2px dashed #504cd6;
+  outline-offset: -4px;
+  background: rgba(80, 76, 214, 0.04);
+}
+
+/* Markdown body inside a private message bubble */
+.chat-text {
+  p {
+    margin: 0 0 4px;
+    &:last-child { margin-bottom: 0; }
+  }
+
+  .image-container img {
+    max-width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+  }
+
+  .embed-container iframe,
+  .spotify-container iframe {
+    width: 100%;
+    max-width: 100%;
+    border: none;
+    border-radius: 8px;
+  }
+
+  .embed-container iframe {
+    aspect-ratio: 16 / 9;
+    height: auto;
+  }
+}
+
+/* Upload progress strip above the input row */
+.upload-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4338ca;
+
+  .upload-label {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .upload-bar {
+    flex: 1;
+    height: 4px;
+    background: #e0e7ff;
+    border-radius: 2px;
+    overflow: hidden;
+
+    .upload-fill {
+      height: 100%;
+      background: #504cd6;
+      transition: width 0.15s ease;
+    }
+  }
+}
+
+/* Attachment button matches the send button sizing */
+.chat-input-private button[disabled] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

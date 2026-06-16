@@ -1,14 +1,17 @@
-import React, { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
-import { Avatar, Badge, Empty, Spin } from 'antd';
+import { Avatar, Badge, Empty, Spin, notification } from 'antd';
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { useAuth } from '../../../contexts/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClose } from '@fortawesome/free-solid-svg-icons';
+import { faClose, faPaperclip } from '@fortawesome/free-solid-svg-icons';
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
 import axiosInstance from "../../../axiosConfig";
+import { uploadFilesToCloudinary } from "../../../services/fileService";
+import MessageContent from "./MessageContent";
+import "./UserChatBoxPrivate.scss";
 const UserChatBoxPrivate = forwardRef((props, ref) => {
 
     const { connection, onlineUsers } = useSignalR();
@@ -23,8 +26,90 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [newMessage, setNewMessage] = useState('');
     const [scrolling, setScrolling] = useState(false);
+    const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [dragOver, setDragOver] = useState(false);
     const messageEndRef = useRef(null);
     const inputRef = useRef(null);
+    const fileInputRef = useRef(null);
+
+    // Append an attachment/text snippet to the message draft, then resize the box.
+    const appendToMessage = useCallback((snippet) => {
+        setNewMessage((prev) => {
+            if (!prev) return snippet;
+            const sep = prev.endsWith("\n") || prev.endsWith(" ") ? "" : "\n";
+            return prev + sep + snippet;
+        });
+        requestAnimationFrame(() => {
+            const ta = inputRef.current;
+            if (ta) {
+                ta.focus();
+                ta.style.height = "auto";
+                ta.style.height = `${ta.scrollHeight}px`;
+            }
+        });
+    }, []);
+
+    // Upload images/files to Cloudinary, then insert them into the draft as
+    // markdown — images as `![name](url)`, other files as `[📎 name](url)`. The
+    // markdown lives inside the message Content, which the backend already
+    // encrypts at rest, so attachment URLs are encrypted along with the text.
+    const handleUploadFiles = useCallback(async (filesArray) => {
+        const files = Array.from(filesArray || []).filter((f) => f && f.size > 0);
+        if (files.length === 0) return;
+
+        setUploading(true);
+        setUploadProgress(0);
+        try {
+            const uploaded = await uploadFilesToCloudinary(files, (pct) => setUploadProgress(pct));
+            if (!Array.isArray(uploaded) || uploaded.length === 0) {
+                throw new Error("Upload trả về rỗng");
+            }
+            const snippets = uploaded.map((meta) => {
+                const url = meta.cloudUrl;
+                const name = meta.originalName || "attachment";
+                if (!url) return "";
+                const isImage = (meta.contentType || "").startsWith("image/");
+                return isImage ? `![${name}](${url})` : `[📎 ${name}](${url})`;
+            }).filter(Boolean).join("\n");
+
+            if (snippets) appendToMessage(snippets);
+            notification.success({ message: `Đã tải lên ${uploaded.length} file`, duration: 1.5 });
+        } catch (err) {
+            console.error("Upload failed", err);
+            notification.error({
+                message: "Upload thất bại",
+                description: err?.response?.data?.title || err?.message || "Không xác định",
+                duration: 3,
+            });
+        } finally {
+            setUploading(false);
+            setUploadProgress(0);
+        }
+    }, [appendToMessage]);
+
+    const handlePaste = useCallback((e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const files = [];
+        for (const item of items) {
+            if (item.kind === "file") {
+                const f = item.getAsFile();
+                if (f) files.push(f);
+            }
+        }
+        if (files.length > 0) {
+            e.preventDefault();
+            handleUploadFiles(files);
+        }
+    }, [handleUploadFiles]);
+
+    const handleDrop = useCallback((e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const files = e.dataTransfer?.files;
+        if (files && files.length > 0) handleUploadFiles(files);
+    }, [handleUploadFiles]);
     useEffect(() => {
         const fetchUser = async () => {
             const tokenFromCookie = Cookies.get('token');
@@ -225,7 +310,12 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     return (
         <div>
             {chatUser && (
-                <div className="chat-box !bottom-[-10px]">
+                <div
+                    className={`chat-box !bottom-[-10px] ${dragOver ? "drag-over" : ""}`}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+                    onDrop={handleDrop}
+                >
                     <div className='flex flex-row items-center justify-between p-2 border-b-[#d6d6d6] border-1'>
                         <span className="text-lg font-semibold text-center">{chatUser}</span>
                         <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close cursor-pointer mr-2 size-2" />
@@ -245,7 +335,9 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                                     <strong className="chat-user">
                                         {msg.currentUserName}
                                     </strong>
-                                    <p className="chat-text">{msg.content}</p>
+                                    <div className="chat-text">
+                                        <MessageContent content={msg.content} />
+                                    </div>
                                     <p className="chat-date">
                                         {new Date(msg.sentDate).toLocaleString("en-GB", {
                                             hour: "2-digit",
@@ -266,7 +358,35 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                         <div ref={messageEndRef} />
                     </div>
 
-                    <div className="chat-input-private" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    {uploading && (
+                        <div className="upload-progress">
+                            <span className="upload-label">Đang tải lên... {uploadProgress}%</span>
+                            <div className="upload-bar">
+                                <div className="upload-fill" style={{ width: `${uploadProgress}%` }} />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="chat-input-private" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                        <input
+                            type="file"
+                            multiple
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                                if (e.target.files?.length) handleUploadFiles(e.target.files);
+                                e.target.value = '';
+                            }}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            title="Đính kèm ảnh / file"
+                            style={{ marginRight: '8px' }}
+                        >
+                            <FontAwesomeIcon icon={faPaperclip} />
+                        </button>
                         <textarea
                             ref={inputRef}
                             className="textarea-private resize-none overflow-auto"
@@ -276,6 +396,7 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                                 setNewMessage(e.target.value);
                                 adjustHeight(e.target);
                             }}
+                            onPaste={handlePaste}
                             onKeyPress={(e) => {
                                 if (e.key === 'Enter') {
                                     if (!e.shiftKey) {
