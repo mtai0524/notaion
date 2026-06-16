@@ -1,17 +1,29 @@
-import React, { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { useSignalR } from '../../../contexts/SignalRContext';
 import { Avatar, Badge, Empty, Spin, notification } from 'antd';
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { useAuth } from '../../../contexts/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClose, faPaperclip } from '@fortawesome/free-solid-svg-icons';
+import { faClose, faPaperclip, faMagnifyingGlass, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
 import axiosInstance from "../../../axiosConfig";
 import { uploadFilesToCloudinary } from "../../../services/fileService";
 import MessageContent from "./MessageContent";
 import "./UserChatBoxPrivate.scss";
+
+// "Đang hoạt động" status text, Messenger-style. Given an `onlineSince`
+// ISO timestamp, returns how long the user has been online this session.
+const formatOnlineDuration = (onlineSince) => {
+    if (!onlineSince) return "Đang hoạt động";
+    const mins = Math.floor((Date.now() - new Date(onlineSince).getTime()) / 60000);
+    if (mins < 1) return "Vừa hoạt động";
+    if (mins < 60) return `Hoạt động ${mins} phút`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `Hoạt động ${hours} giờ`;
+    return `Hoạt động ${Math.floor(hours / 24)} ngày`;
+};
 const UserChatBoxPrivate = forwardRef((props, ref) => {
 
     const { connection, onlineUsers } = useSignalR();
@@ -29,9 +41,47 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [dragOver, setDragOver] = useState(false);
+    const [search, setSearch] = useState('');
+    const [searchResults, setSearchResults] = useState([]);
+    const [searching, setSearching] = useState(false);
+    const [, setTick] = useState(0);
     const messageEndRef = useRef(null);
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
+    const searchTimer = useRef(null);
+
+    // Re-render once a minute so the "Hoạt động X phút" labels stay fresh.
+    useEffect(() => {
+        const id = setInterval(() => setTick((t) => t + 1), 60000);
+        return () => clearInterval(id);
+    }, []);
+
+    // Debounced global search across every conversation (backend decrypts & matches).
+    useEffect(() => {
+        const q = search.trim();
+        if (searchTimer.current) clearTimeout(searchTimer.current);
+        if (!q || !currentUserId) {
+            setSearchResults([]);
+            setSearching(false);
+            return;
+        }
+        setSearching(true);
+        searchTimer.current = setTimeout(async () => {
+            try {
+                const res = await axiosInstance.get(
+                    `/api/ChatPrivate/search/${currentUserId}`,
+                    { params: { keyword: q } }
+                );
+                setSearchResults(Array.isArray(res.data) ? res.data : []);
+            } catch (error) {
+                console.error('Error searching chats', error);
+                setSearchResults([]);
+            } finally {
+                setSearching(false);
+            }
+        }, 350);
+        return () => searchTimer.current && clearTimeout(searchTimer.current);
+    }, [search, currentUserId]);
 
     // Append an attachment/text snippet to the message draft, then resize the box.
     const appendToMessage = useCallback((snippet) => {
@@ -251,6 +301,34 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
         }
     };
 
+    // Open a conversation directly (no toggle) — used by search results.
+    const openConversation = async (friendId, friendUserName) => {
+        setSearch('');
+        setSearchResults([]);
+        setChatUser(friendUserName);
+        setChatUserId(friendId);
+        setReceiverChatBoxId(friendId);
+        await fetchMessages(friendId);
+        scrollToBottom();
+        try {
+            await axiosInstance.post(`/api/ChatPrivate/reset-new-messages/${friendId}/${currentUserId}`);
+            setFriends(prev => prev.map(f =>
+                (f.senderId === friendId || f.receiverId === friendId)
+                    ? { ...f, newMessageCount: 0 } : f));
+        } catch { /* no new messages to reset is fine */ }
+    };
+
+    // Collapse search hits into one row per friend (most-recent hit on top),
+    // Messenger-search style.
+    const groupedSearch = useMemo(() => {
+        const byFriend = new Map();
+        for (const r of searchResults) {
+            if (!byFriend.has(r.friendId)) byFriend.set(r.friendId, { ...r, count: 1 });
+            else byFriend.get(r.friendId).count += 1;
+        }
+        return Array.from(byFriend.values());
+    }, [searchResults]);
+
     const sendMessage = async (messageContent) => {
         if (connection) {
             try {
@@ -294,6 +372,12 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const isUserOnline = (userId) => {
         return onlineUsers.some(user => user.userId === userId);
     };
+    const getOnlineUser = (userId) => onlineUsers.find(user => user.userId === userId);
+    // Status line for a friend: "Đang hoạt động • Hoạt động X phút" or "Ngoại tuyến".
+    const statusText = (userId) => {
+        const u = getOnlineUser(userId);
+        return u ? formatOnlineDuration(u.onlineSince) : "Ngoại tuyến";
+    };
     const adjustHeight = (element) => {
         element.style.height = 'auto';
         element.style.height = `${element.scrollHeight}px`;
@@ -316,9 +400,16 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                     onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
                     onDrop={handleDrop}
                 >
-                    <div className='flex flex-row items-center justify-between p-2 border-b-[#d6d6d6] border-1'>
-                        <span className="text-lg font-semibold text-center">{chatUser}</span>
-                        <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close cursor-pointer mr-2 size-2" />
+                    <div className='chat-header'>
+                        <FontAwesomeIcon icon={faArrowLeft} onClick={() => setChatUser(null)} className="chat-header-back cursor-pointer" />
+                        <div className="chat-header-info">
+                            <span className="chat-header-name">{chatUser}</span>
+                            <span className={`chat-header-status ${isUserOnline(chatUserId) ? 'is-online' : ''}`}>
+                                {isUserOnline(chatUserId) && <span className="status-dot" />}
+                                {statusText(chatUserId)}
+                            </span>
+                        </div>
+                        <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close cursor-pointer" />
                     </div>
 
                     <div className="chat-messages mb-[10px]">
@@ -416,43 +507,103 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                 </div>
             )}
 
-            <div className="flex flex-col">
-                {friends.length > 0 ? (
-                    friends.map((friend) => {
-                        const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
-                        const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
-                        const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
-
-                        return (
-                            <div
-                                key={friendId}
-                                className={`relative flex flex-row items-center cursor-pointer border-b-[1px] ${chatUser === friendUserName ? 'bg-gray-100 rounded-md' : ''}`}
-                                onClick={() => toggleChat(friendId, friendUserName, friendId)}
-                            >
-                                <div className="cursor-pointer flex flex-row p-2 ">
-                                    <Avatar
-                                        src={friendAvatar}
-                                        alt={`${friendUserName}'s avatar`}
-                                        className="avatarOnline"
-                                        style={{ width: '50px', height: '50px', borderRadius: '50%' }}
-                                    />
-                                    <div className={`absolute w-[10px] h-[10px] ${isUserOnline(friendId) ? 'bg-[#28df28]' : 'bg-[#ff0000]'} top-[50px] left-[43px] rounded-full border-[2px] border-white`} />
-                                    <span className="flex justify-center items-center font-semibold ml-2">
-                                        {friendUserName}
-                                        {friendUserName === username && <span className="text-xs font-semibold ml-1">(me)</span>}
-                                        <Badge className='absolute top-1 right-1' count={friend.newMessageCount} />
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })
-                ) : (
-                    <div className="flex justify-center flex-col items-center">
-                        <Empty description={false}></Empty>
-                        <p className="font-semibold">No friends found</p>
-                    </div>
+            {/* Search bar — searches across every conversation */}
+            <div className="chat-search">
+                <FontAwesomeIcon icon={faMagnifyingGlass} className="chat-search-icon" />
+                <input
+                    type="text"
+                    className="chat-search-input"
+                    placeholder="Tìm trong tất cả tin nhắn..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                    <FontAwesomeIcon
+                        icon={faClose}
+                        className="chat-search-clear cursor-pointer"
+                        onClick={() => setSearch('')}
+                    />
                 )}
             </div>
+
+            {search.trim() ? (
+                /* === Search results === */
+                <div className="chat-list">
+                    {searching ? (
+                        <div className="flex justify-center items-center p-4"><Spin size="small" /></div>
+                    ) : groupedSearch.length > 0 ? (
+                        groupedSearch.map((r) => (
+                            <div
+                                key={r.friendId}
+                                className="chat-row cursor-pointer"
+                                onClick={() => openConversation(r.friendId, r.friendUserName)}
+                            >
+                                <div className="chat-row-avatar">
+                                    <Avatar src={r.friendAvatar} alt={r.friendUserName} className="avatarOnline" />
+                                    <span className={`presence ${isUserOnline(r.friendId) ? 'online' : 'offline'}`} />
+                                </div>
+                                <div className="chat-row-body">
+                                    <span className="chat-row-name">{r.friendUserName}</span>
+                                    <span className="chat-row-sub">
+                                        {r.fromMe && <span className="me-prefix">Bạn: </span>}
+                                        {r.snippet}
+                                    </span>
+                                </div>
+                                {r.count > 1 && <span className="match-count">{r.count}</span>}
+                            </div>
+                        ))
+                    ) : (
+                        <div className="flex justify-center flex-col items-center p-4">
+                            <Empty description={false} />
+                            <p className="font-semibold">Không tìm thấy tin nhắn</p>
+                        </div>
+                    )}
+                </div>
+            ) : (
+                /* === Friend list === */
+                <div className="chat-list">
+                    {friends.length > 0 ? (
+                        friends.map((friend) => {
+                            const friendId = friend.senderId === currentUserId ? friend.receiverId : friend.senderId;
+                            const friendUserName = friend.senderId === currentUserId ? friend.receiverUserName : friend.senderUserName;
+                            const friendAvatar = friend.senderId === currentUserId ? friend.receiverAvatar : friend.senderAvatar;
+                            const online = isUserOnline(friendId);
+
+                            return (
+                                <div
+                                    key={friendId}
+                                    className={`chat-row cursor-pointer ${chatUser === friendUserName ? 'active' : ''}`}
+                                    onClick={() => toggleChat(friendId, friendUserName, friendId)}
+                                >
+                                    <div className="chat-row-avatar">
+                                        <Avatar
+                                            src={friendAvatar}
+                                            alt={`${friendUserName}'s avatar`}
+                                            className="avatarOnline"
+                                        />
+                                        <span className={`presence ${online ? 'online' : 'offline'}`} />
+                                    </div>
+                                    <div className="chat-row-body">
+                                        <span className="chat-row-name">
+                                            {friendUserName}
+                                            {friendUserName === username && <span className="me-tag">(me)</span>}
+                                        </span>
+                                        <span className={`chat-row-sub ${online ? 'is-online' : ''}`}>
+                                            {statusText(friendId)}
+                                        </span>
+                                    </div>
+                                    <Badge count={friend.newMessageCount} />
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="flex justify-center flex-col items-center">
+                            <Empty description={false}></Empty>
+                            <p className="font-semibold">No friends found</p>
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 

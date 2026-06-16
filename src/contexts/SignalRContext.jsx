@@ -28,9 +28,19 @@ export const SignalRProvider = ({ children }) => {
 
     connect.on("ReceiveOnlineUsers", (users) => {
       console.log("Received online users:", users);
+      const now = new Date().toISOString();
       setOnlineUsers((prevUsers) => {
-        const userIds = new Set(prevUsers.map(user => user.userId));
-        return [...prevUsers, ...users.filter(user => !userIds.has(user.userId))];
+        const prevMap = new Map(prevUsers.map((u) => [u.userId, u]));
+        // Keep an `onlineSince` stamp per user so the UI can show how long
+        // they've been active. Existing users keep their original stamp;
+        // newly-seen users get stamped now.
+        const merged = [...prevUsers];
+        for (const u of users) {
+          if (!prevMap.has(u.userId)) {
+            merged.push({ ...u, onlineSince: now });
+          }
+        }
+        return merged;
       });
     });
 
