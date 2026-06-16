@@ -1,21 +1,8 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import { Space, Tooltip, message, Spin, Image } from "antd";
+import { Tooltip, message } from "antd";
 import {
-  DownloadOutlined,
-  RotateLeftOutlined,
-  RotateRightOutlined,
-  SwapOutlined,
-  UndoOutlined,
-  ZoomInOutlined,
-  ZoomOutOutlined,
   PlusOutlined,
-  FontSizeOutlined,
-  CodeOutlined,
-  FileImageOutlined,
-  FileTextOutlined,
-  DeleteOutlined,
-  FileOutlined,
   HolderOutlined,
   SettingOutlined,
   BgColorsOutlined,
@@ -27,6 +14,7 @@ import axiosInstance from "../../../axiosConfig";
 import { downloadFile } from "../../../services/fileService";
 import debounce from "lodash.debounce";
 import { Rnd } from "react-rnd";
+import NotionBlock, { SLASH_COMMANDS } from "./NotionBlock";
 
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
@@ -36,74 +24,6 @@ const reorder = (list, startIndex, endIndex) => {
 };
 
 const generateRandomId = () => uuidv4();
-
-const isHtmlFileUrl = (value) => {
-  if (typeof value !== "string") return false;
-  const trimmed = value.trim();
-  if (!trimmed) return false;
-  if (/\.html?($|[?#])/i.test(trimmed)) return true;
-  if (/^data:text\/html[;,]/i.test(trimmed)) return true;
-  return false;
-};
-
-const HtmlPreview = ({ url, title = "HTML preview" }) => {
-  const [html, setHtml] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    let cancelled = false;
-    setHtml("");
-    setError("");
-
-    if (!url) {
-      setError("No HTML source");
-      return () => {};
-    }
-
-    if (/^data:text\/html[;,]/i.test(url)) {
-      const commaIndex = url.indexOf(",");
-      const raw = commaIndex >= 0 ? url.slice(commaIndex + 1) : "";
-      const decoded = url.includes(";base64,")
-        ? atob(raw)
-        : decodeURIComponent(raw);
-      if (!cancelled) setHtml(decoded);
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    fetch(url)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.text();
-      })
-      .then((text) => {
-        if (!cancelled) setHtml(text);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(err.message || "Failed to load HTML");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  return (
-    <div className="html-preview-container">
-      {error ? (
-        <div className="html-preview-error">{error}</div>
-      ) : (
-        <iframe
-          title={title}
-          srcDoc={html}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-          referrerPolicy="no-referrer"
-        />
-      )}
-    </div>
-  );
-};
 
 // ── View preference catalog ──────────────────────────────────────────
 const DEFAULT_PREFS = {
@@ -116,7 +36,7 @@ const DEFAULT_PREFS = {
   accent: "#111827",        // any hex — defaults to Notaion ink (not blue)
   focusMode: false,         // hides controls + ghost-add
   layout: "single",         // single | columns2 | columns3 | canvas | slideshow
-  showOutline: false,       // outline (TOC) sidebar visibility
+  showOutline: true,        // outline (TOC) sidebar visibility
   showTimestamps: false,    // show created/updated time under each block
 };
 
@@ -145,166 +65,6 @@ const loadPrefs = () => {
   }
 };
 
-// Format an ISO/string date into a short relative-or-absolute label.
-const fmtTime = (raw) => {
-  if (!raw) return null;
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return null;
-  const now = Date.now();
-  const diff = now - d.getTime();
-  const min = 60 * 1000;
-  const hour = 60 * min;
-  const day = 24 * hour;
-  if (diff < min) return "just now";
-  if (diff < hour) return `${Math.floor(diff / min)}m ago`;
-  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
-  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
-  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-};
-
-// ── Slash command catalog (Notion-style) ─────────────────────────────
-const SLASH_COMMANDS = [
-  {
-    key: "heading-1",
-    label: "Heading 1",
-    desc: "Big section heading",
-    hint: "Ctrl 1",
-    icon: <span className="slash-icon-text">H1</span>,
-    type: "heading",
-  },
-  {
-    key: "heading-2",
-    label: "Heading 2",
-    desc: "Medium section heading",
-    hint: "Ctrl 2",
-    icon: <span className="slash-icon-text">H2</span>,
-    type: "heading",
-  },
-  {
-    key: "heading-3",
-    label: "Heading 3",
-    desc: "Small section heading",
-    hint: "Ctrl 3",
-    icon: <span className="slash-icon-text">H3</span>,
-    type: "heading",
-  },
-  {
-    key: "heading-4",
-    label: "Code block",
-    desc: "Capture a code snippet",
-    hint: "Ctrl 4",
-    icon: <CodeOutlined />,
-    type: "heading",
-  },
-  {
-    key: "text",
-    label: "Plain text",
-    desc: "Reset to a regular text block",
-    icon: <FontSizeOutlined />,
-    type: "heading",
-  },
-  {
-    key: "choose-image",
-    label: "Image",
-    desc: "Upload or embed an image",
-    icon: <FileImageOutlined />,
-    type: "action",
-  },
-  {
-    key: "choose-file",
-    label: "File",
-    desc: "Upload any file attachment",
-    icon: <FileOutlined />,
-    type: "action",
-  },
-  {
-    key: "delete",
-    label: "Delete block",
-    desc: "Remove this block",
-    hint: "Ctrl D",
-    icon: <DeleteOutlined />,
-    type: "action",
-    danger: true,
-  },
-];
-
-const SlashMenu = ({ query, selectedIndex, onSelect, onClose, anchorRef }) => {
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return SLASH_COMMANDS;
-    return SLASH_COMMANDS.filter(
-      (c) =>
-        c.label.toLowerCase().includes(q) ||
-        c.desc.toLowerCase().includes(q) ||
-        c.key.toLowerCase().includes(q)
-    );
-  }, [query]);
-
-  const listRef = useRef(null);
-
-  useEffect(() => {
-    const el = listRef.current?.querySelector(`[data-idx="${selectedIndex}"]`);
-    el?.scrollIntoView({ block: "nearest" });
-  }, [selectedIndex]);
-
-  if (filtered.length === 0) {
-    return (
-      <div className="slash-menu" role="listbox">
-        <div className="slash-empty">No matches for &quot;{query}&quot;</div>
-        <div className="slash-footer">esc to close</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="slash-menu" role="listbox" ref={listRef}>
-      <div className="slash-header">
-        {query ? (
-          <span>
-            Filter: <strong>{query}</strong>
-          </span>
-        ) : (
-          <span>Basic blocks</span>
-        )}
-      </div>
-      <div className="slash-list">
-        {filtered.map((cmd, idx) => (
-          <button
-            type="button"
-            data-idx={idx}
-            key={cmd.key}
-            role="option"
-            aria-selected={idx === selectedIndex}
-            className={`slash-item ${idx === selectedIndex ? "is-selected" : ""} ${cmd.danger ? "is-danger" : ""}`}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              onSelect(cmd);
-            }}
-          >
-            <div className="slash-item-icon">{cmd.icon}</div>
-            <div className="slash-item-body">
-              <div className="slash-item-label">{cmd.label}</div>
-              <div className="slash-item-desc">{cmd.desc}</div>
-            </div>
-            {cmd.hint && <kbd className="slash-item-hint">{cmd.hint}</kbd>}
-          </button>
-        ))}
-      </div>
-      <div className="slash-footer">
-        <span>
-          <kbd>↑↓</kbd> navigate
-        </span>
-        <span>
-          <kbd>↵</kbd> select
-        </span>
-        <span>
-          <kbd>esc</kbd> close
-        </span>
-      </div>
-    </div>
-  );
-};
-
 // ── Outline / Table of contents sidebar ──────────────────────────────
 const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
   const headings = useMemo(() => {
@@ -319,6 +79,38 @@ const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
       })
       .filter(Boolean);
   }, [items, newContent]);
+
+  // Highlight the heading currently in view so the reader always knows where
+  // they are without scrolling to check. Keyed by the heading id list so the
+  // observer is only rebuilt when headings are added/removed, not on keystrokes.
+  const [activeId, setActiveId] = useState(null);
+  const headingKey = headings.map((h) => h.id).join("|");
+
+  useEffect(() => {
+    const ids = headingKey ? headingKey.split("|") : [];
+    if (ids.length === 0) {
+      setActiveId(null);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort(
+            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top
+          );
+        if (visible[0]) {
+          setActiveId(visible[0].target.getAttribute("data-block-id"));
+        }
+      },
+      { rootMargin: "0px 0px -70% 0px", threshold: 0 }
+    );
+    ids.forEach((id) => {
+      const el = document.querySelector(`[data-block-id="${id}"]`);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [headingKey]);
 
   return (
     <aside className="notion-outline">
@@ -338,7 +130,7 @@ const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
             <button
               key={h.id}
               type="button"
-              className={`outline-item level-${h.level}`}
+              className={`outline-item level-${h.level} ${h.id === activeId ? "is-active" : ""}`}
               onClick={() => onJump(h.id)}
               title={h.text}
             >
@@ -747,15 +539,6 @@ const Notion = () => {
     }, 0);
   };
 
-  useEffect(() => {
-    Object.keys(editTextareaRefs.current).forEach((id) => {
-      const textarea = editTextareaRefs.current[id];
-      if (textarea) {
-        textarea.style.height = "15px";
-        textarea.style.height = `${textarea.scrollHeight}px`;
-      }
-    });
-  }, [items, newContent]);
 
   const onDragEnd = (result) => {
     if (!result.destination) return;
@@ -1210,228 +993,47 @@ const Notion = () => {
     }
   };
 
-  const renderItemContent = (item) => {
-    const attachment = (item.attachments || []).find((att) => att.url === item.content);
-    if (
-      item.content &&
-      item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i) != null
-    ) {
-      return (
-        <div
-          className="image-wrapper"
-          onKeyDown={(e) => handleKeyDown(e, item.id)}
-          tabIndex={0}
-        >
-          <Image
-            width={220}
-            src={item.content}
-            preview={{
-              toolbarRender: (
-                _,
-                {
-                  image: { url },
-                  transform: { scale },
-                  actions: {
-                    onFlipY,
-                    onFlipX,
-                    onRotateLeft,
-                    onRotateRight,
-                    onZoomOut,
-                    onZoomIn,
-                    onReset,
-                  },
-                }
-              ) => (
-                <Space size={12} className="toolbar-wrapper">
-                  <DownloadOutlined onClick={() => onDownload(url)} />
-                  <SwapOutlined rotate={90} onClick={onFlipY} />
-                  <SwapOutlined onClick={onFlipX} />
-                  <RotateLeftOutlined onClick={onRotateLeft} />
-                  <RotateRightOutlined onClick={onRotateRight} />
-                  <ZoomOutOutlined disabled={scale === 1} onClick={onZoomOut} />
-                  <ZoomInOutlined disabled={scale === 50} onClick={onZoomIn} />
-                  <UndoOutlined onClick={onReset} />
-                </Space>
-              ),
-            }}
-          />
-        </div>
-      );
-    }
-    if (
-      isHtmlFileUrl(item.content) ||
-      attachment?.contentType?.includes("text/html") ||
-      /\.html?($|[?#])/i.test(attachment?.originalName || "")
-    ) {
-      return (
-        <div className="html-preview-shell">
-          <HtmlPreview url={item.content} title={attachment?.originalName || "HTML preview"} />
-          <div className="html-preview-actions">
-            <button
-              type="button"
-              className="download-btn"
-              onClick={() => onDownload(item.content, attachment?.originalName || "preview.html", attachment?.savedName, attachment?.cloudUrl)}
-            >
-              Download
-            </button>
-          </div>
-        </div>
-      );
-    }
-    if (typeof item.content === "string" && item.content.match(/\bhttps?:\/\/\S+/)) {
-      if (item.content.includes("/api/files/download/")) {
-        let fileName = "File";
-        let fileExt = "file";
-        try {
-          const url = new URL(item.content);
-          fileName = url.searchParams.get("name") || item.content.split("/").pop();
-          fileExt = fileName.split(".").pop().toLowerCase();
-        } catch (err) {
-          fileName = item.content.split("/").pop();
-          fileExt = fileName.split(".").pop().toLowerCase();
-        }
-        const getFileIcon = (ext) => {
-          if (["zip", "rar", "7z"].includes(ext)) return "📦";
-          if (["pdf", "doc", "docx", "txt"].includes(ext)) return "📑";
-          if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-          if (["mp4", "mov", "avi"].includes(ext)) return "🎬";
-          if (["mp3", "wav", "ogg"].includes(ext)) return "🎵";
-          return "📄";
-        };
-        return (
-          <div className="file-block">
-            <div className="file-icon-box">{getFileIcon(fileExt)}</div>
-            <div className="file-details">
-              <span className="file-name">{fileName}</span>
-              <span className="file-meta">{fileExt.toUpperCase()} · attachment</span>
-            </div>
-            <div className="file-actions">
-              <button
-                type="button"
-                className="download-btn"
-                onClick={() => onDownload(item.content, fileName, attachment?.savedName, attachment?.cloudUrl)}
-              >
-                Download
-              </button>
-            </div>
-          </div>
-        );
-      }
-      return convertLinksToEmbedTags(item.content);
-    }
+  // Keep the latest handler closures in a ref so the object handed to every
+  // NotionBlock stays referentially stable. That lets React.memo skip blocks
+  // that didn't change — typing in one block no longer re-renders the rest.
+  const cbRef = useRef({});
+  cbRef.current = {
+    handleChangeContent,
+    handleKeyDown,
+    handlePaste,
+    executeSlashCommand,
+    closeSlashMenu,
+    onDownload,
   };
+  const blockHandlers = useMemo(
+    () => ({
+      onChange: (id, v) => cbRef.current.handleChangeContent(id, v),
+      onKeyDown: (e, id) => cbRef.current.handleKeyDown(e, id),
+      onPaste: (e, id) => cbRef.current.handlePaste(e, id),
+      onSelectSlash: (cmd, id) => cbRef.current.executeSlashCommand(cmd, id),
+      onCloseSlash: () => cbRef.current.closeSlashMenu(),
+      onDownload: (...a) => cbRef.current.onDownload(...a),
+      registerRef: (id, el) => {
+        if (el) editTextareaRefs.current[id] = el;
+        else delete editTextareaRefs.current[id];
+      },
+    }),
+    []
+  );
 
-  // Render the editable body + overlays for a single block.
-  // Used by list, canvas, and slideshow layouts.
-  const renderBlockBody = (item) => {
-    const content = renderItemContent(item);
-    const ts = (prefs.showTimestamps && (item.createdAt || item.updatedAt)) ? (
-      <div className="block-timestamps">
-        {item.createdAt && (
-          <span title={new Date(item.createdAt).toLocaleString()}>
-            Created {fmtTime(item.createdAt)}
-          </span>
-        )}
-        {item.updatedAt && item.updatedAt !== item.createdAt && (
-          <span title={new Date(item.updatedAt).toLocaleString()}>
-            · Updated {fmtTime(item.updatedAt)}
-          </span>
-        )}
-      </div>
-    ) : null;
-
-    return (
-      <>
-        {content ? (
-          content
-        ) : (
-          <textarea
-            placeholder={item.placeholder || "Press '/' for commands, or just type…"}
-            value={newContent[item.id] || item.content || ""}
-            onChange={(e) => handleChangeContent(item.id, e.target.value)}
-            onKeyDown={(e) => handleKeyDown(e, item.id)}
-            onPaste={(e) => handlePaste(e, item.id)}
-            ref={(el) => (editTextareaRefs.current[item.id] = el)}
-            className={`edit-textarea ${item.heading ? `heading-${item.heading}` : ""}`}
-          />
-        )}
-        {ts}
-        {loadingImage === item.id && (
-          <div className="loading-overlay">
-            <Spin />
-          </div>
-        )}
-        {slashMenuFor === item.id && (
-          <div className="slash-menu-anchor">
-            <SlashMenu
-              query={slashQuery}
-              selectedIndex={slashSelectedIndex}
-              onSelect={(cmd) => executeSlashCommand(cmd, item.id)}
-              onClose={closeSlashMenu}
-            />
-          </div>
-        )}
-      </>
-    );
-  };
-
-  const convertLinksToEmbedTags = (text) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
-    const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
-    const imageRegex = /\.(jpg|jpeg|png|gif|bmp|webp)$/i;
-
-    return (
-      <div>
-        {text.split(urlRegex).map((segment, index) => {
-          if (embedRegex.test(segment)) {
-            return (
-              <div key={index} className="embed-container">
-                <iframe
-                  src={segment.replace("watch?v=", "embed/")}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
-            );
-          }
-          if (spotifyRegex.test(segment)) {
-            const spotifyEmbedUrl = segment.replace(
-              /(https:\/\/open\.spotify\.com\/)/,
-              "https://open.spotify.com/embed/"
-            );
-            return (
-              <div key={index} className="spotify-container">
-                <iframe
-                  src={`${spotifyEmbedUrl}?utm_source=generator&theme=0`}
-                  frameBorder="0"
-                  allowFullScreen
-                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                  loading="lazy"
-                />
-              </div>
-            );
-          }
-          if (imageRegex.test(segment)) {
-            return (
-              <div key={index} className="image-container">
-                <img src={segment} alt="Embedded" />
-              </div>
-            );
-          }
-          if (urlRegex.test(segment)) {
-            return (
-              <div key={index} className="webpage-container">
-                <iframe src={segment} frameBorder="0" title={`Webpage-${index}`} />
-              </div>
-            );
-          }
-          return <span key={index}>{segment}</span>;
-        })}
-      </div>
-    );
-  };
+  // Build the props NotionBlock needs for a given item, keeping slash-menu
+  // state scoped to the active block so siblings receive stable primitives.
+  const blockProps = (item, collapsible) => ({
+    item,
+    value: newContent[item.id] || item.content || "",
+    isLoading: loadingImage === item.id,
+    showTimestamps: prefs.showTimestamps,
+    collapsible,
+    slashOpen: slashMenuFor === item.id,
+    slashQuery: slashMenuFor === item.id ? slashQuery : "",
+    slashSelectedIndex: slashMenuFor === item.id ? slashSelectedIndex : 0,
+    handlers: blockHandlers,
+  });
 
   return (
     <>
@@ -1539,7 +1141,7 @@ const Notion = () => {
                     </div>
                   </div>
                   <div className="container-block canvas-content">
-                    {renderBlockBody(item)}
+                    <NotionBlock {...blockProps(item, false)} />
                   </div>
                 </Rnd>
               );
@@ -1559,7 +1161,7 @@ const Notion = () => {
               <div className="slide-stage">
                 <div className="slide-frame">
                   <div className="container-block">
-                    {renderBlockBody(items[slideIndex])}
+                    <NotionBlock {...blockProps(items[slideIndex], false)} />
                   </div>
                 </div>
                 <div className="slide-controls">
@@ -1649,7 +1251,7 @@ const Notion = () => {
                           </div>
 
                           <div className="container-block">
-                            {renderBlockBody(item)}
+                            <NotionBlock {...blockProps(item, true)} />
                           </div>
                         </li>
                       )}
