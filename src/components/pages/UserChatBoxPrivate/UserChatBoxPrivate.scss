@@ -230,5 +230,30 @@
     }
   }
 
+  .chat-header-expand { color: var(--text-muted); font-size: 0.85rem; margin-right: 4px; }
+
   .btn-close { color: var(--text-muted); font-size: 0.9rem; }
+}
+
+/* Highlighted search keyword inside a message body */
+.chat-highlight {
+  background: #ffe066;
+  color: #1a1a1a;
+  padding: 0 1px;
+  border-radius: 3px;
+}
+
+/* The message that contains the searched term — subtle pulse on open */
+.chat-message.has-match {
+  animation: chat-match-flash 1.6s ease;
+}
+
+@keyframes chat-match-flash {
+  0%, 40% { background: rgba(255, 224, 102, 0.35); }
+  100% { background: transparent; }
+}
+
+/* Let the message list grow to fill the expanded window */
+.chat-box.expanded .chat-messages {
+  flex: 1;
 }

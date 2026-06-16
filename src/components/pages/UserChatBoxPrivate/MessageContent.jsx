@@ -1,7 +1,29 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import PropTypes from "prop-types";
 import ReactMarkdown from "react-markdown";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCopy, faCheck } from "@fortawesome/free-solid-svg-icons";
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// Wrap every (case-insensitive) occurrence of `term` inside a string in <mark>.
+const markString = (text, term) => {
+  const parts = text.split(new RegExp(`(${escapeRegExp(term)})`, "ig"));
+  return parts.map((part, i) =>
+    part.toLowerCase() === term.toLowerCase() && part !== ""
+      ? <mark key={i} className="chat-highlight">{part}</mark>
+      : part
+  );
+};
+
+// Recursively highlight `term` within React children, leaving elements
+// (links, images, code…) untouched.
+const highlightChildren = (children, term) => {
+  if (!term) return children;
+  return React.Children.map(children, (child) =>
+    typeof child === "string" ? markString(child, term) : child
+  );
+};
 
 const EMBED_RE = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w-]+)/;
 const SPOTIFY_RE = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w?=-]+)/;
@@ -20,7 +42,7 @@ const autolink = (text) =>
  * YouTube/Spotify embeds and code blocks. Mirrors the public ChatBox renderer
  * so private and public chat look identical.
  */
-const MessageContent = ({ content }) => {
+const MessageContent = ({ content, highlight }) => {
   const [copiedKey, setCopiedKey] = useState(null);
 
   const copy = (text, key) => {
@@ -30,6 +52,8 @@ const MessageContent = ({ content }) => {
   };
 
   const components = {
+    p: ({ children }) => <p>{highlightChildren(children, highlight)}</p>,
+    li: ({ children }) => <li>{highlightChildren(children, highlight)}</li>,
     a: ({ href, children }) => {
       if (href && EMBED_RE.test(href)) {
         return (
@@ -126,6 +150,11 @@ const MessageContent = ({ content }) => {
   };
 
   return <ReactMarkdown components={components}>{autolink(content)}</ReactMarkdown>;
+};
+
+MessageContent.propTypes = {
+  content: PropTypes.string,
+  highlight: PropTypes.string,
 };
 
 export default MessageContent;

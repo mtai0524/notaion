@@ -5,7 +5,7 @@ import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
 import { useAuth } from '../../../contexts/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClose, faPaperclip, faMagnifyingGlass, faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faClose, faPaperclip, faMagnifyingGlass, faArrowLeft, faExpand, faCompress } from '@fortawesome/free-solid-svg-icons';
 import { faPaperPlane } from "@fortawesome/free-regular-svg-icons";
 
 import axiosInstance from "../../../axiosConfig";
@@ -44,8 +44,11 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const [search, setSearch] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [searching, setSearching] = useState(false);
+    const [highlightTerm, setHighlightTerm] = useState('');
+    const [expanded, setExpanded] = useState(false);
     const [, setTick] = useState(0);
     const messageEndRef = useRef(null);
+    const firstMatchRef = useRef(null);
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
     const searchTimer = useRef(null);
@@ -279,6 +282,7 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
         if (chatUser === friendUserName) {
             setChatUser(null);
         } else {
+            setHighlightTerm('');
             setChatUser(friendUserName);
             setChatUserId(friendId);
             setReceiverChatBoxId(recvId);
@@ -302,14 +306,21 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     };
 
     // Open a conversation directly (no toggle) — used by search results.
+    // Carries the search keyword over so matches are highlighted + scrolled to.
     const openConversation = async (friendId, friendUserName) => {
+        const term = search.trim();
         setSearch('');
         setSearchResults([]);
+        setHighlightTerm(term);
         setChatUser(friendUserName);
         setChatUserId(friendId);
         setReceiverChatBoxId(friendId);
         await fetchMessages(friendId);
-        scrollToBottom();
+        // Jump to the first highlighted message instead of the bottom.
+        requestAnimationFrame(() => {
+            if (firstMatchRef.current) firstMatchRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            else scrollToBottom();
+        });
         try {
             await axiosInstance.post(`/api/ChatPrivate/reset-new-messages/${friendId}/${currentUserId}`);
             setFriends(prev => prev.map(f =>
@@ -395,7 +406,7 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
         <div>
             {chatUser && (
                 <div
-                    className={`chat-box !bottom-[-10px] ${dragOver ? "drag-over" : ""}`}
+                    className={`chat-box !bottom-[-10px] ${expanded ? "expanded" : ""} ${dragOver ? "drag-over" : ""}`}
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
                     onDrop={handleDrop}
@@ -409,6 +420,12 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                                 {statusText(chatUserId)}
                             </span>
                         </div>
+                        <FontAwesomeIcon
+                            icon={expanded ? faCompress : faExpand}
+                            onClick={() => setExpanded((v) => !v)}
+                            className="chat-header-expand cursor-pointer"
+                            title={expanded ? "Thu nhỏ" : "Mở rộng"}
+                        />
                         <FontAwesomeIcon icon={faClose} onClick={() => setChatUser(null)} className="btn-close cursor-pointer" />
                     </div>
 
@@ -418,28 +435,38 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                                 <span className='font-bold'>Loading messages...</span>
                             </div>
                         ) : chatMessages.length > 0 ? (
-                            chatMessages.map((msg, index) => (
-                                <div
-                                    key={index}
-                                    className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.currentUserName === username ? "sent-message " : "received-message"}`}
-                                >
-                                    <strong className="chat-user">
-                                        {msg.currentUserName}
-                                    </strong>
-                                    <div className="chat-text">
-                                        <MessageContent content={msg.content} />
-                                    </div>
-                                    <p className="chat-date">
-                                        {new Date(msg.sentDate).toLocaleString("en-GB", {
-                                            hour: "2-digit",
-                                            minute: "2-digit",
-                                            day: "2-digit",
-                                            month: "long",
-                                            year: "numeric",
-                                        }).replace(",", ", ")}
-                                    </p>
-                                </div>
-                            ))
+                            (() => {
+                                const term = highlightTerm.toLowerCase();
+                                let firstMatchFound = false;
+                                return chatMessages.map((msg, index) => {
+                                    const isMatch = term && (msg.content || "").toLowerCase().includes(term);
+                                    const setRef = isMatch && !firstMatchFound;
+                                    if (setRef) firstMatchFound = true;
+                                    return (
+                                        <div
+                                            key={index}
+                                            ref={setRef ? firstMatchRef : null}
+                                            className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.currentUserName === username ? "sent-message " : "received-message"} ${isMatch ? "has-match" : ""}`}
+                                        >
+                                            <strong className="chat-user">
+                                                {msg.currentUserName}
+                                            </strong>
+                                            <div className="chat-text">
+                                                <MessageContent content={msg.content} highlight={highlightTerm} />
+                                            </div>
+                                            <p className="chat-date">
+                                                {new Date(msg.sentDate).toLocaleString("en-GB", {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                    day: "2-digit",
+                                                    month: "long",
+                                                    year: "numeric",
+                                                }).replace(",", ", ")}
+                                            </p>
+                                        </div>
+                                    );
+                                });
+                            })()
                         ) : (
                             <div className="h-full flex justify-center flex-col items-center">
                                 <Empty description={false}></Empty>
