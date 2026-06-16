@@ -14,6 +14,7 @@ import { useAuth } from "../../../contexts/AuthContext";
 import axiosInstance from "../../../axiosConfig";
 import { useNavigate } from "react-router-dom";
 import UserChatBoxPrivate from "../UserChatBoxPrivate/UserChatBoxPrivate";
+import AiAssistant from "../AiAssistant/AiAssistant";
 
 const FloatingButton = ({ onClick, newMessagesCount }) => {
   const [placement] = useState("left");
@@ -296,6 +297,11 @@ const FloatingButton = ({ onClick, newMessagesCount }) => {
                   <Empty description={false}></Empty>
                   <p className="font-semibold">No friends found</p>
                 </div>,
+            },
+            {
+              label: "AI",
+              key: "4",
+              children: <AiAssistant userId={userId} username={username} />,
             }
 
           ]}
