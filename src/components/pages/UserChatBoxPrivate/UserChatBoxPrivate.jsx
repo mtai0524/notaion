@@ -13,20 +13,21 @@ import { uploadFilesToCloudinary } from "../../../services/fileService";
 import MessageContent from "./MessageContent";
 import "./UserChatBoxPrivate.scss";
 
-// "Đang hoạt động" status text, Messenger-style. Given an `onlineSince`
-// ISO timestamp, returns how long the user has been online this session.
-const formatOnlineDuration = (onlineSince) => {
-    if (!onlineSince) return "Đang hoạt động";
-    const mins = Math.floor((Date.now() - new Date(onlineSince).getTime()) / 60000);
-    if (mins < 1) return "Vừa hoạt động";
-    if (mins < 60) return `Hoạt động ${mins} phút`;
+// "Hoạt động X trước" — how long ago an offline user was last seen.
+const formatLastSeen = (lastSeen) => {
+    if (!lastSeen) return "Ngoại tuyến";
+    const mins = Math.floor((Date.now() - new Date(lastSeen).getTime()) / 60000);
+    if (mins < 1) return "Vừa truy cập";
+    if (mins < 60) return `Hoạt động ${mins} phút trước`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `Hoạt động ${hours} giờ`;
-    return `Hoạt động ${Math.floor(hours / 24)} ngày`;
+    if (hours < 24) return `Hoạt động ${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `Hoạt động ${days} ngày trước`;
+    return `Hoạt động ${Math.floor(days / 7)} tuần trước`;
 };
 const UserChatBoxPrivate = forwardRef((props, ref) => {
 
-    const { connection, onlineUsers } = useSignalR();
+    const { connection, onlineUsers, lastSeenMap } = useSignalR();
     const { token, setToken } = useAuth();
     const [username, setUsername] = useState('');
     const [currentUserId, setUserId] = useState('');
@@ -383,11 +384,22 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const isUserOnline = (userId) => {
         return onlineUsers.some(user => user.userId === userId);
     };
-    const getOnlineUser = (userId) => onlineUsers.find(user => user.userId === userId);
-    // Status line for a friend: "Đang hoạt động • Hoạt động X phút" or "Ngoại tuyến".
+    // friendUserId -> LastSeen (from the friends list / get-friends payload).
+    const friendLastSeen = useMemo(() => {
+        const map = {};
+        for (const f of friends) {
+            if (f.senderId) map[f.senderId] = f.senderLastSeen;
+            if (f.receiverId) map[f.receiverId] = f.receiverLastSeen;
+        }
+        return map;
+    }, [friends]);
+
+    // Status line for a friend. Online → "Đang hoạt động"; otherwise the most
+    // recent last-seen we know of (live disconnect event wins over the list).
     const statusText = (userId) => {
-        const u = getOnlineUser(userId);
-        return u ? formatOnlineDuration(u.onlineSince) : "Ngoại tuyến";
+        if (isUserOnline(userId)) return "Đang hoạt động";
+        const lastSeen = lastSeenMap?.[userId] || friendLastSeen[userId];
+        return formatLastSeen(lastSeen);
     };
     const adjustHeight = (element) => {
         element.style.height = 'auto';

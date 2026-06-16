@@ -13,6 +13,8 @@ export const SignalRProvider = ({ children }) => {
   const [connection, setConnection] = useState(null);
   const [connectionId, setConnectionId] = useState(null);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  // userId -> last-seen ISO string, updated live when someone goes offline.
+  const [lastSeenMap, setLastSeenMap] = useState({});
 
   useEffect(() => {
     const signalRUrl = config.SIGNALR_URL;
@@ -45,9 +47,13 @@ export const SignalRProvider = ({ children }) => {
     });
 
 
-    connect.on("UserDisconnected", (userId) => {
-      console.log("User disconnected:", userId);
+    connect.on("UserDisconnected", (userId, lastSeen) => {
+      console.log("User disconnected:", userId, lastSeen);
       setOnlineUsers((prevUsers) => prevUsers.filter(user => user.userId !== userId));
+      setLastSeenMap((prev) => ({
+        ...prev,
+        [userId]: lastSeen || new Date().toISOString(),
+      }));
     });
 
     connect.start()
@@ -102,7 +108,7 @@ export const SignalRProvider = ({ children }) => {
   }, []);
 
   return (
-    <SignalRContext.Provider value={{ connection, connectionId, onlineUsers }}>
+    <SignalRContext.Provider value={{ connection, connectionId, onlineUsers, lastSeenMap }}>
       {children}
     </SignalRContext.Provider>
   );
