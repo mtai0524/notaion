@@ -145,7 +145,7 @@ function DrawingCanvas({ data, onChange, color }) {
   );
 }
 
-const Note = ({ note, onUpdate, onDelete, onFocus, appTheme, locateNote }) => {
+const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, appTheme, locateNote }) => {
   // Built-in + user-created categories shown as quick presets.
   const presetCategories = [...CATEGORIES, ...loadCustomCategories().filter(c => !CATEGORIES.includes(c))];
   const [isEditing, setIsEditing] = useState(false);
@@ -659,6 +659,16 @@ const Note = ({ note, onUpdate, onDelete, onFocus, appTheme, locateNote }) => {
                   <button className="overflow-item" onClick={cycleColor}>
                     <FaPalette /> <span>Cycle color</span>
                   </button>
+                  {onDuplicate && (
+                    <button className="overflow-item" onClick={(e) => { e.stopPropagation(); onDuplicate(note); }}>
+                      <FaClone /> <span>Duplicate</span>
+                    </button>
+                  )}
+                  {onSendToBack && (
+                    <button className="overflow-item" onClick={(e) => { e.stopPropagation(); onSendToBack(note.id); }}>
+                      <FaLayerGroup /> <span>Send to back</span>
+                    </button>
+                  )}
                 </div>
               )}
             >
@@ -1215,9 +1225,10 @@ const DailyNoteApp = () => {
   const [trashByDate, setTrashByDate] = useState({});
   const [showTrash, setShowTrash] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
-  const [showColorMenu, setShowColorMenu] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const [showHotkeyHelp, setShowHotkeyHelp] = useState(false);
+  // Canvas right-click menu: { screenX, screenY, canvasX, canvasY } or null.
+  const [ctxMenu, setCtxMenu] = useState(null);
   const hotkeyRef = useRef({});
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -1531,10 +1542,10 @@ const DailyNoteApp = () => {
         const r = hotkeyRef.current;
         r.setShowToolsMenu(false);
         r.setShowHotkeyHelp(false);
-        r.setShowColorMenu(false);
         r.setShowNewMenu(false);
         r.setShowBgPicker(false);
         r.setShowTrash(false);
+        r.setCtxMenu(null);
         return;
       }
 
@@ -1550,8 +1561,9 @@ const DailyNoteApp = () => {
         v: () => r.setViewMode(v => v === 'canvas' ? 'kanban' : 'canvas'),
         d: () => r.toggleTheme(),
         b: () => r.setShowBgPicker(v => !v),
+        g: () => r.setShowGrid(v => !v),
         r: () => r.setShowTrash(v => !v),
-        c: () => r.setShowColorMenu(v => !v),
+        c: () => r.setShowToolsMenu(v => !v),
         s: () => r.toggleSidebar(),
         '?': () => r.setShowHotkeyHelp(v => !v),
         '/': () => {
@@ -1879,7 +1891,25 @@ const DailyNoteApp = () => {
 
   const handleContextMenu = (e) => {
     e.preventDefault();
+    // Only show the canvas menu when right-clicking empty space, not a note.
+    if (viewMode !== 'canvas' || e.target.closest('.daily-note-card-cyber')) {
+      setCtxMenu(null);
+      return;
+    }
+    const pt = getCanvasPoint(e);
+    setCtxMenu({
+      screenX: e.clientX,
+      screenY: e.clientY,
+      canvasX: pt ? pt.x : 0,
+      canvasY: pt ? pt.y : 0,
+    });
   };
+
+  const selectAllVisible = () => {
+    setSelectedIds(visibleNotes.map(n => n.id));
+  };
+
+  const toggleGrid = () => setShowGrid(v => !v);
 
   const duplicateNote = (note) => {
     const { id, x, y, zIndex, isFocused, isDeleting, ...rest } = note;
@@ -1934,10 +1964,11 @@ const DailyNoteApp = () => {
     setViewMode,
     setShowBgPicker,
     setShowTrash,
-    setShowColorMenu,
+    setShowGrid,
     setShowToolsMenu,
     setShowNewMenu,
     setShowHotkeyHelp,
+    setCtxMenu,
     toggleSidebar,
   };
 
@@ -2316,6 +2347,13 @@ const DailyNoteApp = () => {
                 <div className="tools-divider" />
 
                 <button
+                  className={`tools-menu-item ${showGrid ? 'active' : ''}`}
+                  onClick={() => setShowGrid(v => !v)}
+                >
+                  <FaBorderNone /> Grid Overlay <span className="hk-hint">G</span>
+                </button>
+
+                <button
                   className={`tools-menu-item ${canvasBg ? 'active' : ''}`}
                   onClick={() => { setShowToolsMenu(false); setShowBgPicker(true); }}
                 >
@@ -2367,7 +2405,8 @@ const DailyNoteApp = () => {
                 <div className="hk-group-title">View & Style</div>
                 <div className="hk-row"><kbd>V</kbd><span>Toggle Canvas / Kanban</span></div>
                 <div className="hk-row"><kbd>D</kbd><span>Toggle Light / Dark theme</span></div>
-                <div className="hk-row"><kbd>C</kbd><span>Open default-color picker</span></div>
+                <div className="hk-row"><kbd>C</kbd><span>Open Tools menu (color, view…)</span></div>
+                <div className="hk-row"><kbd>G</kbd><span>Toggle grid overlay</span></div>
                 <div className="hk-row"><kbd>B</kbd><span>Open canvas background picker</span></div>
               </div>
               <div className="hk-group">
@@ -2375,6 +2414,7 @@ const DailyNoteApp = () => {
                 <div className="hk-row"><kbd>/</kbd><span>Focus search</span></div>
                 <div className="hk-row"><kbd>S</kbd><span>Toggle Sidebar Index</span></div>
                 <div className="hk-row"><kbd>R</kbd><span>Open trash</span></div>
+                <div className="hk-row"><kbd>Right-click</kbd><span>Canvas quick menu</span></div>
                 <div className="hk-row"><kbd>?</kbd><span>Open this help</span></div>
                 <div className="hk-row"><kbd>Esc</kbd><span>Close any open menu / blur input</span></div>
               </div>
@@ -2382,6 +2422,38 @@ const DailyNoteApp = () => {
             <div className="hotkey-help-footer">
               Hotkeys are disabled while typing in inputs or note bodies.
             </div>
+          </div>
+        </div>
+      )}
+
+      {ctxMenu && (
+        <div className="canvas-ctx-backdrop" onMouseDown={() => setCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }}>
+          <div
+            className="canvas-ctx-menu"
+            style={{
+              left: Math.min(ctxMenu.screenX, window.innerWidth - 220),
+              top: Math.min(ctxMenu.screenY, window.innerHeight - 220),
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <button className="ctx-item" onMouseDown={() => { addNote('blank', ctxMenu.canvasX, ctxMenu.canvasY); setCtxMenu(null); }}>
+              <FaPlus /> <span>New entry here</span>
+            </button>
+            <button className="ctx-item" onMouseDown={() => { selectAllVisible(); setCtxMenu(null); }}>
+              <FaTh /> <span>Select all</span>
+              <span className="ctx-count">{visibleNotes.length}</span>
+            </button>
+            <button className="ctx-item" onMouseDown={() => { toggleGrid(); setCtxMenu(null); }}>
+              <FaBorderNone /> <span>{showGrid ? 'Hide grid' : 'Show grid'}</span>
+            </button>
+            <div className="ctx-divider" />
+            <button
+              className="ctx-item danger"
+              onMouseDown={() => { clearAllNotes(); setCtxMenu(null); }}
+              disabled={allCurrentNotes.length === 0}
+            >
+              <FaTrashAlt /> <span>Clear all entries</span>
+            </button>
           </div>
         </div>
       )}
@@ -2530,6 +2602,8 @@ const DailyNoteApp = () => {
                     onUpdate={updateNote}
                     onDelete={deleteNote}
                     onFocus={focusNote}
+                    onDuplicate={duplicateNote}
+                    onSendToBack={sendToBack}
                     appTheme={theme}
                     locateNote={locateNote}
                   />
