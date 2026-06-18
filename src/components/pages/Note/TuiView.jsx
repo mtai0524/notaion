@@ -3,64 +3,68 @@ import PropTypes from 'prop-types';
 import './TuiView.scss';
 
 /**
- * TUI (terminal) view for Daily Notes — a fully keyboard-driven, minimal list.
- * No toolbars, no mouse needed: a header line, the note list with a `>` cursor,
- * and a status/help bar. Single-key commands run everything.
+ * Multi-panel TUI for Daily Notes, modelled on clin-rs (a ratatui note app):
+ * three bordered panels — FOLDERS (category filter) · NOTES (list) · PREVIEW —
+ * a tasteful editor palette (Catppuccin Mocha), Tab-to-cycle focus and vim keys.
+ * Fully keyboard-driven; no "hacker" CRT styling.
  *
- * Modes:
- *   normal  — navigate & act (j/k, n, e, x, c, d, h/l, /, ?)
- *   insert  — edit selected note's title (Enter save, Esc cancel)
- *   search  — filter the list (Enter keep, Esc clear)
- *   delete  — confirm deletion (y/n)
+ * Focus cycles folders → notes → preview (Tab / h / l).
+ * Within a panel: j/k move, Enter acts. See `?` for the full keymap.
  */
+const PANELS = ['folders', 'notes', 'preview'];
+
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, categories }) => {
-  const [index, setIndex] = useState(0);
-  const [mode, setMode] = useState('normal'); // normal | insert | search | delete
+  const [focus, setFocus] = useState('notes');
+  const [folderIndex, setFolderIndex] = useState(0);
+  const [noteIndex, setNoteIndex] = useState(0);
+  const [mode, setMode] = useState('normal'); // normal | title | body | search | delete | help
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
-  const [showHelp, setShowHelp] = useState(false);
   const rootRef = useRef(null);
   const inputRef = useRef(null);
 
+  const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
+
+  // FOLDERS = "ALL" + each category, with live counts.
+  const folders = useMemo(() => {
+    const cats = categories && categories.length ? categories : ['MEMO'];
+    const counts = {};
+    notes.forEach((n) => { const c = catOf(n); counts[c] = (counts[c] || 0) + 1; });
+    return [{ key: 'ALL', label: 'ALL', count: notes.length }, ...cats.map((c) => ({ key: c, label: c, count: counts[c] || 0 }))];
+  }, [notes, categories]);
+
+  const activeFolder = folders[Math.min(folderIndex, folders.length - 1)] || folders[0];
+
   const list = useMemo(() => {
-    if (!query.trim()) return notes;
-    const q = query.toLowerCase();
-    return notes.filter(
-      (n) =>
-        (n.title || '').toLowerCase().includes(q) ||
-        (n.content || '').toLowerCase().includes(q) ||
-        (n.customCategory || n.category || '').toLowerCase().includes(q)
-    );
-  }, [notes, query]);
+    let l = notes;
+    if (activeFolder && activeFolder.key !== 'ALL') l = l.filter((n) => catOf(n) === activeFolder.key);
+    if (query.trim()) {
+      const q = query.toLowerCase();
+      l = l.filter((n) => (n.title || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q));
+    }
+    return l;
+  }, [notes, activeFolder, query]);
 
-  // Keep the cursor within bounds when the list size changes.
+  useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
+  useEffect(() => { rootRef.current?.focus(); }, []);
   useEffect(() => {
-    setIndex((i) => Math.max(0, Math.min(i, list.length - 1)));
-  }, [list.length]);
-
-  // Grab focus so the view owns the keyboard the moment it mounts.
-  useEffect(() => {
-    rootRef.current?.focus();
-  }, []);
-
-  // Focus the inline input when entering insert/search mode.
-  useEffect(() => {
-    if (mode === 'insert' || mode === 'search') {
+    if (mode === 'title' || mode === 'body' || mode === 'search') {
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [mode]);
 
-  const current = list[index] || null;
-  const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
+  const current = list[noteIndex] || null;
 
-  const enterEdit = () => {
-    if (!current) return;
-    setDraft(current.title || '');
-    setMode('insert');
+  const moveFocus = (dir) => {
+    const i = PANELS.indexOf(focus);
+    setFocus(PANELS[(i + dir + PANELS.length) % PANELS.length]);
   };
 
-  const commitEdit = () => {
-    if (current) onUpdate(current.id, { title: draft });
+  const editTitle = () => { if (current) { setDraft(current.title || ''); setMode('title'); } };
+  const editBody = () => { if (current) { setDraft(current.content || ''); setMode('body'); } };
+
+  const commit = () => {
+    if (current) onUpdate(current.id, mode === 'title' ? { title: draft } : { content: draft });
     setMode('normal');
     setDraft('');
   };
@@ -68,210 +72,203 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const cycleCategory = () => {
     if (!current) return;
     const cats = categories && categories.length ? categories : ['MEMO'];
-    const cur = catOf(current);
-    const next = cats[(cats.indexOf(cur) + 1) % cats.length];
+    const next = cats[(cats.indexOf(catOf(current)) + 1) % cats.length];
     onUpdate(current.id, { category: next, customCategory: next });
   };
 
-  // Normal-mode keymap. The view stops propagation so the app's global
-  // single-key hotkeys never fire while the terminal is focused.
   const handleKeyDown = (e) => {
     e.stopPropagation();
+    if (mode === 'title' || mode === 'body' || mode === 'search') return; // inputs handle their own keys
 
-    // Inline input modes are handled by the <input>'s own onKeyDown.
-    if (mode === 'insert' || mode === 'search') return;
+    if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
 
     if (mode === 'delete') {
-      if (e.key === 'y' || e.key === 'Y') {
-        if (current) onDelete(current.id, true);
-        setMode('normal');
-      } else {
-        setMode('normal');
-      }
-      e.preventDefault();
-      return;
-    }
-
-    if (showHelp) {
-      setShowHelp(false);
+      if (e.key === 'y' || e.key === 'Y') { if (current) onDelete(current.id, true); }
+      setMode('normal');
       e.preventDefault();
       return;
     }
 
     const k = e.key;
+
+    // Global keys regardless of focused panel.
     switch (k) {
-      case 'j':
-      case 'ArrowDown':
-        setIndex((i) => Math.min(i + 1, list.length - 1));
-        break;
-      case 'k':
-      case 'ArrowUp':
-        setIndex((i) => Math.max(i - 1, 0));
-        break;
-      case 'g':
-        setIndex(0);
-        break;
-      case 'G':
-        setIndex(Math.max(0, list.length - 1));
-        break;
+      case 'Tab': moveFocus(e.shiftKey ? -1 : 1); e.preventDefault(); return;
+      case '?': setMode('help'); e.preventDefault(); return;
+      case '/': setMode('search'); e.preventDefault(); return;
+      case '[': onChangeDate(-1); e.preventDefault(); return;
+      case ']': onChangeDate(1); e.preventDefault(); return;
       case 'n':
         onAdd('blank');
-        // Newest note lands at the end — select & edit it next tick.
-        requestAnimationFrame(() => {
-          setIndex(notes.length); // will clamp to last after re-render
-          setDraft('');
-          setMode('insert');
-        });
-        break;
-      case 'Enter':
-      case 'e':
-      case 'i':
-        enterEdit();
-        break;
-      case 'x':
-      case ' ':
-        if (current) onUpdate(current.id, { isCompleted: !current.isCompleted });
-        break;
-      case 'c':
-        cycleCategory();
-        break;
-      case 'd':
-        if (current) setMode('delete');
-        break;
-      case 'h':
-      case '[':
-        onChangeDate(-1);
-        break;
-      case 'l':
-      case ']':
-        onChangeDate(1);
-        break;
-      case '/':
-        setMode('search');
-        break;
-      case '?':
-        setShowHelp(true);
-        break;
-      default:
-        return; // let unhandled keys through (still stopped from window)
+        requestAnimationFrame(() => { setFocus('notes'); setFolderIndex(0); setNoteIndex(notes.length); setDraft(''); setMode('title'); });
+        e.preventDefault();
+        return;
+      default: break;
     }
-    e.preventDefault();
+
+    if (focus === 'folders') {
+      if (k === 'j' || k === 'ArrowDown') setFolderIndex((i) => Math.min(i + 1, folders.length - 1));
+      else if (k === 'k' || k === 'ArrowUp') setFolderIndex((i) => Math.max(i - 1, 0));
+      else if (k === 'Enter' || k === 'l' || k === 'ArrowRight') setFocus('notes');
+      else return;
+      e.preventDefault();
+      return;
+    }
+
+    if (focus === 'notes') {
+      switch (k) {
+        case 'j': case 'ArrowDown': setNoteIndex((i) => Math.min(i + 1, list.length - 1)); break;
+        case 'k': case 'ArrowUp': setNoteIndex((i) => Math.max(i - 1, 0)); break;
+        case 'g': setNoteIndex(0); break;
+        case 'G': setNoteIndex(Math.max(0, list.length - 1)); break;
+        case 'h': case 'ArrowLeft': setFocus('folders'); break;
+        case 'L': case 'ArrowRight': setFocus('preview'); break;
+        case 'Enter': case 'e': editTitle(); break;
+        case 'i': editBody(); break;
+        case 'x': case ' ': if (current) onUpdate(current.id, { isCompleted: !current.isCompleted }); break;
+        case 'c': cycleCategory(); break;
+        case 'd': if (current) setMode('delete'); break;
+        default: return;
+      }
+      e.preventDefault();
+      return;
+    }
+
+    if (focus === 'preview') {
+      if (k === 'i' || k === 'Enter') editBody();
+      else if (k === 'h' || k === 'ArrowLeft') setFocus('notes');
+      else return;
+      e.preventDefault();
+    }
   };
 
   const onInputKeyDown = (e) => {
     e.stopPropagation();
-    if (e.key === 'Enter') {
+    // body edit is multi-line: Ctrl+Enter saves, Enter inserts newline.
+    if (e.key === 'Enter' && (mode === 'title' || mode === 'search' || (mode === 'body' && (e.ctrlKey || e.metaKey)))) {
       e.preventDefault();
-      if (mode === 'insert') commitEdit();
-      else setMode('normal'); // search: keep the filter
+      if (mode === 'search') setMode('normal');
+      else commit();
     } else if (e.key === 'Escape') {
       e.preventDefault();
-      if (mode === 'insert') {
-        setMode('normal');
-        setDraft('');
-      } else {
-        setQuery('');
-        setMode('normal');
-      }
+      if (mode === 'search') { setQuery(''); setMode('normal'); }
+      else { setMode('normal'); setDraft(''); }
     }
   };
 
   const done = notes.filter((n) => n.isCompleted).length;
+  const hints = {
+    normal: 'Tab:focus  j/k:move  Enter/e:title  i:body  x:done  c:cat  n:new  d:del  [ ]:day  /:find  ?:help',
+    title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
+    body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel',
+    delete: '',
+    help: 'press any key to close',
+    search: '',
+  };
 
   return (
-    <div
-      className="tui-view"
-      tabIndex={0}
-      ref={rootRef}
-      onKeyDown={handleKeyDown}
-      onClick={() => rootRef.current?.focus()}
-    >
-      {/* Header / path line */}
-      <div className="tui-head">
-        <span className="tui-prompt">notaion@daily</span>
-        <span className="tui-sep">:</span>
-        <span className="tui-path">~/{dateLabel}</span>
-        <span className="tui-meta">[{notes.length} notes · {done} done]</span>
-        {query && <span className="tui-filter">/{query}</span>}
-      </div>
-
-      {/* Note list */}
-      <div className="tui-list">
-        {list.length === 0 ? (
-          <div className="tui-empty">
-            {query ? 'no matches — Esc to clear filter' : 'no entries — press n to create one'}
-          </div>
-        ) : (
-          list.map((n, i) => {
-            const sel = i === index;
-            const editing = sel && mode === 'insert';
-            return (
-              <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''}`}>
-                <span className="tui-cursor">{sel ? '>' : ' '}</span>
-                <span className="tui-check">[{n.isCompleted ? 'x' : ' '}]</span>
-                <span className="tui-cat">{catOf(n).padEnd(6).slice(0, 6)}</span>
-                {editing ? (
-                  <input
-                    ref={inputRef}
-                    className="tui-input"
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={onInputKeyDown}
-                    placeholder="title…"
-                  />
-                ) : (
-                  <span className="tui-title">{n.title || '(untitled)'}</span>
-                )}
-                {!editing && n.content && (
-                  <span className="tui-preview">— {n.content.replace(/\s+/g, ' ').slice(0, 48)}</span>
-                )}
+    <div className="tui" tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown} onClick={() => rootRef.current?.focus()}>
+      <div className="tui-body">
+        {/* FOLDERS */}
+        <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
+          <span className="tui-panel-title">FOLDERS</span>
+          <div className="tui-scroll">
+            {folders.map((f, i) => (
+              <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''}`}
+                   onClick={() => { setFolderIndex(i); setFocus('notes'); }}>
+                <span className="tui-folder-name">{f.label}</span>
+                <span className="tui-folder-count">{f.count}</span>
               </div>
-            );
-          })
-        )}
+            ))}
+          </div>
+        </div>
+
+        {/* NOTES */}
+        <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`}>
+          <span className="tui-panel-title">{`NOTES · ${dateLabel}`}</span>
+          <div className="tui-scroll">
+            {list.length === 0 ? (
+              <div className="tui-empty">{query ? 'no matches' : 'no entries — press n'}</div>
+            ) : (
+              list.map((n, i) => {
+                const sel = i === noteIndex;
+                return (
+                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''}`}
+                       onClick={() => { setNoteIndex(i); setFocus('notes'); }}>
+                    <span className="tui-check">{n.isCompleted ? '' : ''}</span>
+                    {sel && mode === 'title' ? (
+                      <input ref={inputRef} className="tui-input" value={draft}
+                             onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="title…" />
+                    ) : (
+                      <span className="tui-title">{n.title || '(untitled)'}</span>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* PREVIEW */}
+        <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`}>
+          <span className="tui-panel-title">PREVIEW</span>
+          {current ? (
+            <div className="tui-scroll">
+              <div className="tui-pv-title">{current.title || '(untitled)'}</div>
+              <div className="tui-pv-meta">
+                <span className="tag">{catOf(current)}</span>
+                {current.timestamp && <span> · {current.timestamp}</span>}
+                <span> · {current.isCompleted ? 'done' : 'open'}</span>
+              </div>
+              {mode === 'body' ? (
+                <textarea ref={inputRef} className="tui-textarea" value={draft}
+                          onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="body… (Ctrl+Enter to save)" />
+              ) : (
+                <pre className="tui-pv-body">{current.content || '— empty —  (press i to edit)'}</pre>
+              )}
+            </div>
+          ) : (
+            <div className="tui-empty">no note selected</div>
+          )}
+        </div>
       </div>
 
-      {/* Status / command bar */}
+      {/* STATUS BAR */}
       <div className="tui-status">
         {mode === 'search' ? (
-          <span className="tui-cmd">
-            /
-            <input
-              ref={inputRef}
-              className="tui-input inline"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={onInputKeyDown}
-              placeholder="search…"
-            />
-          </span>
+          <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
+            onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
-          <span className="tui-warn">delete &quot;{(current?.title || 'untitled')}&quot;? (y/n)</span>
-        ) : mode === 'insert' ? (
-          <span className="tui-mode">-- INSERT --  Enter:save  Esc:cancel</span>
+          <span className="tui-warn">delete &quot;{current?.title || 'untitled'}&quot;? (y/n)</span>
         ) : (
-          <span className="tui-hints">
-            NORMAL  j/k:move  n:new  e:edit  x:done  c:cat  d:del  h/l:day  /:find  ?:help
-          </span>
+          <>
+            <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
+            <span className="tui-hints">{hints[mode]}</span>
+            <span className="tui-stat">{notes.length} notes · {done} done</span>
+          </>
         )}
       </div>
 
-      {showHelp && (
-        <div className="tui-help" onClick={() => setShowHelp(false)}>
-          <pre>{`┌─ DAILY NOTES — TUI KEYS ───────────────┐
-│ j / ↓        move down                  │
-│ k / ↑        move up                    │
-│ g / G        jump top / bottom          │
-│ n            new entry (edit title)     │
-│ e / i / ⏎    edit selected title        │
-│ x / space    toggle done                │
-│ c            cycle category             │
-│ d  then  y   delete selected            │
-│ h / l        previous / next day        │
-│ /            search (Esc clears)        │
-│ ?            toggle this help           │
-└─────────────────────────────────────────┘
-        press any key to close`}</pre>
+      {mode === 'help' && (
+        <div className="tui-help" onClick={() => setMode('normal')}>
+          <div className="tui-help-box">
+            <div className="tui-help-h">DAILY NOTES · TUI</div>
+            <table>
+              <tbody>
+                <tr><td>Tab / h l</td><td>cycle / move panel focus</td></tr>
+                <tr><td>j k · g G</td><td>move · top / bottom</td></tr>
+                <tr><td>Enter / e</td><td>edit title</td></tr>
+                <tr><td>i</td><td>edit body (Ctrl+Enter save)</td></tr>
+                <tr><td>x / space</td><td>toggle done</td></tr>
+                <tr><td>c</td><td>cycle category</td></tr>
+                <tr><td>n</td><td>new note</td></tr>
+                <tr><td>d then y</td><td>delete</td></tr>
+                <tr><td>[ ]</td><td>previous / next day</td></tr>
+                <tr><td>/</td><td>search</td></tr>
+                <tr><td>?</td><td>this help</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
