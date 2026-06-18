@@ -26,6 +26,7 @@ import config from '../../../config';
 import axiosInstance from '../../../axiosConfig';
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import debounce from 'lodash.debounce';
+import TuiView from './TuiView';
 import './DailyNoteApp.scss';
 
 const COLORS = [
@@ -1334,11 +1335,9 @@ const DailyNoteApp = () => {
     localStorage.setItem('daily-note-theme', mode);
   };
 
-  // Hotkey (D) cycles through all interface themes, incl. the TUI terminal look.
+  // Hotkey (D) toggles light/dark.
   const toggleTheme = () => {
-    const order = ['dark', 'light', 'tui'];
-    const next = order[(order.indexOf(theme) + 1) % order.length];
-    setThemeMode(next);
+    setThemeMode(theme === 'dark' ? 'light' : 'dark');
   };
 
   const applyCanvasBg = (val) => {
@@ -1558,6 +1557,8 @@ const DailyNoteApp = () => {
 
       if (isTyping) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      // In TUI mode the terminal view owns the keyboard entirely.
+      if (hotkeyRef.current?.viewMode === 'tui') return;
 
       const r = hotkeyRef.current;
       const map = {
@@ -1678,8 +1679,8 @@ const DailyNoteApp = () => {
     });
   };
 
-  const deleteNote = async (id) => {
-    if (!window.confirm("ARE YOU SURE YOU WANT TO HIDE THIS ENTRY?")) return;
+  const deleteNote = async (id, skipConfirm = false) => {
+    if (!skipConfirm && !window.confirm("ARE YOU SURE YOU WANT TO HIDE THIS ENTRY?")) return;
 
     const noteToTrash = (notesByDate[dateKey] || []).find(n => n.id === id);
 
@@ -1977,6 +1978,7 @@ const DailyNoteApp = () => {
     setShowHotkeyHelp,
     setCtxMenu,
     toggleSidebar,
+    viewMode,
   };
 
   const getAnchorPoints = (n) => {
@@ -2312,6 +2314,12 @@ const DailyNoteApp = () => {
                     >
                       <FaLayerGroup /> Kanban
                     </button>
+                    <button
+                      className={viewMode === 'tui' ? 'active' : ''}
+                      onClick={() => { setViewMode('tui'); }}
+                    >
+                      <FaTerminal /> TUI
+                    </button>
                   </div>
                   <span className="hk-hint inline">V</span>
                 </div>
@@ -2330,12 +2338,6 @@ const DailyNoteApp = () => {
                       onClick={() => setThemeMode('dark')}
                     >
                       <FaMoon /> Dark
-                    </button>
-                    <button
-                      className={theme === 'tui' ? 'active' : ''}
-                      onClick={() => setThemeMode('tui')}
-                    >
-                      <FaTerminal /> TUI
                     </button>
                   </div>
                   <span className="hk-hint inline">D</span>
@@ -2598,7 +2600,17 @@ const DailyNoteApp = () => {
           onMouseUp={handleCanvasMouseUp}
           onMouseLeave={handleCanvasMouseUp}
         >
-          {viewMode === 'canvas' ? (
+          {viewMode === 'tui' ? (
+            <TuiView
+              notes={currentNotes}
+              onAdd={addNote}
+              onUpdate={updateNote}
+              onDelete={deleteNote}
+              onChangeDate={(days) => setCurrentDate(prev => days > 0 ? addDays(prev, days) : subDays(prev, Math.abs(days)))}
+              dateLabel={format(currentDate, 'yyyy-MM-dd')}
+              categories={CATEGORIES}
+            />
+          ) : viewMode === 'canvas' ? (
             <div className="notes-canvas">
               {renderNoteLinks()}
               {visibleNotes.length === 0 && !loading ? (
