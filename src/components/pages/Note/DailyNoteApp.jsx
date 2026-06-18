@@ -1328,10 +1328,17 @@ const DailyNoteApp = () => {
     setConnection(newConnection);
   }, []);
 
+  // Persist the chosen interface theme. localStorage keeps the choice across reloads.
+  const setThemeMode = (mode) => {
+    setTheme(mode);
+    localStorage.setItem('daily-note-theme', mode);
+  };
+
+  // Hotkey (D) cycles through all interface themes, incl. the TUI terminal look.
   const toggleTheme = () => {
-    const newTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(newTheme);
-    localStorage.setItem('daily-note-theme', newTheme);
+    const order = ['dark', 'light', 'tui'];
+    const next = order[(order.indexOf(theme) + 1) % order.length];
+    setThemeMode(next);
   };
 
   const applyCanvasBg = (val) => {
@@ -2314,15 +2321,21 @@ const DailyNoteApp = () => {
                   <div className="tools-segmented">
                     <button
                       className={theme === 'light' ? 'active' : ''}
-                      onClick={() => { if (theme !== 'light') toggleTheme(); }}
+                      onClick={() => setThemeMode('light')}
                     >
                       <FaSun /> Light
                     </button>
                     <button
                       className={theme === 'dark' ? 'active' : ''}
-                      onClick={() => { if (theme !== 'dark') toggleTheme(); }}
+                      onClick={() => setThemeMode('dark')}
                     >
                       <FaMoon /> Dark
+                    </button>
+                    <button
+                      className={theme === 'tui' ? 'active' : ''}
+                      onClick={() => setThemeMode('tui')}
+                    >
+                      <FaTerminal /> TUI
                     </button>
                   </div>
                   <span className="hk-hint inline">D</span>
