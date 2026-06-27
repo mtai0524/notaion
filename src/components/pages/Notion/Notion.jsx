@@ -766,10 +766,6 @@ const Notion = () => {
   // Marquee select: drag on blank canvas to lasso blocks. Ignores drags that
   // start on an interactive element (text, button, drag handle, etc.).
   useEffect(() => {
-    if (prefs.layout && prefs.layout !== "document" && prefs.layout !== undefined) {
-      // Marquee only makes sense in the vertical document layout.
-    }
-
     const isBlankTarget = (target) =>
       !target.closest(
         "textarea, input, button, a, .block-controls, .slash-menu, " +
@@ -837,7 +833,7 @@ const Notion = () => {
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseup", onMouseUp);
     };
-  }, [clearSelection, prefs.layout]);
+  }, [clearSelection]);
 
   // Delete / Backspace removes the marquee selection (when not typing).
   useEffect(() => {
