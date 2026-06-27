@@ -1379,6 +1379,7 @@ const Notion = () => {
             newContent={newContent}
             selectedIds={selectedIds}
             onJump={jumpToBlock}
+            theme={prefs.theme}
           />
         )}
       {marquee && (

@@ -1689,8 +1689,7 @@
 }
 
 /* Dark theme: lighten cell text so labels stay legible. */
-.notion-page.theme-dark ~ .notion-minimap,
-.theme-dark .notion-minimap {
+.notion-minimap.theme-dark {
   .minimap-cell { color: rgba(230, 230, 230, 0.92); }
 }
 
