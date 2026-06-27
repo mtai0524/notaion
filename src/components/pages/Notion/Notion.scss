@@ -1749,18 +1749,23 @@
   }
 }
 
-/* ───────── Notaion toast (antd message override) ───────── */
+/* ───────── Notaion toast (antd message override) ─────────
+   antd v5 injects its own runtime styles, so we use !important on the few
+   properties that decide legibility (bg + text colour) to reliably win. A clean
+   light "ink on paper" pill that matches the Notaion look. */
 .notaion-toast {
+  /* the pill itself — works whether the class lands on .notice or .content */
+  &.ant-message-notice-content,
   .ant-message-notice-content {
-    max-width: min(420px, 90vw);
-    padding: 9px 16px;
-    border-radius: 10px;
-    background: #1f1f1f;
-    color: #fff;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+    max-width: min(440px, 90vw);
+    padding: 9px 15px !important;
+    border-radius: 12px !important;
+    background: #ffffff !important;
+    color: #1f2330 !important;
+    box-shadow: 0 8px 30px rgba(17, 24, 39, 0.18) !important;
+    border: 1px solid rgba(17, 24, 39, 0.1) !important;
     font-size: 13px;
-    font-weight: 500;
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-weight: 600;
   }
 
   .ant-message-custom-content {
@@ -1768,21 +1773,43 @@
     align-items: center;
     gap: 8px;
     min-width: 0;
+    color: #1f2330 !important;
 
+    /* the text node antd renders after the icon */
     > span:last-child {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      color: #1f2330 !important;
     }
   }
 
-  /* keep antd's coloured status icons, just align them to the pill */
   .anticon {
-    color: inherit;
     flex: 0 0 auto;
+    font-size: 15px;
   }
-  .ant-message-success .anticon { color: #4ade80; }
-  .ant-message-error .anticon { color: #f87171; }
-  .ant-message-warning .anticon { color: #fbbf24; }
-  .ant-message-info .anticon { color: #60a5fa; }
+  /* status icon colours (antd applies the status class on custom-content) */
+  .ant-message-success .anticon,
+  &.ant-message-success .anticon { color: #16a34a !important; }
+  .ant-message-error .anticon,
+  &.ant-message-error .anticon { color: #dc2626 !important; }
+  .ant-message-warning .anticon,
+  &.ant-message-warning .anticon { color: #d97706 !important; }
+  .ant-message-info .anticon,
+  &.ant-message-info .anticon { color: var(--notion-accent, #2563eb) !important; }
+}
+
+/* Dark theme variant — switch the pill to dark ink */
+.theme-dark .notaion-toast,
+body.dark .notaion-toast {
+  &.ant-message-notice-content,
+  .ant-message-notice-content {
+    background: #23262e !important;
+    color: #f1f3f8 !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+  }
+  .ant-message-custom-content,
+  .ant-message-custom-content > span:last-child {
+    color: #f1f3f8 !important;
+  }
 }
