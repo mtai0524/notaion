@@ -146,17 +146,34 @@ const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
 };
 
 // ── Minimap ──────────────────────────────────────────────────────────
-// A compact vertical strip in the corner: one cell per block sized by its real
-// height, plus a viewport marker that follows the scroll. Click or drag to jump
-// anywhere on the page quickly.
-const Minimap = ({ items, selectedIds, onJump }) => {
+// A vertical strip in the corner: one labelled cell per block, sized by its real
+// height and tinted/iconed by type (heading / image / file / text), plus a
+// viewport marker that follows the scroll. Click a cell to jump, or drag the
+// track to scrub quickly.
+
+// Classify a block into a minimap kind + short preview label.
+const minimapMeta = (item, newContent) => {
+  const raw = String(newContent?.[item.id] ?? item.content ?? "").trim();
+  const heading = String(item.heading || "");
+  if (heading.startsWith("heading-")) {
+    const lvl = parseInt(heading.replace("heading-", ""), 10) || 1;
+    return { kind: lvl <= 2 ? "h1" : "h2", icon: lvl <= 2 ? "H" : "h", label: raw };
+  }
+  if (/\.(jpeg|jpg|gif|png|webp|heic)(\?|#|$)/i.test(raw)) {
+    return { kind: "image", icon: "🖼", label: "Image" };
+  }
+  if (/\bhttps?:\/\//.test(raw)) {
+    return { kind: "file", icon: "🔗", label: raw.replace(/^https?:\/\//, "") };
+  }
+  return { kind: "text", icon: "", label: raw };
+};
+
+const Minimap = ({ items, newContent, selectedIds, onJump }) => {
   const [metrics, setMetrics] = useState({ docHeight: 1, blocks: [] });
   const [view, setView] = useState({ top: 0, height: 0 });
   const trackRef = useRef(null);
   const draggingRef = useRef(false);
 
-  // Re-measure block geometry on scroll/resize/content change (throttled to a
-  // frame). getBoundingClientRect + scrollY gives stable document coordinates.
   useEffect(() => {
     let raf = 0;
     const measure = () => {
@@ -172,7 +189,12 @@ const Minimap = ({ items, selectedIds, onJump }) => {
           if (!el) return null;
           const r = el.getBoundingClientRect();
           const top = r.top + window.scrollY;
-          return { id: it.id, top, height: Math.max(r.height, 1) };
+          return {
+            id: it.id,
+            top,
+            height: Math.max(r.height, 1),
+            ...minimapMeta(it, newContent),
+          };
         })
         .filter(Boolean);
       setMetrics({ docHeight, blocks });
@@ -191,7 +213,7 @@ const Minimap = ({ items, selectedIds, onJump }) => {
       clearInterval(interval);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [items]);
+  }, [items, newContent]);
 
   const { docHeight } = metrics;
 
@@ -208,6 +230,8 @@ const Minimap = ({ items, selectedIds, onJump }) => {
   );
 
   const onPointerDown = (e) => {
+    // Let cell clicks handle their own jump; only scrub when grabbing the track.
+    if (e.target.closest(".minimap-cell")) return;
     draggingRef.current = true;
     scrollToRatio(e.clientY);
     const move = (ev) => draggingRef.current && scrollToRatio(ev.clientY);
@@ -234,14 +258,19 @@ const Minimap = ({ items, selectedIds, onJump }) => {
           <button
             key={b.id}
             type="button"
-            className={`minimap-cell ${selectedIds?.has(b.id) ? "is-selected" : ""}`}
+            className={`minimap-cell kind-${b.kind} ${
+              selectedIds?.has(b.id) ? "is-selected" : ""
+            }`}
             style={{ top: pct(b.top), height: pct(b.height) }}
-            title="Jump to block"
+            title={b.label || "Block"}
             onClick={(e) => {
               e.stopPropagation();
               onJump(b.id);
             }}
-          />
+          >
+            {b.icon && <span className="minimap-cell-icon">{b.icon}</span>}
+            <span className="minimap-cell-label">{b.label}</span>
+          </button>
         ))}
         <div
           className="minimap-viewport"
@@ -1345,7 +1374,12 @@ const Notion = () => {
         items.length > 0 &&
         prefs.layout !== "canvas" &&
         prefs.layout !== "slideshow" && (
-          <Minimap items={items} selectedIds={selectedIds} onJump={jumpToBlock} />
+          <Minimap
+            items={items}
+            newContent={newContent}
+            selectedIds={selectedIds}
+            onJump={jumpToBlock}
+          />
         )}
       {marquee && (
         <div
