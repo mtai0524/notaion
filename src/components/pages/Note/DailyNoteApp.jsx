@@ -18,7 +18,10 @@ import {
   FaEllipsisH, FaKeyboard, FaQuestionCircle
 } from 'react-icons/fa';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
-import { Dropdown } from 'antd';
+import { Dropdown, DatePicker, Select } from 'antd';
+import dayjs from 'dayjs';
+import { ensureNotificationPermission } from '../../../utils/notifyBrowser';
+import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
@@ -477,6 +480,22 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
     onUpdate(note.id, { linkedNoteIds: newLinks.join(',') });
   };
 
+  const handleSetDeadline = async (value) => {
+    const iso = value ? value.toDate().toISOString() : null;
+    clearFiredForNote(note.id);
+    onUpdate(note.id, {
+      deadline: iso,
+      reminderDone: false,
+      reminderLeadMinutes: iso ? (note.reminderLeadMinutes ?? null) : null,
+    });
+    if (iso) await ensureNotificationPermission();
+  };
+
+  const handleSetLead = (mins) => {
+    clearFiredForNote(note.id);
+    onUpdate(note.id, { reminderLeadMinutes: mins, reminderDone: false });
+  };
+
   const teachAI = async () => {
     if (!note.content) {
       alert("Note content is empty!");
@@ -609,6 +628,16 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
                 ~ {format(new Date(note.updatedAt), 'HH:mm')}
               </span>
             )}
+            {note.deadline && (
+              <span
+                className={`note-deadline-badge ${
+                  !note.isCompleted && new Date(note.deadline).getTime() < Date.now() ? 'overdue' : ''
+                }`}
+                title={`Deadline: ${new Date(note.deadline).toLocaleString()}`}
+              >
+                ⏰ {format(new Date(note.deadline), 'HH:mm')}
+              </span>
+            )}
           </div>
           <div className="header-actions">
             <button className={`action-btn drawing-btn ${showDrawing ? 'active' : ''}`} onClick={(e) => { e.stopPropagation(); setShowDrawing(!showDrawing); }} title="Doodle / Draw">
@@ -670,6 +699,31 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
                       <FaLayerGroup /> <span>Send to back</span>
                     </button>
                   )}
+                  <div className="overflow-item overflow-deadline" onClick={(e) => e.stopPropagation()}>
+                    <span className="overflow-deadline-label">⏰ Deadline</span>
+                    <DatePicker
+                      showTime
+                      format="YYYY-MM-DD HH:mm"
+                      size="small"
+                      value={note.deadline ? dayjs(note.deadline) : null}
+                      onChange={handleSetDeadline}
+                      placeholder="Set deadline"
+                    />
+                    <Select
+                      size="small"
+                      style={{ width: 110 }}
+                      value={note.reminderLeadMinutes ?? 0}
+                      onChange={handleSetLead}
+                      options={[
+                        { value: 0, label: 'No lead' },
+                        { value: 5, label: '5m before' },
+                        { value: 10, label: '10m before' },
+                        { value: 30, label: '30m before' },
+                        { value: 60, label: '1h before' },
+                      ]}
+                      disabled={!note.deadline}
+                    />
+                  </div>
                 </div>
               )}
             >
@@ -1647,6 +1701,9 @@ const DailyNoteApp = () => {
       // Leave customTextColor unset so the note follows the current theme
       // dynamically; setting it here would freeze the color at creation time.
       customTextColor: null,
+      deadline: null,
+      reminderLeadMinutes: null,
+      reminderDone: false,
       updatedAt: new Date().toISOString(),
     };
 

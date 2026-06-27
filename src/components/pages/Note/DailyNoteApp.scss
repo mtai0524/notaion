@@ -4282,3 +4282,25 @@
     background: var(--container-bg);
   }
 }
+
+.note-deadline-badge {
+  font-size: 0.7rem;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(80, 76, 214, 0.15);
+  color: #504cd6;
+  margin-left: 6px;
+}
+.note-deadline-badge.overdue {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
+}
+.overflow-deadline {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: stretch;
+}
+.overflow-deadline-label {
+  font-weight: 600;
+}

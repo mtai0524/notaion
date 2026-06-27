@@ -7,7 +7,9 @@
         "dev": "node --max-http-header-size=65536 node_modules/vite/bin/vite.js",
         "build": "vite build",
         "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "test": "vitest run",
+        "test:watch": "vitest"
     },
     "dependencies": {
         "@astrojs/react": "^3.6.0",
@@ -45,6 +47,7 @@
         "antd": "^5.19.2",
         "axios": "^1.16.0",
         "date-fns": "^3.6.0",
+        "dayjs": "^1.11.21",
         "highlight.js": "^11.10.0",
         "js-cookie": "^3.0.5",
         "jwt-decode": "^3.1.2",
@@ -95,6 +98,7 @@
         "tailwindcss": "^3.4.6",
         "url-loader": "^4.1.1",
         "vite": "^6.4.2",
-        "vite-plugin-markdown": "^2.2.0"
+        "vite-plugin-markdown": "^2.2.0",
+        "vitest": "^4.1.9"
     }
 }

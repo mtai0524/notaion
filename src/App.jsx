@@ -31,6 +31,8 @@ import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboa
 import MiniGame from "./components/pages/MiniGame/MiniGame";
 import PixelGame from "./components/pages/PixelGame/PixelGame";
 import { applyGlobalSettings } from "./utils/applyGlobalSettings";
+import { useDeadlineReminders } from "./hooks/useDeadlineReminders";
+import { registerReminderSW } from "./utils/notifyBrowser";
 
 
 const App = () => {
@@ -58,6 +60,8 @@ const MainApp = () => {
   const { connection } = useSignalR();
 
   const tokenFromStorage = Cookies.get("token");
+  useDeadlineReminders(Boolean(tokenFromStorage));
+  useEffect(() => { registerReminderSW(); }, []);
   let username;
 
   if (tokenFromStorage) {
