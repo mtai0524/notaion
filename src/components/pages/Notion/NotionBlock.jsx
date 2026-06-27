@@ -710,7 +710,7 @@ export const LazyBlock = memo(function LazyBlock(props) {
 
   if (rendered || forceRender) {
     return (
-      <div ref={wrapRef} data-lazy-block={item.id}>
+      <div ref={wrapRef} className="lazy-block" data-lazy-block={item.id}>
         <NotionBlock {...props} />
       </div>
     );
@@ -720,7 +720,7 @@ export const LazyBlock = memo(function LazyBlock(props) {
     <div
       ref={wrapRef}
       data-lazy-block={item.id}
-      className="lazy-block-placeholder"
+      className="lazy-block lazy-block-placeholder"
       style={{ minHeight: heightRef.current || 48 }}
       aria-hidden="true"
     />

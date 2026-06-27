@@ -1391,6 +1391,14 @@
 }
 
 /* ───────── Loading skeleton ───────── */
+// The lazy wrapper sits as a flex item inside .container-block, which would
+// otherwise shrink it to its content width — force it to fill the column so the
+// note width matches the non-lazy layout.
+.lazy-block {
+  width: 100%;
+  min-width: 0;
+}
+
 // Reserves space for a not-yet-rendered (lazy) block so the scrollbar stays put
 // while blocks below the fold mount on demand.
 .lazy-block-placeholder {
