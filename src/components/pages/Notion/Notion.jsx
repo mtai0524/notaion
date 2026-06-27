@@ -30,6 +30,28 @@ const generateRandomId = () => uuidv4();
 // each time the bottom sentinel comes into view.
 const PAGE_SIZE = 15;
 
+// Notaion-styled toast. Wraps antd's message so every notification shares the
+// same compact pill look (see .notaion-toast in Notion.scss) and never grows so
+// wide it gets clipped — long text is truncated with an ellipsis.
+const TOAST_MAX = 60;
+const notify = (type, text, duration = 2) => {
+  const content = String(text);
+  message[type]({
+    content: content.length > TOAST_MAX ? `${content.slice(0, TOAST_MAX)}…` : content,
+    duration,
+    className: "notaion-toast",
+  });
+};
+const toast = {
+  success: (t, d) => notify("success", t, d),
+  error: (t, d) => notify("error", t, d),
+  info: (t, d) => notify("info", t, d),
+  warning: (t, d) => notify("warning", t, d),
+};
+
+// Float toasts at the top so they don't collide with the selection bar / FAB.
+message.config({ top: 16, maxCount: 3 });
+
 // ── View preference catalog ──────────────────────────────────────────
 const DEFAULT_PREFS = {
   density: "comfortable",   // compact | comfortable | spacious
@@ -635,7 +657,7 @@ const Notion = () => {
       await axiosInstance.get("/api/HealthCheck/health-check");
       return true;
     } catch (error) {
-      message.error("Failed connect server");
+      toast.error("Failed connect server");
       return false;
     }
   };
@@ -655,7 +677,7 @@ const Notion = () => {
       setItems(response.data);
     } catch (error) {
       console.error("Error fetching items:", error);
-      message.error("Error fetching items", 1);
+      toast.error("Error fetching items", 1);
     } finally {
       setLoadingItems(false);
     }
@@ -854,7 +876,7 @@ const Notion = () => {
     );
     clearSelection();
     await Promise.all(toDelete.map((id) => deleteItem(id, false)));
-    message.success(`Deleted ${toDelete.length} block(s)`, 0.6);
+    toast.success(`Deleted ${toDelete.length} block(s)`, 0.6);
   }, [clearSelection]);
 
   // Marquee select: drag on blank canvas to lasso blocks. Ignores drags that
@@ -867,17 +889,72 @@ const Notion = () => {
           ".notion-block-context, .ant-image, .file-block, .draggable-item"
       );
 
+    let raf = 0;
+    let lastEvent = null;
+
+    // True if two id-sets differ (cheap, avoids re-rendering on no-op moves).
+    const sameSet = (a, b) => {
+      if (a.size !== b.size) return false;
+      for (const id of a) if (!b.has(id)) return false;
+      return true;
+    };
+
+    const process = () => {
+      raf = 0;
+      const st = marqueeStateRef.current;
+      const e = lastEvent;
+      if (!st || !e) return;
+
+      const rect = {
+        left: Math.min(st.x0, e.clientX),
+        top: Math.min(st.y0, e.clientY),
+        right: Math.max(st.x0, e.clientX),
+        bottom: Math.max(st.y0, e.clientY),
+      };
+      setMarquee(rect);
+
+      // Compare against the cached rects measured once at drag start — no DOM
+      // reads here, so dragging never triggers layout reflow.
+      const hit = new Set(st.base);
+      for (const b of st.rects) {
+        if (
+          b.left < rect.right &&
+          b.right > rect.left &&
+          b.top < rect.bottom &&
+          b.bottom > rect.top
+        ) {
+          hit.add(b.id);
+        }
+      }
+      if (!sameSet(hit, selectedIdsRef.current)) setSelectedIds(hit);
+    };
+
     const onMouseDown = (e) => {
       if (e.button !== 0) return;
       const page = e.target.closest(".notion-page");
       if (!page) return;
       if (!isBlankTarget(e.target)) return;
 
+      const additive = e.shiftKey || e.metaKey || e.ctrlKey;
+      // Snapshot every block's rect ONCE so the move handler does zero DOM reads.
+      const rects = [];
+      document.querySelectorAll("[data-block-id]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        rects.push({
+          id: el.getAttribute("data-block-id"),
+          left: r.left,
+          right: r.right,
+          top: r.top,
+          bottom: r.bottom,
+        });
+      });
+
       marqueeStateRef.current = {
         x0: e.clientX,
         y0: e.clientY,
-        additive: e.shiftKey || e.metaKey || e.ctrlKey,
-        base: e.shiftKey || e.metaKey || e.ctrlKey ? new Set(selectedIdsRef.current) : new Set(),
+        additive,
+        base: additive ? new Set(selectedIdsRef.current) : new Set(),
+        rects,
         moved: false,
       };
     };
@@ -889,31 +966,18 @@ const Notion = () => {
       const dy = Math.abs(e.clientY - st.y0);
       if (!st.moved && dx < 4 && dy < 4) return; // ignore tiny jitters / plain clicks
       st.moved = true;
-
-      const rect = {
-        left: Math.min(st.x0, e.clientX),
-        top: Math.min(st.y0, e.clientY),
-        right: Math.max(st.x0, e.clientX),
-        bottom: Math.max(st.y0, e.clientY),
-      };
-      setMarquee(rect);
-
-      const hit = new Set(st.base);
-      document.querySelectorAll("[data-block-id]").forEach((el) => {
-        const r = el.getBoundingClientRect();
-        const intersects =
-          r.left < rect.right &&
-          r.right > rect.left &&
-          r.top < rect.bottom &&
-          r.bottom > rect.top;
-        if (intersects) hit.add(el.getAttribute("data-block-id"));
-      });
-      setSelectedIds(hit);
+      lastEvent = e;
+      if (!raf) raf = requestAnimationFrame(process); // throttle to one update / frame
     };
 
     const onMouseUp = () => {
       const st = marqueeStateRef.current;
       marqueeStateRef.current = null;
+      lastEvent = null;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
       setMarquee(null);
       // A plain click on blank space (no drag) clears the selection.
       if (st && !st.moved && !st.additive) clearSelection();
@@ -994,7 +1058,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading file:", error);
       setLoadingImage(null);
-      message.error("Failed to upload file");
+      toast.error("Failed to upload file");
     }
   };
 
@@ -1045,7 +1109,7 @@ const Notion = () => {
         } catch (error) {
           console.error("Error uploading dropped file:", error);
           setItems((prev) => prev.filter((item) => item.id !== newBlockId));
-          message.error("Failed to upload dropped file");
+          toast.error("Failed to upload dropped file");
         } finally {
           setLoadingImage(null);
         }
@@ -1227,10 +1291,10 @@ const Notion = () => {
   const deleteItem = async (id, noti) => {
     try {
       await axiosInstance.delete(`/api/Items/delete-item/${id}`);
-      if (noti) message.success("Deleted", 0.5);
+      if (noti) toast.success("Deleted", 0.5);
       return true;
     } catch (error) {
-      if (noti) message.error("Error deleting item", 0.5);
+      if (noti) toast.error("Error deleting item", 0.5);
       return false;
     }
   };
@@ -1248,7 +1312,7 @@ const Notion = () => {
       await axiosInstance.post("/api/Items/bulk", updatedItems);
     } catch (error) {
       console.error("Error saving items:", error);
-      if (showNoti) message.error("Error saving items", 1);
+      if (showNoti) toast.error("Error saving items", 1);
     }
   };
 
@@ -1289,7 +1353,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading pasted file:", error);
       if (isNewBlock) setItems((prev) => prev.filter((it) => it.id !== targetId));
-      message.error("Failed to upload pasted file");
+      toast.error("Failed to upload pasted file");
     } finally {
       setLoadingImage(null);
     }
@@ -1356,7 +1420,7 @@ const Notion = () => {
       await downloadFile(savedName || fileName, fileName, cloudUrl || url);
     } catch (error) {
       console.error("Error downloading file:", error);
-      message.error("Failed to download file");
+      toast.error("Failed to download file");
     }
   };
 

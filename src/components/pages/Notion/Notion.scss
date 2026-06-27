@@ -1748,3 +1748,41 @@
     }
   }
 }
+
+/* ───────── Notaion toast (antd message override) ───────── */
+.notaion-toast {
+  .ant-message-notice-content {
+    max-width: min(420px, 90vw);
+    padding: 9px 16px;
+    border-radius: 10px;
+    background: #1f1f1f;
+    color: #fff;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.3);
+    font-size: 13px;
+    font-weight: 500;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .ant-message-custom-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+
+    > span:last-child {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  /* keep antd's coloured status icons, just align them to the pill */
+  .anticon {
+    color: inherit;
+    flex: 0 0 auto;
+  }
+  .ant-message-success .anticon { color: #4ade80; }
+  .ant-message-error .anticon { color: #f87171; }
+  .ant-message-warning .anticon { color: #fbbf24; }
+  .ant-message-info .anticon { color: #60a5fa; }
+}
