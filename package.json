@@ -78,7 +78,7 @@
         "react-spring": "^9.7.4",
         "react-tooltip": "^6.0.2",
         "safe-buffer": "^5.2.1",
-        "three": "^0.169.0",
+        "three": "^0.185.0",
         "uuid": "^11.0.5",
         "web-vitals": "^2.1.0",
         "y-webrtc": "^10.3.0",
