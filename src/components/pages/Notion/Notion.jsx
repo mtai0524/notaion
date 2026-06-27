@@ -14,7 +14,7 @@ import axiosInstance from "../../../axiosConfig";
 import { downloadFile } from "../../../services/fileService";
 import debounce from "lodash.debounce";
 import { Rnd } from "react-rnd";
-import NotionBlock, { SLASH_COMMANDS } from "./NotionBlock";
+import NotionBlock, { LazyBlock, SLASH_COMMANDS } from "./NotionBlock";
 
 const reorder = (list, startIndex, endIndex) => {
   const result = Array.from(list);
@@ -508,9 +508,35 @@ const Notion = () => {
   useEffect(() => {
     if (blockId) {
       const newTextarea = editTextareaRefs.current[blockId];
-      if (newTextarea) newTextarea.focus();
+      // preventScroll keeps focusing a freshly-created block from yanking the
+      // page down — the block is brought into view explicitly when needed.
+      if (newTextarea) newTextarea.focus({ preventScroll: true });
     }
   }, [blockId]);
+
+  // Items are fetched async after mount, so the page height grows over time.
+  // The browser's automatic scroll restoration then lands at the wrong spot
+  // (usually the bottom) once content fills in. Disable it for this page and
+  // pin the window to the top right after the first batch of items renders.
+  useEffect(() => {
+    const prevRestoration = window.history.scrollRestoration;
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    return () => {
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = prevRestoration || "auto";
+      }
+    };
+  }, []);
+
+  const didInitialScrollReset = useRef(false);
+  useEffect(() => {
+    if (loadingItems || didInitialScrollReset.current) return;
+    didInitialScrollReset.current = true;
+    // Wait a frame so layout settles, then start at the top.
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  }, [loadingItems]);
 
   useEffect(() => {
     fetchItems();
@@ -1251,7 +1277,7 @@ const Notion = () => {
                           </div>
 
                           <div className="container-block">
-                            <NotionBlock {...blockProps(item, true)} />
+                            <LazyBlock {...blockProps(item, true)} />
                           </div>
                         </li>
                       )}

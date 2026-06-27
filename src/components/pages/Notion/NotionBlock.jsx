@@ -658,3 +658,71 @@ const NotionBlock = memo(function NotionBlock({
 });
 
 export default NotionBlock;
+
+/**
+ * Lazily mounts a NotionBlock only once it scrolls near the viewport. Until then
+ * a same-height placeholder reserves space so the scrollbar doesn't jump. Once a
+ * block has rendered it stays mounted (so cursor/textarea state is never lost on
+ * scroll), and blocks that are being interacted with skip lazying entirely.
+ *
+ * "Trượt xuống đâu thì load đến đó": heavy content (images, embeds, file cards)
+ * is only built for blocks the reader has actually scrolled to.
+ */
+export const LazyBlock = memo(function LazyBlock(props) {
+  const { item, slashOpen } = props;
+  const wrapRef = useRef(null);
+  const [rendered, setRendered] = useState(false);
+  // Remember the last real height so the placeholder reserves the same space.
+  const heightRef = useRef(0);
+
+  // Always render blocks the user is interacting with, regardless of position.
+  const forceRender = slashOpen;
+
+  useEffect(() => {
+    if (rendered || forceRender) return;
+    const el = wrapRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setRendered(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setRendered(true);
+          observer.disconnect();
+        }
+      },
+      // Start loading a screenful early so content is ready before it's seen.
+      { root: null, rootMargin: "600px 0px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [rendered, forceRender]);
+
+  // Measure height while mounted so a future unmount could reserve space.
+  useLayoutEffect(() => {
+    if ((rendered || forceRender) && wrapRef.current) {
+      const h = wrapRef.current.offsetHeight;
+      if (h) heightRef.current = h;
+    }
+  });
+
+  if (rendered || forceRender) {
+    return (
+      <div ref={wrapRef} data-lazy-block={item.id}>
+        <NotionBlock {...props} />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={wrapRef}
+      data-lazy-block={item.id}
+      className="lazy-block-placeholder"
+      style={{ minHeight: heightRef.current || 48 }}
+      aria-hidden="true"
+    />
+  );
+});

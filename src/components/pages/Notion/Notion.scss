@@ -1391,6 +1391,21 @@
 }
 
 /* ───────── Loading skeleton ───────── */
+// Reserves space for a not-yet-rendered (lazy) block so the scrollbar stays put
+// while blocks below the fold mount on demand.
+.lazy-block-placeholder {
+  width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    rgba(127, 127, 127, 0.05) 25%,
+    rgba(127, 127, 127, 0.12) 50%,
+    rgba(127, 127, 127, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
+}
+
 .skeleton-block {
   width: 100%;
   height: 22px;
