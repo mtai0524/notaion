@@ -1585,3 +1585,128 @@
     }
   }
 }
+
+/* ───────── Minimap (quick-scroll strip) ───────── */
+.notion-minimap {
+  position: fixed;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  z-index: 40;
+  height: 60vh;
+  width: 18px;
+  opacity: 0.45;
+  transition: opacity 0.15s ease, width 0.15s ease;
+
+  &:hover {
+    opacity: 1;
+    width: 26px;
+  }
+
+  .minimap-track {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.08);
+    cursor: pointer;
+    overflow: hidden;
+  }
+
+  .minimap-cell {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    width: auto;
+    min-height: 2px;
+    padding: 0;
+    border: none;
+    border-radius: 2px;
+    background: rgba(127, 127, 127, 0.35);
+    cursor: pointer;
+    transition: background 0.1s ease;
+
+    &:hover {
+      background: var(--notion-accent, #4b8bf4);
+    }
+
+    &.is-selected {
+      background: var(--notion-accent, #4b8bf4);
+    }
+  }
+
+  .minimap-viewport {
+    position: absolute;
+    left: 0;
+    right: 0;
+    pointer-events: none;
+    border-radius: 4px;
+    background: rgba(75, 139, 244, 0.18);
+    border: 1px solid var(--notion-accent, #4b8bf4);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+  }
+}
+
+@media (max-width: 768px) {
+  .notion-minimap {
+    display: none; /* not useful on touch / narrow screens */
+  }
+}
+
+/* ───────── Marquee multi-select ───────── */
+.notion-marquee {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  border: 1px solid var(--notion-accent, #4b8bf4);
+  background: rgba(75, 139, 244, 0.12);
+  border-radius: 2px;
+}
+
+.draggable-item.is-selected {
+  background: rgba(75, 139, 244, 0.1);
+  border-radius: 6px;
+  outline: 1px solid rgba(75, 139, 244, 0.45);
+}
+
+.notion-selection-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #1f1f1f;
+  color: #fff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+  font-size: 13px;
+
+  .selection-count {
+    font-weight: 600;
+  }
+
+  .selection-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    cursor: pointer;
+    font-size: 12px;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.24);
+    }
+
+    &.danger:hover {
+      background: #e5484d;
+    }
+  }
+}

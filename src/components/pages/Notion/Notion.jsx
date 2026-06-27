@@ -7,6 +7,7 @@ import {
   SettingOutlined,
   BgColorsOutlined,
   CloseOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
@@ -141,6 +142,113 @@ const OutlineSidebar = ({ items, newContent, onJump, onClose }) => {
         </nav>
       )}
     </aside>
+  );
+};
+
+// ── Minimap ──────────────────────────────────────────────────────────
+// A compact vertical strip in the corner: one cell per block sized by its real
+// height, plus a viewport marker that follows the scroll. Click or drag to jump
+// anywhere on the page quickly.
+const Minimap = ({ items, selectedIds, onJump }) => {
+  const [metrics, setMetrics] = useState({ docHeight: 1, blocks: [] });
+  const [view, setView] = useState({ top: 0, height: 0 });
+  const trackRef = useRef(null);
+  const draggingRef = useRef(false);
+
+  // Re-measure block geometry on scroll/resize/content change (throttled to a
+  // frame). getBoundingClientRect + scrollY gives stable document coordinates.
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const docHeight = Math.max(
+        document.documentElement.scrollHeight,
+        window.innerHeight,
+        1
+      );
+      const blocks = items
+        .map((it) => {
+          const el = document.querySelector(`[data-block-id="${it.id}"]`);
+          if (!el) return null;
+          const r = el.getBoundingClientRect();
+          const top = r.top + window.scrollY;
+          return { id: it.id, top, height: Math.max(r.height, 1) };
+        })
+        .filter(Boolean);
+      setMetrics({ docHeight, blocks });
+      setView({ top: window.scrollY, height: window.innerHeight });
+    };
+    const schedule = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    const interval = setInterval(measure, 800); // catch async height changes (images, lazy blocks)
+    return () => {
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+      clearInterval(interval);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [items]);
+
+  const { docHeight } = metrics;
+
+  const scrollToRatio = useCallback(
+    (clientY) => {
+      const track = trackRef.current;
+      if (!track) return;
+      const rect = track.getBoundingClientRect();
+      const ratio = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+      const target = ratio * docHeight - window.innerHeight / 2;
+      window.scrollTo({ top: Math.max(0, target), behavior: "auto" });
+    },
+    [docHeight]
+  );
+
+  const onPointerDown = (e) => {
+    draggingRef.current = true;
+    scrollToRatio(e.clientY);
+    const move = (ev) => draggingRef.current && scrollToRatio(ev.clientY);
+    const up = () => {
+      draggingRef.current = false;
+      document.removeEventListener("mousemove", move);
+      document.removeEventListener("mouseup", up);
+    };
+    document.addEventListener("mousemove", move);
+    document.addEventListener("mouseup", up);
+  };
+
+  const pct = (v) => `${(v / docHeight) * 100}%`;
+
+  return (
+    <div className="notion-minimap" aria-hidden="false">
+      <div
+        ref={trackRef}
+        className="minimap-track"
+        onMouseDown={onPointerDown}
+        role="presentation"
+      >
+        {metrics.blocks.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            className={`minimap-cell ${selectedIds?.has(b.id) ? "is-selected" : ""}`}
+            style={{ top: pct(b.top), height: pct(b.height) }}
+            title="Jump to block"
+            onClick={(e) => {
+              e.stopPropagation();
+              onJump(b.id);
+            }}
+          />
+        ))}
+        <div
+          className="minimap-viewport"
+          style={{ top: pct(view.top), height: pct(view.height) }}
+        />
+      </div>
+    </div>
   );
 };
 
@@ -569,16 +677,33 @@ const Notion = () => {
   const onDragEnd = (result) => {
     if (!result.destination) return;
     const scrollY = window.scrollY;
-    const reorderedItems = reorder(
-      items,
-      result.source.index,
-      result.destination.index
-    );
+    const sel = selectedIdsRef.current;
+    const draggedId = result.draggableId;
+
+    let updatedItems;
+    // If the dragged block is part of a multi-selection, move the whole group
+    // (preserving their relative order) to the drop position.
+    if (sel.size > 1 && sel.has(draggedId)) {
+      const moving = items.filter((it) => sel.has(it.id));
+      const rest = items.filter((it) => !sel.has(it.id));
+      // Where the drop lands among the non-selected blocks.
+      const destItem = items[result.destination.index];
+      let insertAt = rest.findIndex((it) => it.id === destItem?.id);
+      if (insertAt === -1) insertAt = rest.length;
+      // Dropping below its original spot should land after the target block.
+      if (result.destination.index > result.source.index) insertAt += 1;
+      const merged = [...rest.slice(0, insertAt), ...moving, ...rest.slice(insertAt)];
+      updatedItems = merged.map((item, index) => ({ ...item, order: index }));
+    } else {
+      const reorderedItems = reorder(
+        items,
+        result.source.index,
+        result.destination.index
+      );
+      updatedItems = reorderedItems.map((item, index) => ({ ...item, order: index }));
+    }
+
     setItems(() => {
-      const updatedItems = reorderedItems.map((item, index) => ({
-        ...item,
-        order: index,
-      }));
       saveItems(updatedItems, true);
       return updatedItems;
     });
@@ -604,6 +729,132 @@ const Notion = () => {
     setSlashQuery("");
     setSlashSelectedIndex(0);
   };
+
+  // Open the slash command menu for a block — reused by the drag handle and by
+  // right-click (so a context menu shows the same "/" suggestions).
+  const openSlashMenuFor = useCallback((id) => {
+    setSlashMenuFor(id);
+    setSlashQuery("");
+    setSlashSelectedIndex(0);
+    editTextareaRefs.current[id]?.focus({ preventScroll: true });
+  }, []);
+
+  // ── Multi-select (marquee) ──────────────────────────────────────────
+  // Set of block ids the user has lassoed. Empty = nothing selected.
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const selectedIdsRef = useRef(selectedIds);
+  selectedIdsRef.current = selectedIds;
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), []);
+
+  // Live marquee rectangle in viewport coords while dragging on empty space.
+  const [marquee, setMarquee] = useState(null);
+  const marqueeStateRef = useRef(null);
+
+  // Delete every currently-selected block in one go.
+  const deleteSelected = useCallback(async () => {
+    const ids = selectedIdsRef.current;
+    if (!ids.size) return;
+    const toDelete = [...ids];
+    setItems((prev) =>
+      prev.filter((it) => !ids.has(it.id)).map((it, idx) => ({ ...it, order: idx }))
+    );
+    clearSelection();
+    await Promise.all(toDelete.map((id) => deleteItem(id, false)));
+    message.success(`Deleted ${toDelete.length} block(s)`, 0.6);
+  }, [clearSelection]);
+
+  // Marquee select: drag on blank canvas to lasso blocks. Ignores drags that
+  // start on an interactive element (text, button, drag handle, etc.).
+  useEffect(() => {
+    if (prefs.layout && prefs.layout !== "document" && prefs.layout !== undefined) {
+      // Marquee only makes sense in the vertical document layout.
+    }
+
+    const isBlankTarget = (target) =>
+      !target.closest(
+        "textarea, input, button, a, .block-controls, .slash-menu, " +
+          ".notion-minimap, .notion-prefs-fab, .notion-prefs-panel, " +
+          ".notion-block-context, .ant-image, .file-block, .draggable-item"
+      );
+
+    const onMouseDown = (e) => {
+      if (e.button !== 0) return;
+      const page = e.target.closest(".notion-page");
+      if (!page) return;
+      if (!isBlankTarget(e.target)) return;
+
+      marqueeStateRef.current = {
+        x0: e.clientX,
+        y0: e.clientY,
+        additive: e.shiftKey || e.metaKey || e.ctrlKey,
+        base: e.shiftKey || e.metaKey || e.ctrlKey ? new Set(selectedIdsRef.current) : new Set(),
+        moved: false,
+      };
+    };
+
+    const onMouseMove = (e) => {
+      const st = marqueeStateRef.current;
+      if (!st) return;
+      const dx = Math.abs(e.clientX - st.x0);
+      const dy = Math.abs(e.clientY - st.y0);
+      if (!st.moved && dx < 4 && dy < 4) return; // ignore tiny jitters / plain clicks
+      st.moved = true;
+
+      const rect = {
+        left: Math.min(st.x0, e.clientX),
+        top: Math.min(st.y0, e.clientY),
+        right: Math.max(st.x0, e.clientX),
+        bottom: Math.max(st.y0, e.clientY),
+      };
+      setMarquee(rect);
+
+      const hit = new Set(st.base);
+      document.querySelectorAll("[data-block-id]").forEach((el) => {
+        const r = el.getBoundingClientRect();
+        const intersects =
+          r.left < rect.right &&
+          r.right > rect.left &&
+          r.top < rect.bottom &&
+          r.bottom > rect.top;
+        if (intersects) hit.add(el.getAttribute("data-block-id"));
+      });
+      setSelectedIds(hit);
+    };
+
+    const onMouseUp = () => {
+      const st = marqueeStateRef.current;
+      marqueeStateRef.current = null;
+      setMarquee(null);
+      // A plain click on blank space (no drag) clears the selection.
+      if (st && !st.moved && !st.additive) clearSelection();
+    };
+
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [clearSelection, prefs.layout]);
+
+  // Delete / Backspace removes the marquee selection (when not typing).
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!selectedIdsRef.current.size) return;
+      const tag = document.activeElement?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT") return;
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        deleteSelected();
+      } else if (e.key === "Escape") {
+        clearSelection();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [deleteSelected, clearSelection]);
 
   const saveNewItems = async (heading, id) => {
     const updatedItems = items.map((item) =>
@@ -1094,6 +1345,40 @@ const Notion = () => {
           onClose={() => updatePref({ showOutline: false })}
         />
       )}
+      {!loadingItems &&
+        items.length > 0 &&
+        (!prefs.layout ||
+          prefs.layout === "document" ||
+          prefs.layout === "columns2" ||
+          prefs.layout === "columns3") && (
+          <Minimap items={items} selectedIds={selectedIds} onJump={jumpToBlock} />
+        )}
+      {marquee && (
+        <div
+          className="notion-marquee"
+          style={{
+            left: marquee.left,
+            top: marquee.top,
+            width: marquee.right - marquee.left,
+            height: marquee.bottom - marquee.top,
+          }}
+        />
+      )}
+      {selectedIds.size > 0 && (
+        <div className="notion-selection-bar">
+          <span className="selection-count">{selectedIds.size} selected</span>
+          <button
+            type="button"
+            className="selection-btn danger"
+            onClick={deleteSelected}
+          >
+            <DeleteOutlined /> Delete
+          </button>
+          <button type="button" className="selection-btn" onClick={clearSelection}>
+            Clear
+          </button>
+        </div>
+      )}
       <div
         className={pageClass}
         style={pageStyleVars}
@@ -1245,7 +1530,13 @@ const Notion = () => {
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           data-block-id={item.id}
-                          className="draggable-item"
+                          className={`draggable-item ${
+                            selectedIds.has(item.id) ? "is-selected" : ""
+                          }`}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            openSlashMenuFor(item.id);
+                          }}
                         >
                           <div className="block-controls">
                             <Tooltip title="Click to add block below" placement="left">
@@ -1264,12 +1555,7 @@ const Notion = () => {
                               <span
                                 {...provided.dragHandleProps}
                                 className="block-control-btn drag-handle"
-                                onClick={() => {
-                                  setSlashMenuFor(item.id);
-                                  setSlashQuery("");
-                                  setSlashSelectedIndex(0);
-                                  editTextareaRefs.current[item.id]?.focus();
-                                }}
+                                onClick={() => openSlashMenuFor(item.id)}
                               >
                                 <HolderOutlined />
                               </span>
