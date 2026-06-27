@@ -1343,10 +1343,8 @@ const Notion = () => {
       )}
       {!loadingItems &&
         items.length > 0 &&
-        (!prefs.layout ||
-          prefs.layout === "document" ||
-          prefs.layout === "columns2" ||
-          prefs.layout === "columns3") && (
+        prefs.layout !== "canvas" &&
+        prefs.layout !== "slideshow" && (
           <Minimap items={items} selectedIds={selectedIds} onJump={jumpToBlock} />
         )}
       {marquee && (
