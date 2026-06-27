@@ -22,6 +22,8 @@ import { Dropdown, DatePicker, Select } from 'antd';
 import dayjs from 'dayjs';
 import { ensureNotificationPermission } from '../../../utils/notifyBrowser';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
+// TEMPORARY: frontend-only deadline persistence until the backend migration lands.
+import { setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import * as signalR from '@microsoft/signalr';
 import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
@@ -488,12 +490,22 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
       reminderDone: false,
       reminderLeadMinutes: iso ? (note.reminderLeadMinutes ?? null) : null,
     });
+    // TEMPORARY: also persist locally until the backend migration lands.
+    setLocalDeadline(note.id, {
+      deadline: iso,
+      reminderDone: false,
+      reminderLeadMinutes: iso ? (note.reminderLeadMinutes ?? null) : null,
+      title: note.title || note.content || 'Untitled note',
+      date: note.date,
+    });
     if (iso) await ensureNotificationPermission();
   };
 
   const handleSetLead = (mins) => {
     clearFiredForNote(note.id);
     onUpdate(note.id, { reminderLeadMinutes: mins, reminderDone: false });
+    // TEMPORARY: also persist locally until the backend migration lands.
+    setLocalDeadline(note.id, { reminderLeadMinutes: mins, reminderDone: false });
   };
 
   const teachAI = async () => {

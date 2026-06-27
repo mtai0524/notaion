@@ -6,6 +6,8 @@ import {
   saveFiredSet,
   markKey,
 } from '../utils/deadlineReminders';
+// TEMPORARY: frontend-only deadline overlay until the backend migration lands.
+import { overlayDeadlines, markLocalReminderDone } from '../utils/deadlineLocalStore';
 
 const POLL_MS = 30 * 1000;
 
@@ -21,8 +23,16 @@ export const useDeadlineReminders = (enabled) => {
       if (runningRef.current) return;
       runningRef.current = true;
       try {
-        const res = await axiosInstance.get('/api/DailyNote/all');
-        const notes = Array.isArray(res.data) ? res.data : [];
+        // The API call may fail or omit deadline fields; the local overlay
+        // still drives reminders. Don't let a fetch error skip the overlay.
+        let apiNotes = [];
+        try {
+          const res = await axiosInstance.get('/api/DailyNote/all');
+          apiNotes = Array.isArray(res.data) ? res.data : [];
+        } catch (err) {
+          console.warn('[reminders] /all fetch failed, using local overlay only', err);
+        }
+        const notes = overlayDeadlines(apiNotes);
         const now = new Date();
         const fired = loadFiredSet();
         let changed = false;
@@ -45,6 +55,8 @@ export const useDeadlineReminders = (enabled) => {
             changed = true;
           }
           if (due.includes('due')) {
+            // TEMPORARY: mark done in the local overlay (backend can't store it yet).
+            markLocalReminderDone(note.id);
             try {
               await axiosInstance.post('/api/DailyNote', { ...note, reminderDone: true });
             } catch (err) {
