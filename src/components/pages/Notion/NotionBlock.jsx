@@ -261,6 +261,78 @@ const fmtTime = (raw) => {
   });
 };
 
+// File extensions that must NOT be dropped into an <iframe>. Cloudinary (and most
+// backends) serve these raw files with `Content-Disposition: attachment`, so an
+// iframe pointing at them triggers an automatic download on every render and shows
+// nothing — exactly the "blank box + auto-download" bug. Render a download card
+// for these instead.
+const DOWNLOADABLE_EXTENSIONS = [
+  "xls", "xlsx", "csv",
+  "doc", "docx", "ppt", "pptx",
+  "zip", "rar", "7z", "tar", "gz",
+  "mp3", "wav", "ogg", "flac",
+  "mp4", "mov", "avi", "mkv",
+];
+
+const getFileIcon = (ext) => {
+  if (["zip", "rar", "7z", "tar", "gz"].includes(ext)) return "📦";
+  if (["pdf", "doc", "docx", "txt"].includes(ext)) return "📑";
+  if (["ppt", "pptx"].includes(ext)) return "📽️";
+  if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
+  if (["mp4", "mov", "avi", "mkv"].includes(ext)) return "🎬";
+  if (["mp3", "wav", "ogg", "flac"].includes(ext)) return "🎵";
+  return "📄";
+};
+
+// Pull a display name + lowercase extension out of any file URL (Cloudinary,
+// backend download endpoint, …). Falls back gracefully on unparseable strings.
+const describeFileUrl = (content) => {
+  let fileName = "File";
+  try {
+    const url = new URL(content);
+    fileName =
+      url.searchParams.get("name") ||
+      decodeURIComponent(url.pathname.split("/").pop() || "") ||
+      content.split("/").pop();
+  } catch {
+    fileName = content.split("/").pop();
+  }
+  fileName = (fileName || "File").split("?")[0].split("#")[0] || "File";
+  const fileExt = fileName.includes(".")
+    ? fileName.split(".").pop().toLowerCase()
+    : "file";
+  return { fileName, fileExt };
+};
+
+const renderFileBlock = (item, handlers, attachment) => {
+  const { fileName, fileExt } = describeFileUrl(item.content);
+  return (
+    <div className="file-block">
+      <div className="file-icon-box">{getFileIcon(fileExt)}</div>
+      <div className="file-details">
+        <span className="file-name">{fileName}</span>
+        <span className="file-meta">{fileExt.toUpperCase()} · attachment</span>
+      </div>
+      <div className="file-actions">
+        <button
+          type="button"
+          className="download-btn"
+          onClick={() =>
+            handlers.onDownload(
+              item.content,
+              fileName,
+              attachment?.savedName,
+              attachment?.cloudUrl
+            )
+          }
+        >
+          Download
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const convertLinksToEmbedTags = (text) => {
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w-]+)/g;
@@ -407,50 +479,15 @@ const renderItemContent = (item, handlers) => {
     );
   }
   if (typeof item.content === "string" && item.content.match(/\bhttps?:\/\/\S+/)) {
-    if (item.content.includes("/api/files/download/")) {
-      let fileName = "File";
-      let fileExt = "file";
-      try {
-        const url = new URL(item.content);
-        fileName = url.searchParams.get("name") || item.content.split("/").pop();
-        fileExt = fileName.split(".").pop().toLowerCase();
-      } catch (err) {
-        fileName = item.content.split("/").pop();
-        fileExt = fileName.split(".").pop().toLowerCase();
-      }
-      const getFileIcon = (ext) => {
-        if (["zip", "rar", "7z"].includes(ext)) return "📦";
-        if (["pdf", "doc", "docx", "txt"].includes(ext)) return "📑";
-        if (["xls", "xlsx", "csv"].includes(ext)) return "📊";
-        if (["mp4", "mov", "avi"].includes(ext)) return "🎬";
-        if (["mp3", "wav", "ogg"].includes(ext)) return "🎵";
-        return "📄";
-      };
-      return (
-        <div className="file-block">
-          <div className="file-icon-box">{getFileIcon(fileExt)}</div>
-          <div className="file-details">
-            <span className="file-name">{fileName}</span>
-            <span className="file-meta">{fileExt.toUpperCase()} · attachment</span>
-          </div>
-          <div className="file-actions">
-            <button
-              type="button"
-              className="download-btn"
-              onClick={() =>
-                handlers.onDownload(
-                  item.content,
-                  fileName,
-                  attachment?.savedName,
-                  attachment?.cloudUrl
-                )
-              }
-            >
-              Download
-            </button>
-          </div>
-        </div>
-      );
+    // Backend download endpoint, or any uploaded file whose type can't be safely
+    // embedded (Excel, Word, archives, …). Render a download card instead of an
+    // iframe — embedding these auto-downloads them on every render and shows blank.
+    const { fileExt } = describeFileUrl(item.content);
+    if (
+      item.content.includes("/api/files/download/") ||
+      DOWNLOADABLE_EXTENSIONS.includes(fileExt)
+    ) {
+      return renderFileBlock(item, handlers, attachment);
     }
     return convertLinksToEmbedTags(item.content);
   }
