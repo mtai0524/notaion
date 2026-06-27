@@ -209,7 +209,7 @@ const ChatBox = ({ onClose }) => {
     if (showUserPanel) fetchParticipants();
   }, [showUserPanel, fetchParticipants]);
 
-  // Refresh participants khi có tin mới (debounce nhẹ)
+  // Refresh participants when new messages arrive (light debounce)
   useEffect(() => {
     if (!showUserPanel) return;
     const t = setTimeout(fetchParticipants, 800);
@@ -271,13 +271,13 @@ const ChatBox = ({ onClose }) => {
     });
   }, []);
 
-  // Lắng nghe tin nhắn Realtime thông qua Custom Event (Từ SignalRContext)
+  // Listen for realtime messages via Custom Event (from SignalRContext)
   useEffect(() => {
     const handleNewMessage = (event) => {
       const { user, content } = event.detail;
       console.log(`[ChatBox-Event] New message from ${user}`);
       
-      // Cập nhật danh sách tin nhắn
+      // Update message list
       if (user !== username) {
         setMessages((prev) => [
           ...prev,
@@ -324,7 +324,7 @@ const ChatBox = ({ onClose }) => {
     }
   }, [messagesLoaded, messages, latestMessageFromUser, initialLoad]);
 
-  // Tự động tắt trạng thái thinking nếu tin nhắn cuối cùng là của Chatbot (Fallback)
+  // Auto-clear thinking state if the last message is from Chatbot (fallback)
   useEffect(() => {
     if (messages.length > 0 && isAiThinking) {
       const lastMessage = messages[messages.length - 1];
@@ -391,7 +391,7 @@ const ChatBox = ({ onClose }) => {
         const reversedMessages = response.data.items.reverse();
 
         if (reversedMessages.length === 0) {
-          setHasMoreMessages(false); // Nếu không còn tin nhắn, ngừng tải thêm
+          setHasMoreMessages(false); // No more messages, stop loading
         } else {
           setMessages(prevMessages => [...reversedMessages, ...prevMessages]);
           setMessagesLoaded(true);
@@ -422,8 +422,8 @@ const ChatBox = ({ onClose }) => {
       notification.info({
         message: newAiMode ? "AI Mode Activated" : "AI Mode Deactivated",
         description: newAiMode
-          ? "You can giờ đây chat với AI Bot."
-          : "Bạn đang chat với mọi người.",
+          ? "You can now chat with the AI Bot."
+          : "You are now chatting with everyone.",
         placement: "topRight",
         duration: 2,
       });
@@ -443,7 +443,7 @@ const ChatBox = ({ onClose }) => {
     const tempMessageId = Date.now();
     const newMessage = {
       userId: userId || "anonymous",
-      userName: username || "mèo con ẩn danh",
+      userName: username || "anonymous kitten",
       content: messageContent,
       sentDate: new Date().toISOString(),
       id: tempMessageId,
@@ -468,14 +468,14 @@ const ChatBox = ({ onClose }) => {
 
         if (response.status === 200) {
           notification.success({
-            message: "Đã ghi vào bộ nhớ AI",
-            description: "AI sẽ sử dụng kiến thức này trong các câu trả lời sau.",
+            message: "Saved to AI memory",
+            description: "The AI will use this knowledge in future answers.",
             duration: 2
           });
           setMessages((prevMessages) =>
             prevMessages.map((msg) =>
               msg.id === tempMessageId
-                ? { ...msg, content: `📝 [Đã học]: ${msg.content}`, status: "sent" }
+                ? { ...msg, content: `📝 [Learned]: ${msg.content}`, status: "sent" }
                 : msg
             )
           );
@@ -542,7 +542,7 @@ const ChatBox = ({ onClose }) => {
     try {
       const uploaded = await uploadFilesToCloudinary(files, (pct) => setUploadProgress(pct));
       if (!Array.isArray(uploaded) || uploaded.length === 0) {
-        throw new Error("Upload trả về rỗng");
+        throw new Error("Upload returned empty");
       }
       const snippets = uploaded.map((meta) => {
         const url = meta.cloudUrl;
@@ -554,14 +554,14 @@ const ChatBox = ({ onClose }) => {
 
       if (snippets) appendToMessage(snippets);
       notification.success({
-        message: `Đã tải lên ${uploaded.length} file`,
+        message: `Uploaded ${uploaded.length} file(s)`,
         duration: 1.5
       });
     } catch (err) {
       console.error("Upload failed", err);
       notification.error({
-        message: "Upload thất bại",
-        description: err?.response?.data?.title || err?.message || "Không xác định",
+        message: "Upload failed",
+        description: err?.response?.data?.title || err?.message || "Unknown error",
         duration: 3
       });
     } finally {
@@ -612,7 +612,7 @@ const ChatBox = ({ onClose }) => {
         }
       }
     }
-    notification.info({ message: "Không có câu hỏi nào để regenerate", duration: 2 });
+    notification.info({ message: "No question to regenerate", duration: 2 });
   }, [messages, sendMessageWithContent]);
 
   const handleCopyMessage = useCallback(async (content, key) => {
@@ -643,6 +643,12 @@ const ChatBox = ({ onClose }) => {
 
   const handleMenuClick = async (e) => {
     switch (e.key) {
+      case "participants":
+        setShowUserPanel((s) => !s);
+        return;
+      case "study-mode":
+        setIsStudyMode((s) => !s);
+        return;
       case "filter-bot":
         toggleShowBot();
         return;
@@ -714,10 +720,10 @@ const ChatBox = ({ onClose }) => {
       const response = await axiosInstance.delete(`/api/Chat/delete-me-chats/${userId}`);
       if (response.status === 200) {
         console.log('All chats deleted successfully');
-        // gọi API nạp messages
+        // call API to load messages
         const fetchResponse = await axiosInstance.get("/api/Chat/get-chats");
         if (fetchResponse.status === 200) {
-          setMessages(fetchResponse.data); // cập nhật messages
+          setMessages(fetchResponse.data); // update messages
         } else {
           console.error('Failed to fetch updated messages');
         }
@@ -733,7 +739,7 @@ const ChatBox = ({ onClose }) => {
 
 
   const userStats = useMemo(() => {
-    // Snippet map từ messages đã load (chỉ để hiển thị preview, không ảnh hưởng count/total)
+    // Snippet map from loaded messages (preview only, does not affect count/total)
     const snippetByName = new Map();
     for (const m of messages) {
       const name = m.userName || "anonymous";
@@ -743,8 +749,8 @@ const ChatBox = ({ onClose }) => {
       if (!prev || ts > prev.ts) snippetByName.set(name, { ts, text: last });
     }
 
-    // Nguồn chính: server allParticipants (count + lastMessageAt cho toàn bộ DB).
-    // Fallback: derive từ messages khi panel chưa fetch xong.
+    // Primary source: server allParticipants (count + lastMessageAt for the whole DB).
+    // Fallback: derive from messages while the panel has not finished fetching.
     let rows;
     if (allParticipants.length > 0) {
       rows = allParticipants.map((p) => {
@@ -779,33 +785,48 @@ const ChatBox = ({ onClose }) => {
 
   const menuProfile = (
     <Menu onClick={handleMenuClick} className="custom-dropdown-menu chatbox-settings-menu" selectable={false}>
-      <div className="chat-menu-section-title">Lọc tin nhắn</div>
+      <div className="chat-menu-section-title">Tools</div>
+      <Menu.Item key="participants" className={`chat-menu-row chat-menu-toggle ${showUserPanel ? "is-on" : ""}`}>
+        <FontAwesomeIcon icon={faUsers} className="chat-menu-icon" />
+        <span className="chat-menu-text">Participants</span>
+        <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
+      </Menu.Item>
+      {username === "minhtai" && (
+        <Menu.Item key="study-mode" className={`chat-menu-row chat-menu-toggle ${isStudyMode ? "is-on" : ""}`}>
+          <FontAwesomeIcon icon={faBookOpen} className="chat-menu-icon" />
+          <span className="chat-menu-text">Study mode</span>
+          <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
+        </Menu.Item>
+      )}
+
+      <Menu.Divider />
+      <div className="chat-menu-section-title">Message filter</div>
       <Menu.Item key="filter-bot" className={`chat-menu-row chat-menu-toggle ${showBot ? "is-on" : ""}`}>
         <FontAwesomeIcon icon={faRobot} className="chat-menu-icon" />
-        <span className="chat-menu-text">Tin nhắn AI Bot</span>
+        <span className="chat-menu-text">AI Bot messages</span>
         <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
       </Menu.Item>
       <Menu.Item key="filter-users" className={`chat-menu-row chat-menu-toggle ${showUsers ? "is-on" : ""}`}>
         <FontAwesomeIcon icon={faUsers} className="chat-menu-icon" />
-        <span className="chat-menu-text">Tin nhắn người dùng</span>
+        <span className="chat-menu-text">User messages</span>
         <FontAwesomeIcon icon={faCheck} className="chat-menu-check" />
       </Menu.Item>
 
       <Menu.Divider />
-      <div className="chat-menu-section-title">Dọn dẹp</div>
+      <div className="chat-menu-section-title">Cleanup</div>
       <Menu.Item key="clear-me" className="chat-menu-row">
         <FontAwesomeIcon icon={faEraser} className="chat-menu-icon" />
-        <span className="chat-menu-text">Xóa tin nhắn của tôi</span>
+        <span className="chat-menu-text">Clear my messages</span>
       </Menu.Item>
       <Menu.Item danger key="clear" className="chat-menu-row">
         <FontAwesomeIcon icon={faBan} className="chat-menu-icon" />
-        <span className="chat-menu-text">Xóa tất cả</span>
+        <span className="chat-menu-text">Clear all</span>
       </Menu.Item>
     </Menu>
   );
 
   const markdownComponents = {
-    // Tùy chỉnh cách hiển thị link để giữ tính năng Embed YouTube/Spotify
+    // Customize link rendering to keep YouTube/Spotify embed support
     a: ({ href, children }) => {
       const embedRegex = /(https?:\/\/(?:www\.)?youtube\.com\/watch\?v=[\w\-]+)/g;
       const spotifyRegex = /(https?:\/\/open\.spotify\.com\/(?:track|album|playlist)\/[\w\-?=]+)/g;
@@ -848,13 +869,13 @@ const ChatBox = ({ onClose }) => {
 
       return <a href={href} target="_blank" rel="noopener noreferrer" className="italic text-blue-600">{children}</a>;
     },
-    // Tùy chỉnh hiển thị ảnh
+    // Customize image rendering
     img: ({ src, alt }) => (
       <div className="image-container">
         <img src={src} alt={alt} style={{ maxWidth: "100%", borderRadius: "8px", border: "1px solid #ddd" }} />
       </div>
     ),
-    // Thêm style cho code block + nút copy
+    // Add styling for code block + copy button
     code: ({ node, inline, className, children, ...props }) => {
       if (inline) {
         return (
@@ -889,15 +910,8 @@ const ChatBox = ({ onClose }) => {
   return (
     <div className={`chat-box ${isExpanded ? "expanded" : ""}`}>
       <div className="chat-header">
-        <h3 className="m-0 p-1 font-extrabold">Chat chít</h3>
+        <h3 className="m-0 p-1 font-extrabold">Chat</h3>
         <div className="section">
-          <button
-            className={`p-1 mr-2 ${showUserPanel ? "active-tool" : ""}`}
-            onClick={() => setShowUserPanel((s) => !s)}
-            title="Lọc theo user"
-          >
-            <FontAwesomeIcon icon={faUsers} />
-          </button>
           <button
             className={`p-1 mr-2 ${showSearch ? "active-tool" : ""}`}
             onClick={() => { setShowSearch((s) => !s); if (showSearch) setSearchQuery(""); }}
@@ -905,17 +919,7 @@ const ChatBox = ({ onClose }) => {
           >
             <FontAwesomeIcon icon={faSearch} />
           </button>
-          {username === "minhtai" && (
-            <button
-              className="p-1 mr-2"
-              onClick={() => setIsStudyMode(!isStudyMode)}
-              title={isStudyMode ? "Tắt chế độ học" : "Bật chế độ học"}
-              style={{ color: isStudyMode ? "#ff9800" : "inherit" }}
-            >
-              <FontAwesomeIcon icon={faBookOpen} />
-            </button>
-          )}
-          <button className="p-1 mr-2" onClick={() => setIsExpanded(!isExpanded)} title={isExpanded ? "Thu nhỏ" : "Mở rộng"}>
+          <button className="p-1 mr-2" onClick={() => setIsExpanded(!isExpanded)} title={isExpanded ? "Collapse" : "Expand"}>
             <FontAwesomeIcon icon={isExpanded ? faCompress : faExpand} />
           </button>
           <Dropdown
@@ -943,7 +947,7 @@ const ChatBox = ({ onClose }) => {
           <FontAwesomeIcon icon={faSearch} className="search-icon" />
           <input
             autoFocus
-            placeholder="Search trong tin nhắn đã tải..."
+            placeholder="Search loaded messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -971,7 +975,7 @@ const ChatBox = ({ onClose }) => {
                 <span className="user-avatar all">∗</span>
                 <span className="user-meta">
                   <span className="user-name">All users</span>
-                  <span className="user-sub">{messages.length} tin nhắn</span>
+                  <span className="user-sub">{messages.length} messages</span>
                 </span>
               </button>
               {userStats.map((u) => {
@@ -1001,7 +1005,7 @@ const ChatBox = ({ onClose }) => {
                 );
               })}
               {userStats.length === 0 && (
-                <div className="user-panel-empty">Chưa có ai trong cuộc trò chuyện.</div>
+                <div className="user-panel-empty">No one in the conversation yet.</div>
               )}
             </div>
           </aside>
@@ -1044,11 +1048,11 @@ const ChatBox = ({ onClose }) => {
             if (filtered.length === 0) {
               const label = userFilter || (q ? `"${searchQuery}"` : "");
               const hiddenByType = !showBot && !showUsers
-                ? "Đã ẩn tất cả tin nhắn — bật lại bộ lọc trong cài đặt"
+                ? "All messages hidden — re-enable filters in settings"
                 : !showBot
-                  ? "Đã ẩn tin nhắn AI Bot"
+                  ? "AI Bot messages hidden"
                   : !showUsers
-                    ? "Đã ẩn tin nhắn người dùng"
+                    ? "User messages hidden"
                     : null;
               return (
                 <div className="no-messages flex flex-col">
@@ -1138,14 +1142,14 @@ const ChatBox = ({ onClose }) => {
               </strong>
               <div className="chat-text thinking-animation">
                 <l-cardio size="25" stroke="2" speed="0.8" color="#504cd6" />
-                <span className="ml-2 italic text-gray-500">AI đang suy nghĩ...</span>
+                <span className="ml-2 italic text-gray-500">AI is thinking...</span>
               </div>
             </div>
           )}
         </div>
 
         {!isAtBottom && (
-          <button className="scroll-bottom-fab" onClick={scrollToBottom} title="Cuộn xuống mới nhất">
+          <button className="scroll-bottom-fab" onClick={scrollToBottom} title="Scroll to latest">
             <FontAwesomeIcon icon={faArrowDown} />
             {unreadCount > 0 && <span className="unread-pill">+{unreadCount}</span>}
           </button>
@@ -1155,7 +1159,7 @@ const ChatBox = ({ onClose }) => {
 
       {uploading && (
         <div className="chat-upload-bar">
-          <span className="upload-label">Đang tải lên... {uploadProgress}%</span>
+          <span className="upload-label">Uploading... {uploadProgress}%</span>
           <div className="upload-track">
             <div className="upload-fill" style={{ width: `${uploadProgress}%` }} />
           </div>
@@ -1177,7 +1181,7 @@ const ChatBox = ({ onClose }) => {
         />
         <button
           onClick={() => fileInputRef.current?.click()}
-          title="Đính kèm ảnh / file (hoặc paste / drag-drop)"
+          title="Attach image / file (or paste / drag-drop)"
           disabled={uploading}
         >
           <FontAwesomeIcon icon={faPaperclip} />
@@ -1193,7 +1197,7 @@ const ChatBox = ({ onClose }) => {
           rows={1}
           style={{ overflow: "hidden", resize: "none" }}
         />
-        <button onClick={handleAiModeToggle} title={aiMode ? "Đang chat với AI — click để chat với người" : "Click để chat với AI"}>
+        <button onClick={handleAiModeToggle} title={aiMode ? "Chatting with AI — click to chat with people" : "Click to chat with AI"}>
           <FontAwesomeIcon
             icon={faRobot}
             style={{ color: aiMode ? "#504cd6" : "#4c4c4c" }}
@@ -1202,7 +1206,7 @@ const ChatBox = ({ onClose }) => {
         <button onClick={handleSendMessage} title="Send (Enter)" disabled={!message.trim() || uploading}>
           <FontAwesomeIcon icon={faPaperPlane} />
         </button>
-        {dragOver && <div className="drag-overlay">Thả file vào đây để upload</div>}
+        {dragOver && <div className="drag-overlay">Drop files here to upload</div>}
       </div>
     </div>
   );
