@@ -14,6 +14,27 @@ import { uploadFilesToCloudinary } from "../../../services/fileService";
 import { cardio } from 'ldrs'
 import ReactMarkdown from 'react-markdown';
 cardio.register()
+
+// Compact, human chat timestamp: "09:36" today, "Yesterday 16:39", "15 Jun 16:39"
+// this year, "15 Jun 2025" for older. Avoids the long verbose date format.
+const formatChatTime = (raw) => {
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return "";
+  const now = new Date();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const sameDay = (a, b) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (sameDay(d, now)) return time;
+  if (sameDay(d, yesterday)) return `Yesterday ${time}`;
+  const day = d.toLocaleDateString([], { day: "2-digit", month: "short" });
+  if (d.getFullYear() === now.getFullYear()) return `${day} ${time}`;
+  return d.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+};
+
 const useUsername = () => {
   const animalNames = [
     "Lạc đà cười",
@@ -1080,23 +1101,36 @@ const ChatBox = ({ onClose }) => {
               const isLastBot = realIndex === lastBotIndex && msg.userName === "Chatbot";
               const msgKey = msg.id ?? `msg-${realIndex}`;
 
+              const isMine = msg.userName === username;
+              const isBot = msg.userName === "Chatbot";
+              const avatarInitial = (msg.userName || "?").charAt(0).toUpperCase();
+
               return (
                 <div
                   key={msgKey}
                   data-noti-key={String(msgKey)}
-                  className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.userName === username ? "sent-message" : "received-message"} ${highlightKey === String(msgKey) ? "is-highlighted" : ""}`}
+                  className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${isMine ? "sent-message" : "received-message"} ${highlightKey === String(msgKey) ? "is-highlighted" : ""}`}
                 >
-                  <strong className="chat-user">
-                    {msg.userName === "Chatbot" && (
-                      <FontAwesomeIcon icon={faRobot} style={{ marginRight: "5px", color: "#504cd6" }} />
+                  {!isMine && (
+                    <span className={`chat-avatar ${isBot ? "bot" : ""}`}>
+                      {isBot ? <FontAwesomeIcon icon={faRobot} /> : avatarInitial}
+                      <span className={`avatar-dot ${isOnline ? "online" : "offline"}`} />
+                    </span>
+                  )}
+                  <div className="chat-col">
+                    {!isMine && (
+                      <span className="chat-user">{msg.userName}</span>
                     )}
-                    {msg.userName}
-                    <span className={`status-dot ${isOnline ? "online" : "offline"}`} />
-                  </strong>
-                  <div className="chat-text">
-                    <ReactMarkdown components={markdownComponents}>
-                      {msg.content}
-                    </ReactMarkdown>
+                    <div className="chat-bubble">
+                      <div className="chat-text">
+                        <ReactMarkdown components={markdownComponents}>
+                          {msg.content}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                    <p className="chat-date" title={new Date(msg.sentDate).toLocaleString()}>
+                      {formatChatTime(msg.sentDate)}
+                    </p>
                   </div>
                   <div className="chat-message-actions">
                     <button
@@ -1119,30 +1153,23 @@ const ChatBox = ({ onClose }) => {
                       </button>
                     )}
                   </div>
-                  <p className="chat-date">
-                    {new Date(msg.sentDate)
-                      .toLocaleString("en-GB", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        day: "2-digit",
-                        month: "long",
-                        year: "numeric",
-                      })
-                      .replace(",", ", ")}
-                  </p>
                 </div>
               );
             });
           })()}
           {isAiThinking && (
             <div className="chat-message received-message ai-thinking">
-              <strong className="chat-user">
-                <FontAwesomeIcon icon={faRobot} style={{ marginRight: "5px", color: "#504cd6" }} />
-                Chatbot
-              </strong>
-              <div className="chat-text thinking-animation">
-                <l-cardio size="25" stroke="2" speed="0.8" color="#504cd6" />
-                <span className="ml-2 italic text-gray-500">AI is thinking...</span>
+              <span className="chat-avatar bot">
+                <FontAwesomeIcon icon={faRobot} />
+              </span>
+              <div className="chat-col">
+                <span className="chat-user">Chatbot</span>
+                <div className="chat-bubble">
+                  <div className="chat-text thinking-animation">
+                    <l-cardio size="22" stroke="2" speed="0.8" color="#504cd6" />
+                    <span className="ml-2 italic">AI is thinking...</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}

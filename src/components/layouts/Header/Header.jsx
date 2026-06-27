@@ -21,6 +21,7 @@ import {
   faComment,
   faTrashCan,
   faGamepad,
+  faClock,
 } from "@fortawesome/free-solid-svg-icons";
 
 import Cookies from "js-cookie";
@@ -32,6 +33,7 @@ import { HubConnectionBuilder } from "@microsoft/signalr";
 import axiosInstance from "../../../axiosConfig";
 import { useSignalR } from "../../../contexts/SignalRContext";
 import config from "../../../config";
+import { notifyBrowser } from "../../../utils/notifyBrowser";
 
 const Header = () => {
   const [dropdownVisible, setDropdownVisible] = useState(false);
@@ -49,6 +51,13 @@ const Header = () => {
   const [messageNotifs, setMessageNotifs] = useState(() => {
     try {
       const raw = sessionStorage.getItem("headerMsgNotifs");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+
+  const [deadlineNotifs, setDeadlineNotifs] = useState(() => {
+    try {
+      const raw = sessionStorage.getItem("headerDeadlineNotifs");
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
   });
@@ -74,6 +83,12 @@ const Header = () => {
       sessionStorage.setItem("headerMsgNotifs", JSON.stringify(messageNotifs.slice(0, 50)));
     } catch { /* quota — skip */ }
   }, [messageNotifs]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("headerDeadlineNotifs", JSON.stringify(deadlineNotifs.slice(0, 50)));
+    } catch { /* quota — skip */ }
+  }, [deadlineNotifs]);
 
   const truncate = (s, n = 90) => {
     const str = (s || "").replace(/!\[[^\]]*\]\([^)]+\)/g, "[ảnh]")
@@ -167,9 +182,33 @@ const Header = () => {
     };
   }, [currentUserName, currentUserIdFromToken]);
 
+  useEffect(() => {
+    const handler = (event) => {
+      const { noteId, title, date, kind } = event.detail || {};
+      if (!noteId) return;
+      const heading = kind === 'lead' ? '⏰ Deadline approaching' : '⏰ Deadline reached';
+      const id = `dl-${noteId}-${kind}`;
+      const path = `/daily-note?date=${date || ''}`;
+      setDeadlineNotifs((prev) => [
+        { id, type: 'deadline', kind, title, date, time: new Date().toISOString(), isRead: false },
+        ...prev.filter((n) => n.id !== id),
+      ].slice(0, 50));
+      showToast({
+        key: id,
+        title: heading,
+        description: title,
+        onClick: () => navigate(path),
+      });
+      notifyBrowser(heading, title, { path, tag: id });
+    };
+    window.addEventListener("notaion:deadline-reminder", handler);
+    return () => window.removeEventListener("notaion:deadline-reminder", handler);
+  }, [navigate]);
+
   const unreadFriendCount = notifications.filter((n) => !n.isRead).length;
   const unreadMessageCount = messageNotifs.filter((n) => !n.isRead).length;
-  const totalUnread = unreadFriendCount + unreadMessageCount;
+  const unreadDeadlineCount = deadlineNotifs.filter((n) => !n.isRead).length;
+  const totalUnread = unreadFriendCount + unreadMessageCount + unreadDeadlineCount;
 
   const markMessageRead = (id) => {
     setMessageNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
@@ -186,6 +225,15 @@ const Header = () => {
 
   const markAllMessagesRead = () => {
     setMessageNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const markDeadlineRead = (id) =>
+    setDeadlineNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  const markAllDeadlinesRead = () =>
+    setDeadlineNotifs((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  const clearDeadlineNotifs = () => {
+    setDeadlineNotifs([]);
+    sessionStorage.removeItem("headerDeadlineNotifs");
   };
 
   useEffect(() => {
@@ -722,6 +770,42 @@ const Header = () => {
     )
   );
 
+  const deadlineList = (
+    deadlineNotifs.length === 0 ? (
+      <div className="noti-empty">
+        <Empty description={false} />
+        <span>No reminders</span>
+      </div>
+    ) : (
+      <div className="noti-list">
+        {deadlineNotifs.map((notif) => (
+          <div
+            key={notif.id}
+            className={`noti-item noti-item-message ${notif.isRead ? "is-read" : "is-unread"}`}
+            onClick={() => { markDeadlineRead(notif.id); navigate(`/daily-note?date=${notif.date || ''}`); }}
+            title="Click to open the note's day"
+          >
+            {!notif.isRead && <span className="unread-dot" />}
+            <div className="noti-avatar noti-avatar-letter">
+              <FontAwesomeIcon icon={faClock} />
+            </div>
+            <div className="noti-body">
+              <div className="noti-line-1">
+                <span className="noti-name">
+                  {notif.kind === 'lead' ? 'Deadline approaching' : 'Deadline reached'}
+                </span>
+                <span className="noti-time">{formatRelative(notif.time)}</span>
+              </div>
+              <p className="noti-text noti-text-snippet" title={notif.title}>
+                {(notif.title || 'Untitled note').slice(0, 90)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    )
+  );
+
   const content = (
     <div className="noti-panel">
       <div className="noti-tabs">
@@ -740,6 +824,14 @@ const Header = () => {
           <FontAwesomeIcon icon={faComment} />
           <span>Message</span>
           {unreadMessageCount > 0 && <span className="noti-tab-badge">{unreadMessageCount}</span>}
+        </button>
+        <button
+          onClick={() => setActiveNotiTab("deadline")}
+          className={`noti-tab ${activeNotiTab === "deadline" ? "is-active" : ""}`}
+        >
+          <FontAwesomeIcon icon={faClock} />
+          <span>Reminders</span>
+          {unreadDeadlineCount > 0 && <span className="noti-tab-badge">{unreadDeadlineCount}</span>}
         </button>
       </div>
 
@@ -762,8 +854,19 @@ const Header = () => {
           </button>
         </div>
       )}
+      {activeNotiTab === "deadline" && deadlineNotifs.length > 0 && (
+        <div className="noti-actions">
+          <button onClick={markAllDeadlinesRead} className="noti-action-btn">
+            Mark all read
+          </button>
+          <button onClick={clearDeadlineNotifs} className="noti-action-btn is-danger">
+            <FontAwesomeIcon icon={faTrashCan} />
+            Clear
+          </button>
+        </div>
+      )}
 
-      {activeNotiTab === "friend" ? friendList : messageList}
+      {activeNotiTab === "friend" ? friendList : activeNotiTab === "message" ? messageList : deadlineList}
     </div>
   );
 
