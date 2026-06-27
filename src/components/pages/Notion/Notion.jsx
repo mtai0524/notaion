@@ -26,6 +26,10 @@ const reorder = (list, startIndex, endIndex) => {
 
 const generateRandomId = () => uuidv4();
 
+// Infinite scroll: how many blocks to render initially and how many more to add
+// each time the bottom sentinel comes into view.
+const PAGE_SIZE = 15;
+
 // ── View preference catalog ──────────────────────────────────────────
 const DEFAULT_PREFS = {
   density: "comfortable",   // compact | comfortable | spacious
@@ -708,6 +712,37 @@ const Notion = () => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  // ── Infinite scroll window ──────────────────────────────────────────
+  // Only render the first N blocks; a sentinel near the bottom grows N as the
+  // user scrolls, so a long page mounts gradually instead of all at once.
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef(null);
+
+  // Don't let the window exceed the number of blocks we actually have.
+  const shownCount = Math.min(visibleCount, items.length);
+  const hasMore = shownCount < items.length;
+
+  // Reset the window whenever a fresh set of items loads (e.g. after fetch).
+  useEffect(() => {
+    if (!loadingItems) setVisibleCount(PAGE_SIZE);
+  }, [loadingItems]);
+
+  useEffect(() => {
+    if (!hasMore) return;
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisibleCount((c) => c + PAGE_SIZE);
+        }
+      },
+      { root: null, rootMargin: "300px 0px", threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, shownCount]);
 
   const addItem = (id) => {
     const newBlockId = generateRandomId();
@@ -1582,7 +1617,7 @@ const Notion = () => {
                       </button>
                     </div>
                   </li>
-                  {items.map((item, index) => (
+                  {items.slice(0, shownCount).map((item, index) => (
                     <Draggable key={item.id} draggableId={item.id} index={index}>
                       {(provided) => (
                         <li
@@ -1629,6 +1664,19 @@ const Notion = () => {
                     </Draggable>
                   ))}
                   {provided.placeholder}
+                  {hasMore && (
+                    <li
+                      ref={sentinelRef}
+                      className="draggable-item infinite-sentinel"
+                      aria-hidden="true"
+                    >
+                      <div className="container-block">
+                        <div className="skeleton-block" />
+                        <div className="skeleton-block" />
+                        <div className="skeleton-block" />
+                      </div>
+                    </li>
+                  )}
                 </ul>
               )}
             </Droppable>
