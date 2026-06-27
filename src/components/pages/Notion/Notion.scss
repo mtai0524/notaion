@@ -1586,115 +1586,107 @@
   }
 }
 
-/* ───────── Minimap (quick-scroll strip) ───────── */
-.notion-minimap {
+/* ───────── Scrubber (thin scroll strip) ───────── */
+// A slim vertical strip of coloured ticks (one per block). Drag to scrub, click
+// to jump to the nearest block. A floating label shows the block name only for
+// the tick under the cursor — no overlapping text.
+.notion-scrubber {
   position: fixed;
-  top: 64px;
-  bottom: 24px;
-  right: 12px;
+  top: 72px;
+  bottom: 28px;
+  right: 8px;
   z-index: 45;
-  width: 132px;
-  opacity: 0.92;
-  transition: width 0.18s ease, opacity 0.18s ease;
+  width: 10px;
+  transition: width 0.15s ease;
 
-  /* Expand into a readable panel on hover. */
   &:hover {
-    opacity: 1;
-    width: 200px;
+    width: 14px;
   }
 
-  .minimap-track {
+  .scrubber-track {
     position: relative;
     width: 100%;
     height: 100%;
-    border-radius: 8px;
+    border-radius: 7px;
     background: rgba(127, 127, 127, 0.1);
-    border: 1px solid rgba(127, 127, 127, 0.18);
     cursor: pointer;
-    overflow: hidden;
-  }
-
-  .minimap-cell {
-    position: absolute;
-    left: 4px;
-    right: 4px;
-    width: auto;
-    min-height: 6px;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    padding: 0 5px;
-    border: none;
-    border-left: 3px solid rgba(127, 127, 127, 0.5);
-    border-radius: 3px;
-    background: rgba(127, 127, 127, 0.16);
-    color: rgba(60, 60, 60, 0.92);
-    font-size: 9px;
-    line-height: 1.1;
-    text-align: left;
-    overflow: hidden;
-    cursor: pointer;
-    transition: background 0.1s ease, transform 0.08s ease;
 
     &:hover {
-      background: rgba(127, 127, 127, 0.3);
-      transform: translateX(-2px);
+      background: rgba(127, 127, 127, 0.16);
     }
-
-    &.is-selected {
-      background: rgba(75, 139, 244, 0.28);
-      border-left-color: var(--notion-accent, #4b8bf4);
-    }
-
-    /* Type accents */
-    &.kind-h1 {
-      border-left-color: var(--notion-accent, #111827);
-      background: rgba(127, 127, 127, 0.26);
-      font-weight: 700;
-      font-size: 10px;
-    }
-    &.kind-h2 {
-      border-left-color: var(--notion-accent, #374151);
-      font-weight: 600;
-    }
-    &.kind-image { border-left-color: #2bb673; }
-    &.kind-file  { border-left-color: #4b8bf4; }
-    &.kind-text  { border-left-color: rgba(127, 127, 127, 0.5); }
   }
 
-  .minimap-cell-icon {
-    flex: 0 0 auto;
-    font-size: 9px;
-    opacity: 0.8;
+  .scrubber-tick {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    min-height: 2px;
+    border-radius: 2px;
+    background: rgba(127, 127, 127, 0.5);
+    pointer-events: none;
+
+    &.kind-h1 { background: var(--notion-accent, #111827); left: 1px; right: 1px; }
+    &.kind-h2 { background: var(--notion-accent, #374151); }
+    &.kind-image { background: #2bb673; }
+    &.kind-file  { background: #4b8bf4; }
+    &.kind-text  { background: rgba(127, 127, 127, 0.45); }
+    &.is-selected { background: var(--notion-accent, #4b8bf4); left: 0; right: 0; }
   }
 
-  .minimap-cell-label {
-    flex: 1 1 auto;
-    min-width: 0;
+  .scrubber-viewport {
+    position: absolute;
+    left: -1px;
+    right: -1px;
+    pointer-events: none;
+    border-radius: 4px;
+    background: rgba(75, 139, 244, 0.16);
+    border: 1px solid var(--notion-accent, #4b8bf4);
+  }
+
+  /* Floating label for the block under the cursor. */
+  .scrubber-tip {
+    position: absolute;
+    right: 18px;
+    transform: translateY(-50%);
+    max-width: 280px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 9px;
+    border-radius: 6px;
+    background: #1f1f1f;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-
-  .minimap-viewport {
-    position: absolute;
-    left: 0;
-    right: 0;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.28);
     pointer-events: none;
-    border-radius: 4px;
-    background: rgba(75, 139, 244, 0.14);
-    border: 1.5px solid var(--notion-accent, #4b8bf4);
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
-  }
-}
+    z-index: 1;
 
-/* Dark theme: lighten cell text so labels stay legible. */
-.notion-minimap.theme-dark {
-  .minimap-cell { color: rgba(230, 230, 230, 0.92); }
+    .scrubber-tip-text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .scrubber-tip-dot {
+      flex: 0 0 auto;
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: rgba(255, 255, 255, 0.6);
+
+      &.kind-h1, &.kind-h2 { background: #fff; border-radius: 1px; }
+      &.kind-image { background: #2bb673; }
+      &.kind-file  { background: #4b8bf4; }
+      &.kind-text  { background: rgba(255, 255, 255, 0.5); }
+    }
+  }
 }
 
 @media (max-width: 900px) {
-  .notion-minimap {
+  .notion-scrubber {
     display: none; /* not useful on touch / narrow screens */
   }
 }

@@ -171,6 +171,8 @@ const minimapMeta = (item, newContent) => {
 const Minimap = ({ items, newContent, selectedIds, onJump, theme }) => {
   const [metrics, setMetrics] = useState({ docHeight: 1, blocks: [] });
   const [view, setView] = useState({ top: 0, height: 0 });
+  // Block currently hovered/scrubbed — drives the floating label tooltip.
+  const [hover, setHover] = useState(null); // { id, label, kind, y }
   const trackRef = useRef(null);
   const draggingRef = useRef(false);
 
@@ -216,25 +218,54 @@ const Minimap = ({ items, newContent, selectedIds, onJump, theme }) => {
   }, [items, newContent]);
 
   const { docHeight } = metrics;
+  const pct = (v) => `${(v / docHeight) * 100}%`;
 
-  const scrollToRatio = useCallback(
+  // Map a track Y position to the nearest block + a document scroll target.
+  const resolveAt = useCallback(
     (clientY) => {
       const track = trackRef.current;
-      if (!track) return;
+      if (!track) return null;
       const rect = track.getBoundingClientRect();
       const ratio = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
-      const target = ratio * docHeight - window.innerHeight / 2;
-      window.scrollTo({ top: Math.max(0, target), behavior: "auto" });
+      const docY = ratio * docHeight;
+      // Nearest block to the cursor for the floating label.
+      let nearest = null;
+      let best = Infinity;
+      for (const b of metrics.blocks) {
+        const center = b.top + b.height / 2;
+        const d = Math.abs(center - docY);
+        if (d < best) {
+          best = d;
+          nearest = b;
+        }
+      }
+      return { ratio, docY, nearest, localY: clientY - rect.top };
     },
-    [docHeight]
+    [docHeight, metrics.blocks]
   );
 
+  const scrollToY = (docY) =>
+    window.scrollTo({ top: Math.max(0, docY - window.innerHeight / 2), behavior: "auto" });
+
+  const onMove = (e) => {
+    const info = resolveAt(e.clientY);
+    if (!info) return;
+    if (info.nearest) {
+      setHover({
+        id: info.nearest.id,
+        label: info.nearest.label || "Block",
+        kind: info.nearest.kind,
+        y: info.localY,
+      });
+    }
+    if (draggingRef.current) scrollToY(info.docY);
+  };
+
   const onPointerDown = (e) => {
-    // Let cell clicks handle their own jump; only scrub when grabbing the track.
-    if (e.target.closest(".minimap-cell")) return;
     draggingRef.current = true;
-    scrollToRatio(e.clientY);
-    const move = (ev) => draggingRef.current && scrollToRatio(ev.clientY);
+    const info = resolveAt(e.clientY);
+    if (info) scrollToY(info.docY);
+    const move = (ev) => onMove(ev);
     const up = () => {
       draggingRef.current = false;
       document.removeEventListener("mousemove", move);
@@ -244,36 +275,35 @@ const Minimap = ({ items, newContent, selectedIds, onJump, theme }) => {
     document.addEventListener("mouseup", up);
   };
 
-  const pct = (v) => `${(v / docHeight) * 100}%`;
-
   return (
-    <div className={`notion-minimap theme-${theme || "auto"}`} aria-hidden="false">
+    <div className={`notion-scrubber theme-${theme || "auto"}`} aria-hidden="false">
+      {hover && (
+        <div className="scrubber-tip" style={{ top: hover.y }}>
+          <span className={`scrubber-tip-dot kind-${hover.kind}`} />
+          <span className="scrubber-tip-text">{hover.label}</span>
+        </div>
+      )}
       <div
         ref={trackRef}
-        className="minimap-track"
+        className="scrubber-track"
         onMouseDown={onPointerDown}
+        onMouseMove={onMove}
+        onMouseLeave={() => !draggingRef.current && setHover(null)}
+        onClick={() => hover && onJump(hover.id)}
         role="presentation"
       >
+        {/* Thin tick per block, coloured by type — no overlapping text. */}
         {metrics.blocks.map((b) => (
-          <button
+          <span
             key={b.id}
-            type="button"
-            className={`minimap-cell kind-${b.kind} ${
+            className={`scrubber-tick kind-${b.kind} ${
               selectedIds?.has(b.id) ? "is-selected" : ""
             }`}
-            style={{ top: pct(b.top), height: pct(b.height) }}
-            title={b.label || "Block"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onJump(b.id);
-            }}
-          >
-            {b.icon && <span className="minimap-cell-icon">{b.icon}</span>}
-            <span className="minimap-cell-label">{b.label}</span>
-          </button>
+            style={{ top: pct(b.top), height: `max(2px, ${pct(b.height)})` }}
+          />
         ))}
         <div
-          className="minimap-viewport"
+          className="scrubber-viewport"
           style={{ top: pct(view.top), height: pct(view.height) }}
         />
       </div>
