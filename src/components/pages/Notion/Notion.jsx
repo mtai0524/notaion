@@ -168,7 +168,7 @@ const minimapMeta = (item, newContent) => {
   return { kind: "text", icon: "", label: raw };
 };
 
-const Minimap = ({ items, newContent, selectedIds, onJump }) => {
+const Minimap = ({ items, newContent, selectedIds, onJump, theme }) => {
   const [metrics, setMetrics] = useState({ docHeight: 1, blocks: [] });
   const [view, setView] = useState({ top: 0, height: 0 });
   const trackRef = useRef(null);
@@ -247,7 +247,7 @@ const Minimap = ({ items, newContent, selectedIds, onJump }) => {
   const pct = (v) => `${(v / docHeight) * 100}%`;
 
   return (
-    <div className="notion-minimap" aria-hidden="false">
+    <div className={`notion-minimap theme-${theme || "auto"}`} aria-hidden="false">
       <div
         ref={trackRef}
         className="minimap-track"

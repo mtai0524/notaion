@@ -1589,50 +1589,91 @@
 /* ───────── Minimap (quick-scroll strip) ───────── */
 .notion-minimap {
   position: fixed;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  z-index: 40;
-  height: 60vh;
-  width: 18px;
-  opacity: 0.45;
-  transition: opacity 0.15s ease, width 0.15s ease;
+  top: 64px;
+  bottom: 24px;
+  right: 12px;
+  z-index: 45;
+  width: 132px;
+  opacity: 0.92;
+  transition: width 0.18s ease, opacity 0.18s ease;
 
+  /* Expand into a readable panel on hover. */
   &:hover {
     opacity: 1;
-    width: 26px;
+    width: 200px;
   }
 
   .minimap-track {
     position: relative;
     width: 100%;
     height: 100%;
-    border-radius: 6px;
-    background: rgba(127, 127, 127, 0.08);
+    border-radius: 8px;
+    background: rgba(127, 127, 127, 0.1);
+    border: 1px solid rgba(127, 127, 127, 0.18);
     cursor: pointer;
     overflow: hidden;
   }
 
   .minimap-cell {
     position: absolute;
-    left: 2px;
-    right: 2px;
+    left: 4px;
+    right: 4px;
     width: auto;
-    min-height: 2px;
-    padding: 0;
+    min-height: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 5px;
     border: none;
-    border-radius: 2px;
-    background: rgba(127, 127, 127, 0.35);
+    border-left: 3px solid rgba(127, 127, 127, 0.5);
+    border-radius: 3px;
+    background: rgba(127, 127, 127, 0.16);
+    color: rgba(60, 60, 60, 0.92);
+    font-size: 9px;
+    line-height: 1.1;
+    text-align: left;
+    overflow: hidden;
     cursor: pointer;
-    transition: background 0.1s ease;
+    transition: background 0.1s ease, transform 0.08s ease;
 
     &:hover {
-      background: var(--notion-accent, #4b8bf4);
+      background: rgba(127, 127, 127, 0.3);
+      transform: translateX(-2px);
     }
 
     &.is-selected {
-      background: var(--notion-accent, #4b8bf4);
+      background: rgba(75, 139, 244, 0.28);
+      border-left-color: var(--notion-accent, #4b8bf4);
     }
+
+    /* Type accents */
+    &.kind-h1 {
+      border-left-color: var(--notion-accent, #111827);
+      background: rgba(127, 127, 127, 0.26);
+      font-weight: 700;
+      font-size: 10px;
+    }
+    &.kind-h2 {
+      border-left-color: var(--notion-accent, #374151);
+      font-weight: 600;
+    }
+    &.kind-image { border-left-color: #2bb673; }
+    &.kind-file  { border-left-color: #4b8bf4; }
+    &.kind-text  { border-left-color: rgba(127, 127, 127, 0.5); }
+  }
+
+  .minimap-cell-icon {
+    flex: 0 0 auto;
+    font-size: 9px;
+    opacity: 0.8;
+  }
+
+  .minimap-cell-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .minimap-viewport {
@@ -1641,13 +1682,19 @@
     right: 0;
     pointer-events: none;
     border-radius: 4px;
-    background: rgba(75, 139, 244, 0.18);
-    border: 1px solid var(--notion-accent, #4b8bf4);
+    background: rgba(75, 139, 244, 0.14);
+    border: 1.5px solid var(--notion-accent, #4b8bf4);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
   }
 }
 
-@media (max-width: 768px) {
+/* Dark theme: lighten cell text so labels stay legible. */
+.notion-page.theme-dark ~ .notion-minimap,
+.theme-dark .notion-minimap {
+  .minimap-cell { color: rgba(230, 230, 230, 0.92); }
+}
+
+@media (max-width: 900px) {
   .notion-minimap {
     display: none; /* not useful on touch / narrow screens */
   }
