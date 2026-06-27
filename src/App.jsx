@@ -10,12 +10,10 @@ import LoginSuccess from "./components/pages/Login/LoginSuccess";
 import Home from "./components/pages/Home/Home";
 import Register from "./components/pages/Register/Register";
 import Profile from "./components/pages/Profile/Profile";
-import Guide from "./components/pages/Guide/Guide";
 import Note from "./components/pages/Note/Note";
 import Page from "./components/pages/Page/Page";
 import Content from "./components/pages/Content/Content";
 import Setting from "./components/pages/Setting/Setting";
-import Shortcut from "./components/pages/Shortcut/Shortcut";
 import { SignalRProvider, useSignalR } from "./contexts/SignalRContext";
 import FloatingButton from "./components/pages/ChatBox/FloatingButton";
 import ChatBox from "./components/pages/ChatBox/ChatBox";
@@ -161,8 +159,6 @@ const MainApp = () => {
         <Route path="/page/" element={<Page />} />
         <Route path="/page/content/:id" element={<Content />} />
         <Route path="/setting/" element={<Setting />} />
-        <Route path="/guide" element={<Guide />} />
-        <Route path="/shortcut" element={<Shortcut />} />
         <Route path="/note" element={<Note />} />
         <Route path="/daily-note" element={<DailyNoteApp />} />
         <Route path="/files" element={<FilesPage />} />

@@ -1,0 +1,148 @@
+/* Files page — unified with the Notaion page style (matches Setting):
+   big header, accent section titles, container-bg cards, hard offset shadow. */
+.files-page-wrapper {
+  padding: 60px 20px;
+  min-height: 100vh;
+  background-color: transparent;
+  transition: all 0.3s ease;
+}
+
+.files-container {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+}
+
+.files-header {
+  text-align: center;
+
+  h1 {
+    font-size: 3rem;
+    font-weight: 900;
+    margin-bottom: 12px;
+    color: var(--text-color);
+
+    svg {
+      color: var(--accent-color);
+      margin-left: 14px;
+    }
+  }
+
+  p {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+}
+
+.files-section {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.files-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Reuse the same section-title treatment as Setting for consistency. */
+.files-section .section-title {
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding-left: 15px;
+  border-left: 6px solid var(--accent-color);
+  color: var(--text-color);
+  margin: 0;
+}
+
+.files-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--text-color);
+  background: var(--container-bg);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid)
+    var(--global-border-color, var(--border-color));
+  border-radius: var(--global-border-radius, var(--radius-sm));
+  box-shadow: var(--box-shadow-sm);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover:not(:disabled) {
+    transform: translate(-2px, -2px);
+    box-shadow: var(--box-shadow);
+  }
+  &:active:not(:disabled) {
+    transform: translate(0, 0);
+    box-shadow: none;
+  }
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.files-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 18px;
+  background: var(--container-bg);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid)
+    var(--danger-color, #ef4444);
+  border-radius: var(--global-border-radius, var(--radius-sm));
+  box-shadow: var(--box-shadow-sm);
+  color: var(--danger-color, #ef4444);
+
+  > svg {
+    font-size: 1.2rem;
+    margin-top: 2px;
+  }
+
+  .files-error-title {
+    font-weight: 900;
+    margin: 0;
+  }
+  .files-error-msg {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin: 2px 0 0;
+  }
+}
+
+.files-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 70px 0;
+  color: var(--text-muted);
+  font-weight: 600;
+
+  .files-spinner {
+    width: 42px;
+    height: 42px;
+    border: 3px solid rgba(127, 127, 127, 0.25);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: files-spin 0.7s linear infinite;
+  }
+}
+
+@keyframes files-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .files-page-wrapper { padding: 40px 16px; }
+  .files-header h1 { font-size: 2.2rem; }
+}
