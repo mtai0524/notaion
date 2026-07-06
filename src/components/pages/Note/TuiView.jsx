@@ -106,9 +106,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const scrollPreview = (dy) => previewRef.current?.scrollBy({ top: dy });
 
   const commit = () => {
+    if (mode !== 'title' && mode !== 'body') return;
     if (current) onUpdate(current.id, mode === 'title' ? { title: draft } : { content: draft });
     setMode('normal');
     setDraft('');
+  };
+
+  // Clicking anywhere outside an open editor must not strand the TUI in an
+  // edit mode with no focused input (all shortcuts would go dead) — commit
+  // the draft on blur instead.
+  const onInputBlur = () => {
+    if (mode === 'search') setMode('normal');
+    else commit();
   };
 
   const cycleCategory = () => {
@@ -269,7 +278,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                     <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
                     {sel && mode === 'title' ? (
                       <input ref={inputRef} className="tui-input" value={draft}
-                             onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="title…" />
+                             onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="title…" />
                     ) : (
                       <span className="tui-title">{n.title || '(untitled)'}</span>
                     )}
@@ -293,7 +302,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
               </div>
               {mode === 'body' ? (
                 <textarea ref={inputRef} className="tui-textarea" value={draft}
-                          onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="body… (Ctrl+Enter to save)" />
+                          onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="body… (Ctrl+Enter to save)" />
               ) : (
                 <pre className="tui-pv-body" onClick={editBody} title="Click to edit">{current.content || '— empty —  (press i or click to edit)'}</pre>
               )}
@@ -308,7 +317,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       <div className="tui-status">
         {mode === 'search' ? (
           <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
-            onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} placeholder="search…" /></span>
+            onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">delete &quot;{current?.title || 'untitled'}&quot;? (y/n)</span>
         ) : (
