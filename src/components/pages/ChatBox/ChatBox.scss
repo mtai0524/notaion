@@ -4,8 +4,8 @@
    ─────────────────────────────────────────────────────────────── */
 .chat-box {
   --chat-bg: var(--container-bg, #fff);
-  --chat-received: var(--container-bg, #fff);
-  --chat-sent: var(--text-color, #111827);
+  --chat-received: rgba(17, 24, 39, 0.05);
+  --chat-sent: var(--color-background-button, #fff1c9);
   --chat-radius: var(--radius-sm, 6px);
   --chat-line: var(--border-color, #111827);
 
@@ -162,11 +162,10 @@
   padding: 0;
 }
 
-/* ── Bubble ── */
+/* ── Bubble — flat and light; color alone tells sent from received ── */
 .chat-bubble {
   padding: 8px 12px;
   border-radius: var(--chat-radius);
-  border: 1.5px solid var(--chat-line);
   background: var(--chat-received);
   color: var(--text-color);
   font-size: 0.92rem;
@@ -174,17 +173,13 @@
   max-width: 100%;
 }
 
-.received-message .chat-bubble {
-  box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
-}
-
 .sent-message .chat-bubble {
   background: var(--chat-sent);
-  color: var(--container-bg, #fff);
-  box-shadow: 1.5px 1.5px 0 0 var(--shadow-color, #111827);
+  color: var(--text-color, #111827);
+  border: 1px solid rgba(17, 24, 39, 0.15);
 
   a { color: inherit; text-decoration: underline; }
-  code { background: rgba(255, 255, 255, 0.2); color: inherit; }
+  code { background: rgba(17, 24, 39, 0.08); color: inherit; }
 }
 
 /* ── Date / time ── */
@@ -265,16 +260,16 @@
 
   &:hover { background: rgba(127, 127, 127, 0.15); color: var(--text-color); }
 
-  /* the send button (last) is the inverted-ink CTA */
+  /* the send button (last) is the CTA — app's cream button color */
   &:last-child {
-    background: var(--text-color);
-    color: var(--container-bg);
+    background: var(--color-background-button, #fff1c9);
+    color: #111827;
     border: 1.5px solid var(--chat-line);
     box-shadow: -1.5px 1.5px 0 0 var(--shadow-color);
 
     &:hover {
-      background: var(--text-color);
-      color: var(--container-bg);
+      background: var(--color-background-button, #fff1c9);
+      color: #111827;
       transform: translate(1px, -1px);
       box-shadow: -2.5px 2.5px 0 0 var(--shadow-color);
     }
@@ -332,7 +327,7 @@ iframe {
 }
 
 .ai-thinking .chat-bubble {
-  background-color: var(--color-background-button, #fff1c9) !important;
+  background-color: rgba(127, 127, 127, 0.12) !important;
 }
 
 @keyframes noti-flash {
@@ -351,10 +346,10 @@ iframe {
   padding: 5px 0;
 }
 
-/* ── Header tool active state — inverted ink, no accent glow ── */
+/* ── Header tool active state — cream chip, no accent glow ── */
 .chat-header .section button.active-tool {
-  color: var(--container-bg) !important;
-  background: var(--text-color) !important;
+  color: #111827 !important;
+  background: var(--color-background-button, #fff1c9) !important;
 }
 
 /* ── Search bar ── */
@@ -909,10 +904,17 @@ body.dark-mode-active {
   .chat-search-bar,
   .chat-upload-bar { background: rgba(255, 255, 255, 0.03) !important; }
 
+  .chat-box {
+    --chat-received: rgba(255, 255, 255, 0.08);
+    --chat-sent: rgba(255, 255, 255, 0.16);
+  }
+
   .chat-bubble { color: var(--text-color); }
 
-  /* sent = inverted ink: light bubble, dark text */
-  .sent-message .chat-bubble { color: var(--container-bg); }
+  .sent-message .chat-bubble {
+    color: var(--text-color);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
 
   .ai-thinking .chat-bubble { background-color: rgba(255, 255, 255, 0.1) !important; }
 

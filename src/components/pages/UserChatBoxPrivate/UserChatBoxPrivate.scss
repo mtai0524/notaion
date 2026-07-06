@@ -141,16 +141,16 @@
       cursor: not-allowed;
     }
 
-    /* send button — inverted-ink CTA */
+    /* send button — CTA in the app's cream button color */
     &:last-child {
-      background: var(--text-color, #111827);
-      color: var(--container-bg, #fff);
+      background: var(--color-background-button, #fff1c9);
+      color: #111827;
       border: 1.5px solid var(--border-color, #111827);
       box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
 
       &:hover {
-        background: var(--text-color, #111827);
-        color: var(--container-bg, #fff);
+        background: var(--color-background-button, #fff1c9);
+        color: #111827;
         transform: translate(1px, -1px);
         box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827);
       }
