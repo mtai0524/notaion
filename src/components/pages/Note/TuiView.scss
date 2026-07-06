@@ -47,6 +47,9 @@
       position: absolute;
       top: -10px;
       left: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       padding: 0 8px;
       background: var(--container-bg, #fff);
       border: 1.5px solid var(--border-color, #111827);
@@ -56,6 +59,15 @@
       letter-spacing: 1.2px;
       color: var(--text-muted, #6b7280);
       transition: background 0.12s ease, color 0.12s ease;
+
+      /* the panel's jump key (1/2/3) */
+      kbd {
+        font: inherit;
+        padding: 0 4px;
+        border: 1px solid currentColor;
+        border-radius: 3px;
+        line-height: 1.3;
+      }
     }
 
     /* focused panel: full hard shadow + inverted-ink title chip */

@@ -23,6 +23,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
   const rootRef = useRef(null);
   const inputRef = useRef(null);
+  const previewRef = useRef(null);
 
   const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
 
@@ -87,6 +88,19 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     if (delta !== 0) onChangeDate(delta);
   };
 
+  const createNote = (template) => {
+    setFocus('notes');
+    setFolderIndex(0);
+    setQuery('');
+    Promise.resolve(onAdd(template)).then((created) => {
+      if (created?.id) setPendingSelect(created.id);
+    });
+  };
+
+  const toggleDone = () => { if (current) onUpdate(current.id, { isCompleted: !current.isCompleted }); };
+
+  const scrollPreview = (dy) => previewRef.current?.scrollBy({ top: dy });
+
   const commit = () => {
     if (current) onUpdate(current.id, mode === 'title' ? { title: draft } : { content: draft });
     setMode('normal');
@@ -118,18 +132,21 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     // Global keys regardless of focused panel.
     switch (k) {
       case 'Tab': moveFocus(e.shiftKey ? -1 : 1); e.preventDefault(); return;
+      case '1': setFocus('folders'); e.preventDefault(); return;
+      case '2': setFocus('notes'); e.preventDefault(); return;
+      case '3': setFocus('preview'); e.preventDefault(); return;
       case '?': setMode('help'); e.preventDefault(); return;
       case '/': setMode('search'); e.preventDefault(); return;
       case '[': onChangeDate(-1); e.preventDefault(); return;
       case ']': onChangeDate(1); e.preventDefault(); return;
       case 't': goToday(); e.preventDefault(); return;
-      case 'n':
-        setFocus('notes');
-        setFolderIndex(0);
-        setQuery('');
-        Promise.resolve(onAdd('blank')).then((created) => {
-          if (created?.id) setPendingSelect(created.id);
-        });
+      case 'f': setFolderIndex((i) => (i + 1) % folders.length); e.preventDefault(); return;
+      case 'F': setFolderIndex((i) => (i - 1 + folders.length) % folders.length); e.preventDefault(); return;
+      case 'n': createNote('blank'); e.preventDefault(); return;
+      case 'N': createNote('todo'); e.preventDefault(); return;
+      case 'Escape':
+        if (query) setQuery('');
+        else setFocus('notes');
         e.preventDefault();
         return;
       default: break;
@@ -138,6 +155,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     if (focus === 'folders') {
       if (k === 'j' || k === 'ArrowDown') setFolderIndex((i) => Math.min(i + 1, folders.length - 1));
       else if (k === 'k' || k === 'ArrowUp') setFolderIndex((i) => Math.max(i - 1, 0));
+      else if (k === 'g') setFolderIndex(0);
+      else if (k === 'G') setFolderIndex(folders.length - 1);
       else if (k === 'Enter' || k === 'l' || k === 'ArrowRight') setFocus('notes');
       else return;
       e.preventDefault();
@@ -151,10 +170,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         case 'g': setNoteIndex(0); break;
         case 'G': setNoteIndex(Math.max(0, list.length - 1)); break;
         case 'h': case 'ArrowLeft': setFocus('folders'); break;
-        case 'L': case 'ArrowRight': setFocus('preview'); break;
+        case 'l': case 'L': case 'ArrowRight': setFocus('preview'); break;
         case 'Enter': case 'e': editTitle(); break;
         case 'i': editBody(); break;
-        case 'x': case ' ': if (current) onUpdate(current.id, { isCompleted: !current.isCompleted }); break;
+        case 'x': case ' ': toggleDone(); break;
         case 'c': cycleCategory(); break;
         case 'd': if (current) setMode('delete'); break;
         default: return;
@@ -164,9 +183,25 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     }
 
     if (focus === 'preview') {
-      if (k === 'i' || k === 'Enter') editBody();
-      else if (k === 'h' || k === 'ArrowLeft') setFocus('notes');
-      else return;
+      switch (k) {
+        case 'i': case 'Enter': editBody(); break;
+        case 'h': case 'ArrowLeft': setFocus('notes'); break;
+        case 'j': case 'ArrowDown': scrollPreview(48); break;
+        case 'k': case 'ArrowUp': scrollPreview(-48); break;
+        case 'g': previewRef.current?.scrollTo({ top: 0 }); break;
+        case 'G': previewRef.current?.scrollTo({ top: previewRef.current.scrollHeight }); break;
+        case 'x': case ' ': toggleDone(); break;
+        case 'c': cycleCategory(); break;
+        case 'd':
+          if (e.ctrlKey) scrollPreview((previewRef.current?.clientHeight || 400) / 2);
+          else if (current) setMode('delete');
+          break;
+        case 'u':
+          if (e.ctrlKey) scrollPreview(-(previewRef.current?.clientHeight || 400) / 2);
+          else return;
+          break;
+        default: return;
+      }
       e.preventDefault();
     }
   };
@@ -188,7 +223,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const done = notes.filter((n) => n.isCompleted).length;
   const filtered = list.length !== notes.length;
   const hints = {
-    normal: 'Tab:focus  j/k:move  Enter/e:title  i:body  x:done  c:cat  n:new  d:del  [ ]:day  t:today  /:find  ?:help',
+    normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
     body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel',
     delete: '',
@@ -201,7 +236,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       <div className="tui-body">
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
-          <span className="tui-panel-title">FOLDERS</span>
+          <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
           <div className="tui-scroll">
             {folders.map((f, i) => (
               <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''}`}
@@ -215,7 +250,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
         {/* NOTES */}
         <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`}>
-          <span className="tui-panel-title">{`NOTES · ${dateLabel}`}</span>
+          <span className="tui-panel-title"><kbd>2</kbd>{`NOTES · ${dateLabel}`}</span>
           <div className="tui-scroll">
             {list.length === 0 ? (
               <div className="tui-empty">{query ? 'no matches' : 'no entries — press n'}</div>
@@ -242,9 +277,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
         {/* PREVIEW */}
         <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`}>
-          <span className="tui-panel-title">PREVIEW</span>
+          <span className="tui-panel-title"><kbd>3</kbd>PREVIEW</span>
           {current ? (
-            <div className="tui-scroll">
+            <div className="tui-scroll" ref={previewRef}>
               <div className="tui-pv-title">{current.title || '(untitled)'}</div>
               <div className="tui-pv-meta">
                 <span className="tag">{catOf(current)}</span>
@@ -286,17 +321,21 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
             <div className="tui-help-h">DAILY NOTES · TUI</div>
             <table>
               <tbody>
+                <tr><td>1 2 3</td><td>jump to folders / notes / preview</td></tr>
                 <tr><td>Tab / h l</td><td>cycle / move panel focus</td></tr>
-                <tr><td>j k · g G</td><td>move · top / bottom</td></tr>
+                <tr><td>j k · g G</td><td>move · top / bottom (scrolls preview too)</td></tr>
+                <tr><td>Ctrl+d / Ctrl+u</td><td>preview half-page down / up</td></tr>
+                <tr><td>f / F</td><td>next / previous folder filter</td></tr>
                 <tr><td>Enter / e</td><td>edit title</td></tr>
                 <tr><td>i</td><td>edit body (Ctrl+Enter save)</td></tr>
                 <tr><td>x / space</td><td>toggle done</td></tr>
                 <tr><td>c</td><td>cycle category</td></tr>
-                <tr><td>n</td><td>new note</td></tr>
+                <tr><td>n / N</td><td>new note / new todo list</td></tr>
                 <tr><td>d then y</td><td>delete</td></tr>
                 <tr><td>[ ]</td><td>previous / next day</td></tr>
                 <tr><td>t</td><td>jump to today</td></tr>
-                <tr><td>/</td><td>search</td></tr>
+                <tr><td>/</td><td>search · Esc clears</td></tr>
+                <tr><td>Esc</td><td>clear search / back to notes</td></tr>
                 <tr><td>?</td><td>this help</td></tr>
                 <tr><td>2×click / click body</td><td>edit title / body with mouse</td></tr>
               </tbody>
