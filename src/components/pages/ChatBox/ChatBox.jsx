@@ -893,7 +893,7 @@ const ChatBox = ({ onClose }) => {
     // Customize image rendering
     img: ({ src, alt }) => (
       <div className="image-container">
-        <img src={src} alt={alt} style={{ maxWidth: "100%", borderRadius: "8px", border: "1px solid #ddd" }} />
+        <img src={src} alt={alt} style={{ maxWidth: "100%", borderRadius: "var(--radius-sm, 6px)", border: "1.5px solid var(--border-color)" }} />
       </div>
     ),
     // Add styling for code block + copy button
@@ -986,7 +986,7 @@ const ChatBox = ({ onClose }) => {
             <header className="user-panel-head">
               <FontAwesomeIcon icon={faUsers} />
               <span>Participants ({userStats.length})</span>
-              {participantsLoading && <l-cardio size="12" stroke="1.5" speed="0.8" color="#504cd6" />}
+              {participantsLoading && <l-cardio size="12" stroke="1.5" speed="0.8" color="var(--text-color)" />}
             </header>
             <div className="user-panel-list">
               <button
@@ -1166,7 +1166,7 @@ const ChatBox = ({ onClose }) => {
                 <span className="chat-user">Chatbot</span>
                 <div className="chat-bubble">
                   <div className="chat-text thinking-animation">
-                    <l-cardio size="22" stroke="2" speed="0.8" color="#504cd6" />
+                    <l-cardio size="22" stroke="2" speed="0.8" color="var(--text-color)" />
                     <span className="ml-2 italic">AI is thinking...</span>
                   </div>
                 </div>
@@ -1227,7 +1227,7 @@ const ChatBox = ({ onClose }) => {
         <button onClick={handleAiModeToggle} title={aiMode ? "Chatting with AI — click to chat with people" : "Click to chat with AI"}>
           <FontAwesomeIcon
             icon={faRobot}
-            style={{ color: aiMode ? "#504cd6" : "#4c4c4c" }}
+            style={{ color: aiMode ? "var(--text-color)" : "var(--text-muted)" }}
           />
         </button>
         <button onClick={handleSendMessage} title="Send (Enter)" disabled={!message.trim() || uploading}>
