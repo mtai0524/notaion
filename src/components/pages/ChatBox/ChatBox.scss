@@ -685,15 +685,24 @@ body.dark-mode-active {
 /* ── Code block with copy ── */
 .code-block-wrap {
   position: relative;
+  margin: 8px 0;
+
+  /* neutralize the tailwind my-2 so the button inset is measured
+     from the dark block itself, not the outer wrap */
+  pre {
+    margin: 0 !important;
+    /* keep the first line of code clear of the overlaid copy button */
+    padding-right: 78px !important;
+  }
 
   .code-copy-btn {
     position: absolute;
     top: 6px;
     right: 6px;
     z-index: 2;
-    background: rgba(255, 255, 255, 0.08);
+    background: #111827;
     color: #e5e7eb;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-sm, 4px);
     padding: 2px 8px;
     font-size: 10px;
@@ -704,7 +713,7 @@ body.dark-mode-active {
     gap: 2px;
 
     &:hover {
-      background: rgba(255, 255, 255, 0.15);
+      background: #374151;
       color: #fff;
     }
   }
