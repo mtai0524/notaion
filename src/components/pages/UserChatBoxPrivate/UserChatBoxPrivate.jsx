@@ -384,6 +384,13 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
     const isUserOnline = (userId) => {
         return onlineUsers.some(user => user.userId === userId);
     };
+    // Avatar of the friend whose conversation is open (for received bubbles).
+    const chatAvatar = useMemo(() => {
+        const f = friends.find(fr => fr.senderId === chatUserId || fr.receiverId === chatUserId);
+        if (!f) return null;
+        return f.senderId === currentUserId ? f.receiverAvatar : f.senderAvatar;
+    }, [friends, chatUserId, currentUserId]);
+
     // friendUserId -> LastSeen (from the friends list / get-friends payload).
     const friendLastSeen = useMemo(() => {
         const map = {};
@@ -450,36 +457,72 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                             (() => {
                                 const term = highlightTerm.toLowerCase();
                                 let firstMatchFound = false;
+                                // Messages closer together than this and from the same
+                                // sender collapse into one visual group (Messenger-style).
+                                const GROUP_WINDOW_MS = 5 * 60 * 1000;
+                                const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateString();
+                                const inSameGroup = (a, b) =>
+                                    a && b &&
+                                    a.currentUserName === b.currentUserName &&
+                                    sameDay(a.sentDate, b.sentDate) &&
+                                    Math.abs(new Date(b.sentDate) - new Date(a.sentDate)) < GROUP_WINDOW_MS;
+
                                 return chatMessages.map((msg, index) => {
                                     const isMatch = term && (msg.content || "").toLowerCase().includes(term);
                                     const setRef = isMatch && !firstMatchFound;
                                     if (setRef) firstMatchFound = true;
+
+                                    const sent = msg.currentUserName === username;
+                                    const prevMsg = index > 0 ? chatMessages[index - 1] : null;
+                                    const nextMsg = index < chatMessages.length - 1 ? chatMessages[index + 1] : null;
+                                    const msgDate = new Date(msg.sentDate);
+                                    const showDaySeparator = !prevMsg || !sameDay(prevMsg.sentDate, msg.sentDate);
+                                    const groupedWithNext = inSameGroup(msg, nextMsg);
+                                    // Time + avatar only close out a group, so a run of
+                                    // quick messages reads as one block.
+                                    const showTime = !groupedWithNext;
+
                                     return (
-                                        <div
-                                            key={index}
-                                            ref={setRef ? firstMatchRef : null}
-                                            className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.currentUserName === username ? "sent-message " : "received-message"} ${isMatch ? "has-match" : ""}`}
-                                        >
-                                            <div className="chat-col">
-                                                <strong className="chat-user">
-                                                    {msg.currentUserName}
-                                                </strong>
-                                                <div className="chat-bubble">
-                                                    <div className="chat-text">
-                                                        <MessageContent content={msg.content} highlight={highlightTerm} />
-                                                    </div>
+                                        <React.Fragment key={index}>
+                                            {showDaySeparator && (
+                                                <div className="chat-day-separator">
+                                                    <span>
+                                                        {msgDate.toLocaleDateString("en-GB", {
+                                                            day: "2-digit",
+                                                            month: "long",
+                                                            year: "numeric",
+                                                        })}
+                                                    </span>
                                                 </div>
-                                                <p className="chat-date">
-                                                    {new Date(msg.sentDate).toLocaleString("en-GB", {
-                                                        hour: "2-digit",
-                                                        minute: "2-digit",
-                                                        day: "2-digit",
-                                                        month: "long",
-                                                        year: "numeric",
-                                                    }).replace(",", ", ")}
-                                                </p>
+                                            )}
+                                            <div
+                                                ref={setRef ? firstMatchRef : null}
+                                                className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${sent ? "sent-message" : "received-message"} ${isMatch ? "has-match" : ""} ${groupedWithNext ? "in-group" : ""}`}
+                                            >
+                                                {!sent && (
+                                                    <span className={`chat-avatar private-avatar ${groupedWithNext ? "ghost" : ""}`}>
+                                                        {chatAvatar
+                                                            ? <img src={chatAvatar} alt={chatUser} />
+                                                            : (chatUser?.[0] || "?").toUpperCase()}
+                                                    </span>
+                                                )}
+                                                <div className="chat-col">
+                                                    <div className="chat-bubble">
+                                                        <div className="chat-text">
+                                                            <MessageContent content={msg.content} highlight={highlightTerm} />
+                                                        </div>
+                                                    </div>
+                                                    {showTime && (
+                                                        <p className="chat-date">
+                                                            {msgDate.toLocaleTimeString("en-GB", {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })}
+                                                        </p>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
+                                        </React.Fragment>
                                     );
                                 });
                             })()
