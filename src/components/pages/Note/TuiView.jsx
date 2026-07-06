@@ -52,6 +52,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search') {
       requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      // Leaving an edit mode unmounts the focused input, which would drop DOM
+      // focus (and all shortcuts) — hand it back to the TUI root.
+      requestAnimationFrame(() => rootRef.current?.focus());
     }
   }, [mode]);
 
@@ -232,7 +236,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   };
 
   return (
-    <div className="tui" tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown} onClick={() => rootRef.current?.focus()}>
+    <div className="tui" tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
+         onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus(); }}>
       <div className="tui-body">
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
