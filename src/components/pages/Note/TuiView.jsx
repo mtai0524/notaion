@@ -253,6 +253,63 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const done = notes.filter((n) => n.isCompleted).length;
   const filtered = list.length !== notes.length;
+
+  const helpSections = [
+    {
+      title: 'PANELS',
+      rows: [
+        ['1 / 2 / 3', 'jump to folders / notes / preview'],
+        ['Tab / Shift+Tab', 'cycle panel focus'],
+        ['h / l', 'panel left / right'],
+        ['Esc', 'clear search · back to notes'],
+      ],
+    },
+    {
+      title: 'NOTES',
+      rows: [
+        ['j / k', 'move down / up'],
+        ['g / G', 'first / last note'],
+        ['Enter / e', 'edit title'],
+        ['i', 'edit body · Ctrl+Enter saves'],
+        ['x / space', 'toggle done'],
+        ['d → y', 'delete note'],
+        ['n / N', 'new note / todo (active folder)'],
+      ],
+    },
+    {
+      title: 'CATEGORY',
+      rows: [
+        ['c / C', 'cycle forward / back'],
+        [`m → 1-${catList.length}`, 'set category directly'],
+        ['f / F', 'folder filter next / prev'],
+      ],
+    },
+    {
+      title: 'DATE & SEARCH',
+      rows: [
+        ['[ / ]', 'previous / next day'],
+        ['t', 'jump to today'],
+        ['/', 'search · Esc clears'],
+      ],
+    },
+    {
+      title: 'PREVIEW',
+      rows: [
+        ['j / k', 'scroll'],
+        ['g / G', 'top / bottom'],
+        ['Ctrl+d / Ctrl+u', 'half page down / up'],
+        ['x · c · d', 'act on note from preview'],
+      ],
+    },
+    {
+      title: 'MOUSE',
+      rows: [
+        ['2×click title', 'edit title'],
+        ['click body', 'edit body'],
+        ['click chips', 'pick category'],
+      ],
+    },
+  ];
   const hints = {
     normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c/C·m:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
     category: '',
@@ -355,6 +412,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
             <span className="tui-hints">{hints[mode]}</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
+            <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
+                    onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus(); }}>?</button>
           </>
         )}
       </div>
