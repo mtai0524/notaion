@@ -1734,6 +1734,7 @@ const DailyNoteApp = () => {
       console.error("[ERROR] Entry creation failed:", error);
       setSyncStatus('error');
     }
+    return newNote;
   };
 
   const updateNote = (id, updates) => {

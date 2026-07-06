@@ -20,6 +20,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const [mode, setMode] = useState('normal'); // normal | title | body | search | delete | help
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
+  const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
   const rootRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -55,6 +56,19 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const current = list[noteIndex] || null;
 
+  // Once the freshly created note lands in the list, select it and open the
+  // title editor — mirrors "n" in clin-rs.
+  useEffect(() => {
+    if (!pendingSelect) return;
+    const idx = list.findIndex((n) => n.id === pendingSelect);
+    if (idx >= 0) {
+      setNoteIndex(idx);
+      setDraft('');
+      setMode('title');
+      setPendingSelect(null);
+    }
+  }, [list, pendingSelect]);
+
   const moveFocus = (dir) => {
     const i = PANELS.indexOf(focus);
     setFocus(PANELS[(i + dir + PANELS.length) % PANELS.length]);
@@ -62,6 +76,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const editTitle = () => { if (current) { setDraft(current.title || ''); setMode('title'); } };
   const editBody = () => { if (current) { setDraft(current.content || ''); setMode('body'); } };
+
+  const goToday = () => {
+    const [y, m, d] = dateLabel.split('-').map(Number);
+    const cur = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    cur.setHours(0, 0, 0, 0);
+    const delta = Math.round((today - cur) / 86400000);
+    if (delta !== 0) onChangeDate(delta);
+  };
 
   const commit = () => {
     if (current) onUpdate(current.id, mode === 'title' ? { title: draft } : { content: draft });
@@ -98,9 +122,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       case '/': setMode('search'); e.preventDefault(); return;
       case '[': onChangeDate(-1); e.preventDefault(); return;
       case ']': onChangeDate(1); e.preventDefault(); return;
+      case 't': goToday(); e.preventDefault(); return;
       case 'n':
-        onAdd('blank');
-        requestAnimationFrame(() => { setFocus('notes'); setFolderIndex(0); setNoteIndex(notes.length); setDraft(''); setMode('title'); });
+        setFocus('notes');
+        setFolderIndex(0);
+        setQuery('');
+        Promise.resolve(onAdd('blank')).then((created) => {
+          if (created?.id) setPendingSelect(created.id);
+        });
         e.preventDefault();
         return;
       default: break;
@@ -157,8 +186,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   };
 
   const done = notes.filter((n) => n.isCompleted).length;
+  const filtered = list.length !== notes.length;
   const hints = {
-    normal: 'Tab:focus  j/k:move  Enter/e:title  i:body  x:done  c:cat  n:new  d:del  [ ]:day  /:find  ?:help',
+    normal: 'Tab:focus  j/k:move  Enter/e:title  i:body  x:done  c:cat  n:new  d:del  [ ]:day  t:today  /:find  ?:help',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
     body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel',
     delete: '',
@@ -194,8 +224,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 const sel = i === noteIndex;
                 return (
                   <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''}`}
-                       onClick={() => { setNoteIndex(i); setFocus('notes'); }}>
-                    <span className="tui-check">{n.isCompleted ? '' : ''}</span>
+                       onClick={() => { setNoteIndex(i); setFocus('notes'); }}
+                       onDoubleClick={() => { setNoteIndex(i); setDraft(n.title || ''); setMode('title'); }}>
+                    <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
                     {sel && mode === 'title' ? (
                       <input ref={inputRef} className="tui-input" value={draft}
                              onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="title…" />
@@ -224,7 +255,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 <textarea ref={inputRef} className="tui-textarea" value={draft}
                           onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} placeholder="body… (Ctrl+Enter to save)" />
               ) : (
-                <pre className="tui-pv-body">{current.content || '— empty —  (press i to edit)'}</pre>
+                <pre className="tui-pv-body" onClick={editBody} title="Click to edit">{current.content || '— empty —  (press i or click to edit)'}</pre>
               )}
             </div>
           ) : (
@@ -244,7 +275,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
           <>
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
             <span className="tui-hints">{hints[mode]}</span>
-            <span className="tui-stat">{notes.length} notes · {done} done</span>
+            <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
           </>
         )}
       </div>
@@ -264,8 +295,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 <tr><td>n</td><td>new note</td></tr>
                 <tr><td>d then y</td><td>delete</td></tr>
                 <tr><td>[ ]</td><td>previous / next day</td></tr>
+                <tr><td>t</td><td>jump to today</td></tr>
                 <tr><td>/</td><td>search</td></tr>
                 <tr><td>?</td><td>this help</td></tr>
+                <tr><td>2×click / click body</td><td>edit title / body with mouse</td></tr>
               </tbody>
             </table>
           </div>
