@@ -460,21 +460,25 @@ const UserChatBoxPrivate = forwardRef((props, ref) => {
                                             ref={setRef ? firstMatchRef : null}
                                             className={`chat-message ${msg.status === "sending" ? "sending-message" : ""} ${msg.currentUserName === username ? "sent-message " : "received-message"} ${isMatch ? "has-match" : ""}`}
                                         >
-                                            <strong className="chat-user">
-                                                {msg.currentUserName}
-                                            </strong>
-                                            <div className="chat-text">
-                                                <MessageContent content={msg.content} highlight={highlightTerm} />
+                                            <div className="chat-col">
+                                                <strong className="chat-user">
+                                                    {msg.currentUserName}
+                                                </strong>
+                                                <div className="chat-bubble">
+                                                    <div className="chat-text">
+                                                        <MessageContent content={msg.content} highlight={highlightTerm} />
+                                                    </div>
+                                                </div>
+                                                <p className="chat-date">
+                                                    {new Date(msg.sentDate).toLocaleString("en-GB", {
+                                                        hour: "2-digit",
+                                                        minute: "2-digit",
+                                                        day: "2-digit",
+                                                        month: "long",
+                                                        year: "numeric",
+                                                    }).replace(",", ", ")}
+                                                </p>
                                             </div>
-                                            <p className="chat-date">
-                                                {new Date(msg.sentDate).toLocaleString("en-GB", {
-                                                    hour: "2-digit",
-                                                    minute: "2-digit",
-                                                    day: "2-digit",
-                                                    month: "long",
-                                                    year: "numeric",
-                                                }).replace(",", ", ")}
-                                            </p>
                                         </div>
                                     );
                                 });

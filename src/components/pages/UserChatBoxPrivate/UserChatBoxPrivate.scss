@@ -2,9 +2,9 @@
    (the .chat-box / .chat-text / .image-container base styles come from ChatBox.scss) */
 
 .chat-box.drag-over {
-  outline: 2px dashed #504cd6;
+  outline: 2px dashed var(--border-color, #111827);
   outline-offset: -4px;
-  background: rgba(80, 76, 214, 0.04);
+  background: rgba(127, 127, 127, 0.06);
 }
 
 /* Markdown body inside a private message bubble */
@@ -40,9 +40,11 @@
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
+  background: var(--bg-color, #fdfcf8);
+  border-top: 1px dashed var(--border-color, #111827);
   font-size: 11px;
   font-weight: 700;
-  color: #4338ca;
+  color: var(--text-color, #111827);
 
   .upload-label {
     flex-shrink: 0;
@@ -52,22 +54,87 @@
   .upload-bar {
     flex: 1;
     height: 4px;
-    background: #e0e7ff;
+    background: rgba(127, 127, 127, 0.25);
     border-radius: 2px;
     overflow: hidden;
 
     .upload-fill {
       height: 100%;
-      background: #504cd6;
+      background: var(--text-color, #111827);
       transition: width 0.15s ease;
     }
   }
 }
 
-/* Attachment button matches the send button sizing */
-.chat-input-private button[disabled] {
-  opacity: 0.4;
-  cursor: not-allowed;
+/* ── Input row — same brutalist language as the global chat input ── */
+.chat-input-private {
+  gap: 6px;
+  padding: 10px 12px;
+  background: var(--container-bg, #fff);
+  border: none;
+  border-top: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color, #111827);
+  outline: none;
+
+  &:focus { outline: none; }
+
+  button {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-sm, 6px);
+    color: var(--text-muted, #6b7280);
+    cursor: pointer;
+    background-color: transparent;
+    transition: background 0.12s ease, color 0.12s ease, transform 0.12s ease,
+      box-shadow 0.12s ease;
+
+    &:hover { background: rgba(127, 127, 127, 0.15); color: var(--text-color); }
+
+    &[disabled] {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* send button — inverted-ink CTA */
+    &:last-child {
+      background: var(--text-color, #111827);
+      color: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+
+      &:hover {
+        background: var(--text-color, #111827);
+        color: var(--container-bg, #fff);
+        transform: translate(1px, -1px);
+        box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827);
+      }
+      &:active { transform: translate(0, 0); box-shadow: -1px 1px 0 0 var(--shadow-color, #111827); }
+    }
+  }
+}
+
+.textarea-private {
+  padding: 8px 12px;
+  box-sizing: border-box;
+  border: 1.5px solid var(--border-color, #111827);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--container-bg, #fff);
+  font-size: 0.92rem;
+  line-height: 1.4;
+  color: var(--text-color, #111827);
+  transition: box-shadow 0.12s ease;
+
+  &::placeholder { color: var(--text-muted, #9ca3af); }
+
+  &:focus {
+    outline: none;
+    box-shadow: -2px 2px 0 0 var(--shadow-color, #111827);
+  }
 }
 
 /* ============ Messenger-style conversation list ============ */
@@ -81,7 +148,7 @@
   padding: 7px 12px;
   background: var(--container-bg);
   border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color);
-  border-radius: var(--radius-lg, 20px);
+  border-radius: var(--radius-md, 12px);
 
   .chat-search-icon { color: var(--text-muted); font-size: 0.85rem; }
 
@@ -179,7 +246,7 @@
     height: 20px;
     padding: 0 6px;
     border-radius: 10px;
-    background: var(--accent-color);
+    background: var(--danger-color, #ef4444);
     color: #fff;
     font-size: 0.7rem;
     font-weight: 700;
