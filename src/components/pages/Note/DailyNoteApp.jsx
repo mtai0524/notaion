@@ -1672,7 +1672,7 @@ const DailyNoteApp = () => {
     []
   );
 
-  const addNote = async (template = 'blank', x = null, y = null) => {
+  const addNote = async (template = 'blank', x = null, y = null, overrides = {}) => {
     let content = '';
     let title = '';
     let category = 'MEMO';
@@ -1717,6 +1717,8 @@ const DailyNoteApp = () => {
       reminderLeadMinutes: null,
       reminderDone: false,
       updatedAt: new Date().toISOString(),
+      // caller-supplied field overrides (e.g. TUI creates in the active folder's category)
+      ...overrides,
     };
 
     setTopZIndex(prev => prev + 1);

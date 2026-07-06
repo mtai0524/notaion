@@ -26,6 +26,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const previewRef = useRef(null);
 
   const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
+  const catList = categories && categories.length ? categories : ['MEMO'];
 
   // FOLDERS = "ALL" + each category, with live counts.
   const folders = useMemo(() => {
@@ -92,11 +93,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     if (delta !== 0) onChangeDate(delta);
   };
 
+  // New notes inherit the active folder's category, so "n" inside TASK
+  // creates a TASK note and it stays visible in the current filter.
   const createNote = (template) => {
     setFocus('notes');
-    setFolderIndex(0);
     setQuery('');
-    Promise.resolve(onAdd(template)).then((created) => {
+    const cat = activeFolder && activeFolder.key !== 'ALL' ? activeFolder.key : null;
+    const overrides = cat ? { category: cat, customCategory: cat } : {};
+    Promise.resolve(onAdd(template, null, null, overrides)).then((created) => {
       if (created?.id) setPendingSelect(created.id);
     });
   };
@@ -120,11 +124,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     else commit();
   };
 
-  const cycleCategory = () => {
+  const setCategory = (cat) => {
+    if (current && cat) onUpdate(current.id, { category: cat, customCategory: cat });
+  };
+
+  const cycleCategory = (dir = 1) => {
     if (!current) return;
-    const cats = categories && categories.length ? categories : ['MEMO'];
-    const next = cats[(cats.indexOf(catOf(current)) + 1) % cats.length];
-    onUpdate(current.id, { category: next, customCategory: next });
+    const next = catList[(catList.indexOf(catOf(current)) + dir + catList.length) % catList.length];
+    setCategory(next);
   };
 
   const handleKeyDown = (e) => {
@@ -135,6 +142,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
     if (mode === 'delete') {
       if (e.key === 'y' || e.key === 'Y') { if (current) onDelete(current.id, true); }
+      setMode('normal');
+      e.preventDefault();
+      return;
+    }
+
+    if (mode === 'category') {
+      const idx = parseInt(e.key, 10);
+      if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) setCategory(catList[idx - 1]);
       setMode('normal');
       e.preventDefault();
       return;
@@ -157,6 +172,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       case 'F': setFolderIndex((i) => (i - 1 + folders.length) % folders.length); e.preventDefault(); return;
       case 'n': createNote('blank'); e.preventDefault(); return;
       case 'N': createNote('todo'); e.preventDefault(); return;
+      case 'm': if (current) setMode('category'); e.preventDefault(); return;
       case 'Escape':
         if (query) setQuery('');
         else setFocus('notes');
@@ -187,7 +203,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         case 'Enter': case 'e': editTitle(); break;
         case 'i': editBody(); break;
         case 'x': case ' ': toggleDone(); break;
-        case 'c': cycleCategory(); break;
+        case 'c': cycleCategory(1); break;
+        case 'C': cycleCategory(-1); break;
         case 'd': if (current) setMode('delete'); break;
         default: return;
       }
@@ -204,7 +221,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         case 'g': previewRef.current?.scrollTo({ top: 0 }); break;
         case 'G': previewRef.current?.scrollTo({ top: previewRef.current.scrollHeight }); break;
         case 'x': case ' ': toggleDone(); break;
-        case 'c': cycleCategory(); break;
+        case 'c': cycleCategory(1); break;
+        case 'C': cycleCategory(-1); break;
         case 'd':
           if (e.ctrlKey) scrollPreview((previewRef.current?.clientHeight || 400) / 2);
           else if (current) setMode('delete');
@@ -236,7 +254,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const done = notes.filter((n) => n.isCompleted).length;
   const filtered = list.length !== notes.length;
   const hints = {
-    normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
+    normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c/C·m:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
+    category: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
     body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel',
     delete: '',
@@ -320,6 +339,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">delete &quot;{current?.title || 'untitled'}&quot;? (y/n)</span>
+        ) : mode === 'category' ? (
+          <span className="tui-cat-pick">
+            set category:&nbsp;
+            {catList.map((c, i) => (
+              <span key={c} className={`tui-cat-opt ${catOf(current) === c ? 'cur' : ''}`}
+                    onClick={() => { setCategory(c); setMode('normal'); }}>
+                <kbd>{i + 1}</kbd>{c}
+              </span>
+            ))}
+            <span className="tui-cat-esc">Esc:cancel</span>
+          </span>
         ) : (
           <>
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
@@ -343,8 +373,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 <tr><td>Enter / e</td><td>edit title</td></tr>
                 <tr><td>i</td><td>edit body (Ctrl+Enter save)</td></tr>
                 <tr><td>x / space</td><td>toggle done</td></tr>
-                <tr><td>c</td><td>cycle category</td></tr>
-                <tr><td>n / N</td><td>new note / new todo list</td></tr>
+                <tr><td>c / C</td><td>cycle category forward / back</td></tr>
+                <tr><td>m then 1-{catList.length}</td><td>set category directly</td></tr>
+                <tr><td>n / N</td><td>new note / todo — in the active folder&apos;s category</td></tr>
                 <tr><td>d then y</td><td>delete</td></tr>
                 <tr><td>[ ]</td><td>previous / next day</td></tr>
                 <tr><td>t</td><td>jump to today</td></tr>
