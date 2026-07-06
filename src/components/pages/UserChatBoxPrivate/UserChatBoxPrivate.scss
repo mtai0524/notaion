@@ -141,16 +141,16 @@
       cursor: not-allowed;
     }
 
-    /* send button — CTA in the app's cream button color */
+    /* send button — CTA, same treatment as .floating-button */
     &:last-child {
-      background: var(--color-background-button, #fff1c9);
-      color: #111827;
+      background: var(--container-bg, #fff);
+      color: var(--text-color, #111827);
       border: 1.5px solid var(--border-color, #111827);
       box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
 
       &:hover {
-        background: var(--color-background-button, #fff1c9);
-        color: #111827;
+        background: var(--container-bg, #fff);
+        color: var(--text-color, #111827);
         transform: translate(1px, -1px);
         box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827);
       }
