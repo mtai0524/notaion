@@ -625,7 +625,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
           '--note-border-width': `${note.borderWidth || 1}px`,
           '--note-border-radius': `${note.borderRadius || 0}px`,
           '--note-line-height': note.lineHeight || 1.6,
-          '--note-font-family': note.fontFamily || "'JetBrains Mono', 'Fira Code', monospace",
+          '--note-font-family': note.fontFamily || "var(--font-main), 'Inter', sans-serif",
           '--note-glow-radius': `${note.glowRadius || 20}px`,
           transform: `rotate(${note.rotation || 0}deg)`,
         }}
@@ -858,8 +858,8 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
                     <div className="ins-field">
                       <label><FaFont /> FONT_FAMILY</label>
                       <div className="ins-toggle-group full-width">
-                        {[{ label: 'MONO', val: "'JetBrains Mono', monospace" }, { label: 'SANS', val: "'Inter', sans-serif" }, { label: 'SERIF', val: "'Georgia', serif" }, { label: 'CODE', val: "'Fira Code', monospace" }].map(f => (
-                          <button key={f.label} className={`ins-toggle ${note.fontFamily === f.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontFamily: f.val })}>{f.label}</button>
+                        {[{ label: 'DEFAULT', val: null }, { label: 'MONO', val: "'JetBrains Mono', monospace" }, { label: 'SANS', val: "'Inter', sans-serif" }, { label: 'SERIF', val: "'Georgia', serif" }, { label: 'CODE', val: "'Fira Code', monospace" }].map(f => (
+                          <button key={f.label} className={`ins-toggle ${(note.fontFamily || null) === f.val ? 'active' : ''}`} onClick={() => onUpdate(note.id, { fontFamily: f.val })}>{f.label}</button>
                         ))}
                       </div>
                     </div>
