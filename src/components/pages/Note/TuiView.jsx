@@ -425,30 +425,30 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
       {mode === 'help' && (
         <div className="tui-help" onClick={() => setMode('normal')}>
-          <div className="tui-help-box">
-            <div className="tui-help-h">DAILY NOTES · TUI</div>
-            <table>
-              <tbody>
-                <tr><td>1 2 3</td><td>jump to folders / notes / preview</td></tr>
-                <tr><td>Tab / h l</td><td>cycle / move panel focus</td></tr>
-                <tr><td>j k · g G</td><td>move · top / bottom (scrolls preview too)</td></tr>
-                <tr><td>Ctrl+d / Ctrl+u</td><td>preview half-page down / up</td></tr>
-                <tr><td>f / F</td><td>next / previous folder filter</td></tr>
-                <tr><td>Enter / e</td><td>edit title</td></tr>
-                <tr><td>i</td><td>edit body (Ctrl+Enter save)</td></tr>
-                <tr><td>x / space</td><td>toggle done</td></tr>
-                <tr><td>c / C</td><td>cycle category forward / back</td></tr>
-                <tr><td>m then 1-{catList.length}</td><td>set category directly</td></tr>
-                <tr><td>n / N</td><td>new note / todo — in the active folder&apos;s category</td></tr>
-                <tr><td>d then y</td><td>delete</td></tr>
-                <tr><td>[ ]</td><td>previous / next day</td></tr>
-                <tr><td>t</td><td>jump to today</td></tr>
-                <tr><td>/</td><td>search · Esc clears</td></tr>
-                <tr><td>Esc</td><td>clear search / back to notes</td></tr>
-                <tr><td>?</td><td>this help</td></tr>
-                <tr><td>2×click / click body</td><td>edit title / body with mouse</td></tr>
-              </tbody>
-            </table>
+          <div className="tui-help-box" onClick={(e) => e.stopPropagation()}>
+            <div className="tui-help-head">
+              <span className="tui-help-h">DAILY NOTES · TUI — KEYMAP</span>
+              <button type="button" className="tui-help-close" title="Close (any key)"
+                      onClick={() => { setMode('normal'); rootRef.current?.focus(); }}>×</button>
+            </div>
+            <div className="tui-help-grid">
+              {helpSections.map((sec) => (
+                <section key={sec.title} className="tui-help-sec">
+                  <h4>{sec.title}</h4>
+                  <table>
+                    <tbody>
+                      {sec.rows.map(([keys, desc]) => (
+                        <tr key={keys}>
+                          <td><kbd>{keys}</kbd></td>
+                          <td>{desc}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </section>
+              ))}
+            </div>
+            <div className="tui-help-foot">press any key or click outside to close · <kbd>?</kbd> opens this popup</div>
           </div>
         </div>
       )}
