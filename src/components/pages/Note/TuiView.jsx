@@ -317,21 +317,28 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const onInputKeyDown = (e) => {
     e.stopPropagation();
-    // The "/" menu captures navigation keys while open.
-    if (mode === 'body' && slash && slashMatches.length > 0) {
-      const sel = Math.min(slash.sel, slashMatches.length - 1);
-      if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
-        e.preventDefault();
-        setSlash((s) => ({ ...s, sel: (sel + 1) % slashMatches.length }));
-        return;
+    // The "/" menu captures navigation keys while open. Compute matches from
+    // the current filter so the closure always sees the live list; use a
+    // functional setSlash so rapid presses don't stomp on each other.
+    if (mode === 'body' && slash) {
+      const matches = SLASH_ITEMS.filter(
+        (it) => it.key.startsWith(slash.filter) || it.label.toLowerCase().includes(slash.filter)
+      );
+      if (matches.length > 0) {
+        const len = matches.length;
+        if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+          e.preventDefault();
+          setSlash((s) => (s ? { ...s, sel: ((s.sel ?? 0) + 1) % len } : s));
+          return;
+        }
+        if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+          e.preventDefault();
+          setSlash((s) => (s ? { ...s, sel: ((s.sel ?? 0) - 1 + len) % len } : s));
+          return;
+        }
+        if (e.key === 'Enter') { e.preventDefault(); applySlash(matches[Math.min(slash.sel ?? 0, len - 1)]); return; }
+        if (e.key === 'Escape') { e.preventDefault(); setSlash(null); return; }
       }
-      if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
-        e.preventDefault();
-        setSlash((s) => ({ ...s, sel: (sel - 1 + slashMatches.length) % slashMatches.length }));
-        return;
-      }
-      if (e.key === 'Enter') { e.preventDefault(); applySlash(slashMatches[sel]); return; }
-      if (e.key === 'Escape') { e.preventDefault(); setSlash(null); return; }
     }
     // body edit is multi-line: Ctrl+Enter saves, Enter inserts newline.
     if (e.key === 'Enter' && (mode === 'title' || mode === 'search' || (mode === 'body' && (e.ctrlKey || e.metaKey)))) {
@@ -487,14 +494,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 <div className="tui-editor-wrap">
                   {slash && slashMatches.length > 0 && (
                     <div className="tui-slash">
-                      {slashMatches.map((it, i) => (
-                        <button key={it.key} type="button"
-                                className={`tui-slash-item ${i === Math.min(slash.sel, slashMatches.length - 1) ? 'sel' : ''}`}
-                                onMouseDown={(e) => { e.preventDefault(); applySlash(it); }}>
-                          <span className="tui-slash-hint">{it.hint}</span>
-                          <span>{it.label}</span>
-                        </button>
-                      ))}
+                      {slashMatches.map((it, i) => {
+                        const active = i === Math.min(slash.sel ?? 0, slashMatches.length - 1);
+                        return (
+                          <button key={it.key} type="button"
+                                  ref={active ? (el) => el?.scrollIntoView({ block: 'nearest' }) : null}
+                                  className={`tui-slash-item ${active ? 'sel' : ''}`}
+                                  onMouseDown={(e) => { e.preventDefault(); applySlash(it); }}>
+                            <span className="tui-slash-hint">{it.hint}</span>
+                            <span>{it.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                   <textarea ref={inputRef} className="tui-textarea" value={draft}
