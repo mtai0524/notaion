@@ -232,6 +232,8 @@
     font-size: 0.8rem;
     white-space: nowrap;
     overflow: hidden;
+    /* keep the right-edge stats clear of the app's floating chat button */
+    padding-right: 52px;
 
     .tui-badge {
       flex-shrink: 0;

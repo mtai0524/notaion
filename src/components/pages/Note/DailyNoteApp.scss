@@ -4319,9 +4319,14 @@
   font-weight: 600;
 }
 
-/* ── "No entry today" nudge chip in the toolbar ── */
-.daily-note-app-container-cyber .toolbar-actions .today-reminder-chip {
+/* ── "No entry today" nudge chip in the toolbar ──
+   Selector mirrors the toolbar's uniform-sizing rule
+   (.app-toolbar-cyber .toolbar-actions .nav-btn { width: 36px })
+   so the auto width actually wins. */
+.daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .today-reminder-chip {
   width: auto;
+  min-width: 0;
+  white-space: nowrap;
   padding: 0 12px;
   display: inline-flex;
   align-items: center;
