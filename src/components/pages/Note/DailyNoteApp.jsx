@@ -1704,16 +1704,23 @@ const DailyNoteApp = () => {
 
       if (isTyping) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      // In TUI mode the terminal view owns the keyboard entirely.
-      if (hotkeyRef.current?.viewMode === 'tui') return;
 
       const r = hotkeyRef.current;
+
+      // In TUI mode the terminal view owns the keyboard — but keep the two
+      // page-level toggles (Shift+V switch view, Shift+D theme) working so the
+      // user is never stuck inside the TUI without a keyboard escape.
+      if (r?.viewMode === 'tui') {
+        if (e.key === 'V') { r.setViewMode(v => (v === 'tui' ? 'canvas' : v === 'canvas' ? 'kanban' : 'tui')); e.preventDefault(); }
+        else if (e.key === 'D') { r.toggleTheme(); e.preventDefault(); }
+        return;
+      }
       const map = {
         n: () => r.addNote('blank'),
         t: () => r.addNote('todo'),
         m: () => r.addNote('meeting'),
         k: () => r.addNote('code'),
-        v: () => r.setViewMode(v => v === 'canvas' ? 'kanban' : 'canvas'),
+        v: () => r.setViewMode(v => (v === 'tui' ? 'canvas' : v === 'canvas' ? 'kanban' : 'tui')),
         d: () => r.toggleTheme(),
         b: () => r.setShowBgPicker(v => !v),
         g: () => r.setShowGrid(v => !v),
@@ -2663,8 +2670,9 @@ const DailyNoteApp = () => {
               </div>
               <div className="hk-group">
                 <div className="hk-group-title">View & Style</div>
-                <div className="hk-row"><kbd>V</kbd><span>Toggle Canvas / Kanban</span></div>
-                <div className="hk-row"><kbd>D</kbd><span>Toggle Light / Dark theme</span></div>
+                <div className="hk-row"><kbd>V</kbd><span>Cycle view: TUI → Canvas → Kanban</span></div>
+                <div className="hk-row"><kbd>Shift+V</kbd><span>Cycle view (works inside TUI too)</span></div>
+                <div className="hk-row"><kbd>D</kbd> / <kbd>Shift+D</kbd><span>Toggle Light / Dark theme</span></div>
                 <div className="hk-row"><kbd>C</kbd><span>Open Tools menu (color, view…)</span></div>
                 <div className="hk-row"><kbd>G</kbd><span>Toggle grid overlay</span></div>
                 <div className="hk-row"><kbd>B</kbd><span>Open canvas background picker</span></div>

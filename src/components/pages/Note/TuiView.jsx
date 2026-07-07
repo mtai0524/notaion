@@ -38,6 +38,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
   const [uploading, setUploading] = useState(false);
   const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
+  const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
+  const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
@@ -159,6 +161,135 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     requestAnimationFrame(() => {
       const el = inputRef.current;
       if (el) { el.focus(); el.setSelectionRange(caret, caret); }
+    });
+  };
+
+  /* ── Formatting toolbar (for users who don't know markdown) ── */
+
+  // Wrap the current selection in `mark` (e.g. **bold**). If nothing is
+  // selected, insert the marks and place the caret between them.
+  const wrapSelection = (mark, placeholder = '') => {
+    const el = inputRef.current;
+    if (!el) return;
+    const s = el.selectionStart;
+    const e = el.selectionEnd;
+    const sel = draft.slice(s, e) || placeholder;
+    const next = draft.slice(0, s) + mark + sel + mark + draft.slice(e);
+    setDraft(next);
+    const caretStart = s + mark.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(caretStart, caretStart + sel.length);
+    });
+  };
+
+  // Prefix the current line with `prefix` (e.g. "# ", "- ", "> ").
+  const prefixLine = (prefix) => {
+    const el = inputRef.current;
+    if (!el) return;
+    const pos = el.selectionStart;
+    const lineStart = draft.lastIndexOf('\n', pos - 1) + 1;
+    const next = draft.slice(0, lineStart) + prefix + draft.slice(lineStart);
+    setDraft(next);
+    const caret = pos + prefix.length;
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(caret, caret); });
+  };
+
+  // Insert a markdown link at the caret: [text](url).
+  const insertLink = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    const s = el.selectionStart;
+    const e = el.selectionEnd;
+    const text = draft.slice(s, e) || 'text';
+    const snippet = `[${text}](url)`;
+    setDraft(draft.slice(0, s) + snippet + draft.slice(e));
+    // select the "url" placeholder so the user can type over it
+    const urlStart = s + text.length + 3;
+    requestAnimationFrame(() => { el.focus(); el.setSelectionRange(urlStart, urlStart + 3); });
+  };
+
+  const FORMAT_BTNS = [
+    { key: 'b', label: 'B', title: 'Bold (**text**)', run: () => wrapSelection('**', 'bold'), style: { fontWeight: 800 } },
+    { key: 'i', label: 'I', title: 'Italic (*text*)', run: () => wrapSelection('*', 'italic'), style: { fontStyle: 'italic' } },
+    { key: 's', label: 'S', title: 'Strikethrough (~~text~~)', run: () => wrapSelection('~~', 'text'), style: { textDecoration: 'line-through' } },
+    { key: 'code', label: '</>', title: 'Inline code (`code`)', run: () => wrapSelection('`', 'code') },
+    { key: 'h', label: 'H', title: 'Heading (# )', run: () => prefixLine('# ') },
+    { key: 'ul', label: '•', title: 'Bullet list (- )', run: () => prefixLine('- ') },
+    { key: 'todo', label: '☑', title: 'Checklist (- [ ] )', run: () => prefixLine('- [ ] ') },
+    { key: 'quote', label: '❝', title: 'Quote (> )', run: () => prefixLine('> ') },
+    { key: 'link', label: '🔗', title: 'Link ([text](url))', run: insertLink },
+  ];
+
+  // Render inline markdown (**bold**, *italic*, `code`, ~~strike~~) within one
+  // line of text into React nodes. Deliberately small — enough that non-md
+  // users see their formatting take effect without a full parser.
+  const renderInline = (text, keyBase) => {
+    const parts = [];
+    const re = /(\*\*([^*]+)\*\*|\*([^*]+)\*|`([^`]+)`|~~([^~]+)~~)/g;
+    let last = 0;
+    let m;
+    let idx = 0;
+    while ((m = re.exec(text)) !== null) {
+      if (m.index > last) parts.push(text.slice(last, m.index));
+      if (m[2] !== undefined) parts.push(<strong key={`${keyBase}-${idx}`}>{m[2]}</strong>);
+      else if (m[3] !== undefined) parts.push(<em key={`${keyBase}-${idx}`}>{m[3]}</em>);
+      else if (m[4] !== undefined) parts.push(<code key={`${keyBase}-${idx}`} className="tui-inline-code">{m[4]}</code>);
+      else if (m[5] !== undefined) parts.push(<del key={`${keyBase}-${idx}`}>{m[5]}</del>);
+      last = m.index + m[0].length;
+      idx += 1;
+    }
+    if (last < text.length) parts.push(text.slice(last));
+    return parts.length ? parts : text;
+  };
+
+  // Render a note's markdown body into JSX rows: checklists, images, file
+  // links, headings, quotes, bullets — plus inline formatting. `interactive`
+  // enables the click-to-toggle checkboxes (only makes sense on the saved note).
+  const renderMarkdown = (text, interactive) => {
+    if (!text) return <span className="tui-pv-empty">— empty —  (press i or click to edit)</span>;
+    return text.split('\n').map((ln, li) => {
+      const chk = ln.match(CHECKBOX_RE);
+      if (chk) {
+        const checked = !!chk[2].trim();
+        return (
+          <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}
+               title={interactive ? 'Click to toggle' : undefined}
+               onClick={interactive ? (e) => {
+                 e.stopPropagation();
+                 const next = toggleChecklistLine(current.content, li);
+                 if (next !== null) onUpdate(current.id, { content: next });
+               } : undefined}>
+            <span className="tui-check-box">{checked ? '[x]' : '[ ]'}</span>
+            <span className="tui-check-text">{renderInline(chk[4], li)}</span>
+          </div>
+        );
+      }
+      const img = ln.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
+      if (img) {
+        return (
+          <a key={li} href={img[2]} target="_blank" rel="noopener noreferrer"
+             className="tui-pv-img" onClick={(e) => e.stopPropagation()}>
+            <img src={img[2]} alt={img[1]} loading="lazy" />
+          </a>
+        );
+      }
+      const link = ln.match(/^\[([^\]]+)\]\(([^)]+)\)\s*$/);
+      if (link) {
+        return (
+          <a key={li} href={link[2]} target="_blank" rel="noopener noreferrer"
+             className="tui-pv-file" onClick={(e) => e.stopPropagation()}>{link[1]}</a>
+        );
+      }
+      const heading = ln.match(/^(#{1,3})\s+(.*)$/);
+      if (heading) {
+        const lvl = heading[1].length;
+        return <div key={li} className={`tui-pv-h tui-pv-h${lvl}`}>{renderInline(heading[2], li)}</div>;
+      }
+      if (/^>\s?/.test(ln)) return <div key={li} className="tui-pv-quote">{renderInline(ln.replace(/^>\s?/, ''), li)}</div>;
+      if (/^[-*]\s+/.test(ln)) return <div key={li} className="tui-pv-bullet">{renderInline(ln.replace(/^[-*]\s+/, ''), li)}</div>;
+      if (/^---+$/.test(ln.trim())) return <hr key={li} className="tui-pv-hr" />;
+      return <div key={li} className="tui-pv-line">{ln ? renderInline(ln, li) : ' '}</div>;
     });
   };
 
@@ -524,27 +655,76 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
               </div>
               {mode === 'body' ? (
                 <div className="tui-editor-wrap">
-                  {slash && slashMatches.length > 0 && (
-                    <div className="tui-slash">
-                      {slashMatches.map((it, i) => {
-                        const active = i === Math.min(slash.sel ?? 0, slashMatches.length - 1);
-                        return (
-                          <button key={it.key} type="button"
-                                  ref={active ? (el) => el?.scrollIntoView({ block: 'nearest' }) : null}
-                                  className={`tui-slash-item ${active ? 'sel' : ''}`}
-                                  onMouseDown={(e) => { e.preventDefault(); applySlash(it); }}>
-                            <span className="tui-slash-hint">{it.hint}</span>
-                            <span>{it.label}</span>
-                          </button>
-                        );
-                      })}
+                  {/* Formatting toolbar — click to insert markdown so users who
+                      don't know the syntax can still format their notes. */}
+                  <div className="tui-format-bar">
+                    {FORMAT_BTNS.map((b) => (
+                      <button key={b.key} type="button" className="tui-fmt-btn" title={b.title}
+                              style={b.style}
+                              onMouseDown={(e) => { e.preventDefault(); b.run(); }}>
+                        {b.label}
+                      </button>
+                    ))}
+                    <span className="tui-fmt-sep" />
+                    <button type="button"
+                            className={`tui-fmt-toggle ${livePreview ? 'on' : ''}`}
+                            title="Live preview — xem markdown hiển thị ra sao"
+                            onMouseDown={(e) => { e.preventDefault(); setLivePreview((v) => !v); }}>
+                      👁 Preview
+                    </button>
+                    <button type="button"
+                            className={`tui-fmt-toggle ${showCheatsheet ? 'on' : ''}`}
+                            title="Cú pháp Markdown"
+                            onMouseDown={(e) => { e.preventDefault(); setShowCheatsheet((v) => !v); }}>
+                      ? Markdown
+                    </button>
+                  </div>
+
+                  {showCheatsheet && (
+                    <div className="tui-cheatsheet">
+                      <div><code>**đậm**</code> → <strong>đậm</strong></div>
+                      <div><code>*nghiêng*</code> → <em>nghiêng</em></div>
+                      <div><code># Tiêu đề</code> → tiêu đề lớn</div>
+                      <div><code>- mục</code> → gạch đầu dòng</div>
+                      <div><code>- [ ] việc</code> → checklist</div>
+                      <div><code>&gt; trích</code> → trích dẫn</div>
+                      <div><code>`mã`</code> → mã lệnh</div>
+                      <div><code>[chữ](url)</code> → liên kết</div>
+                      <div className="tui-cheatsheet-tip">Không cần nhớ — cứ viết bình thường, hoặc bấm nút định dạng / gõ <kbd>/</kbd>.</div>
                     </div>
                   )}
-                  <textarea ref={inputRef} className="tui-textarea" value={draft}
-                            onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
-                            onFocus={() => { suppressBlurRef.current = false; }}
-                            onPaste={handleEditorPaste}
-                            placeholder="body… (Ctrl+Enter save · / for blocks · attach or paste files)" />
+
+                  <div className={`tui-editor-split ${livePreview ? 'split' : ''}`}>
+                    <div className="tui-editor-pane">
+                      {slash && slashMatches.length > 0 && (
+                        <div className="tui-slash">
+                          {slashMatches.map((it, i) => {
+                            const active = i === Math.min(slash.sel ?? 0, slashMatches.length - 1);
+                            return (
+                              <button key={it.key} type="button"
+                                      ref={active ? (el) => el?.scrollIntoView({ block: 'nearest' }) : null}
+                                      className={`tui-slash-item ${active ? 'sel' : ''}`}
+                                      onMouseDown={(e) => { e.preventDefault(); applySlash(it); }}>
+                                <span className="tui-slash-hint">{it.hint}</span>
+                                <span>{it.label}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <textarea ref={inputRef} className="tui-textarea" value={draft}
+                                onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                                onFocus={() => { suppressBlurRef.current = false; }}
+                                onPaste={handleEditorPaste}
+                                placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
+                    </div>
+                    {livePreview && (
+                      <div className="tui-editor-preview" aria-label="Live preview">
+                        {renderMarkdown(draft, false)}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="tui-editor-bar">
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
                            onChange={(e) => {
@@ -567,47 +747,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 </div>
               ) : (
                 <div className="tui-pv-body" onClick={editBody} title="Click to edit">
-                  {current.content ? (
-                    current.content.split('\n').map((ln, li) => {
-                      const m = ln.match(CHECKBOX_RE);
-                      if (!m) {
-                        const img = ln.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
-                        if (img) {
-                          return (
-                            <a key={li} href={img[2]} target="_blank" rel="noopener noreferrer"
-                               className="tui-pv-img" onClick={(e) => e.stopPropagation()}>
-                              <img src={img[2]} alt={img[1]} loading="lazy" />
-                            </a>
-                          );
-                        }
-                        const link = ln.match(/^\[([^\]]+)\]\(([^)]+)\)\s*$/);
-                        if (link) {
-                          return (
-                            <a key={li} href={link[2]} target="_blank" rel="noopener noreferrer"
-                               className="tui-pv-file" onClick={(e) => e.stopPropagation()}>
-                              {link[1]}
-                            </a>
-                          );
-                        }
-                        return <div key={li} className="tui-pv-line">{ln || ' '}</div>;
-                      }
-                      const checked = !!m[2].trim();
-                      return (
-                        <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}
-                             title="Click to toggle"
-                             onClick={(e) => {
-                               e.stopPropagation();
-                               const next = toggleChecklistLine(current.content, li);
-                               if (next !== null) onUpdate(current.id, { content: next });
-                             }}>
-                          <span className="tui-check-box">{checked ? '[x]' : '[ ]'}</span>
-                          <span className="tui-check-text">{m[4]}</span>
-                        </div>
-                      );
-                    })
-                  ) : (
-                    '— empty —  (press i or click to edit)'
-                  )}
+                  {renderMarkdown(current.content, true)}
                 </div>
               )}
             </div>

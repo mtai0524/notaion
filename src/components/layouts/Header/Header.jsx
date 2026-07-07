@@ -21,6 +21,7 @@ import {
   faTrashCan,
   faGamepad,
   faClock,
+  faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
 
 import Cookies from "js-cookie";
@@ -439,7 +440,7 @@ const Header = () => {
           </Menu.Item>
           <Menu.Item
             key="daily-note"
-            icon={<FontAwesomeIcon icon={faNewspaper} />}
+            icon={<FontAwesomeIcon icon={faBookOpen} />}
             style={{
               backgroundColor: location.pathname === "/daily-note" ? "#f0f0f0" : "transparent",
             }}
@@ -934,17 +935,15 @@ const Header = () => {
           </Link>
           <div className="flex items-center">
             {token && (
-              <Tooltip title="daily notes" placement="left">
-                <FontAwesomeIcon
-                  icon={faNewspaper}
+              <Tooltip title="Daily Notes — ghi chú hằng ngày" placement="bottom">
+                <button
+                  type="button"
                   onClick={() => navigate("/daily-note")}
-                  style={{
-                    backgroundColor: "#faf8f7",
-                    padding: "10px",
-                    cursor: "pointer",
-                  }}
-                  className={`text-lg rounded-full mr-4 ${location.pathname === "/daily-note" ? "text-blue-600" : "text-black"}`}
-                />
+                  className={`nav-daily-btn ${location.pathname === "/daily-note" ? "is-active" : ""}`}
+                >
+                  <FontAwesomeIcon icon={faBookOpen} className="nav-daily-icon" />
+                  <span className="nav-daily-label">Daily Notes</span>
+                </button>
               </Tooltip>
             )}
 

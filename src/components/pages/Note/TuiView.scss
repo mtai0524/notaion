@@ -296,6 +296,148 @@
     }
   }
 
+  /* inline markdown bits rendered in preview */
+  .tui-inline-code {
+    font-family: inherit;
+    background: rgba(127, 127, 127, 0.15);
+    border-radius: 3px;
+    padding: 0 4px;
+  }
+  .tui-pv-h { font-weight: 800; margin: 6px 0 2px; }
+  .tui-pv-h1 { font-size: 1.15rem; }
+  .tui-pv-h2 { font-size: 1.05rem; }
+  .tui-pv-h3 { font-size: 0.96rem; }
+  .tui-pv-quote {
+    border-left: 3px solid var(--border-color, #111827);
+    padding-left: 10px;
+    color: var(--text-muted, #6b7280);
+    font-style: italic;
+    margin: 3px 0;
+  }
+  .tui-pv-bullet { padding-left: 16px; position: relative;
+    &::before { content: '•'; position: absolute; left: 4px; }
+  }
+  .tui-pv-hr { border: none; border-top: 1px dashed var(--border-color, #111827); margin: 8px 0; }
+  .tui-pv-empty { color: var(--text-muted, #9ca3af); }
+
+  /* ── formatting toolbar (helps users who don't know markdown) ── */
+  .tui-format-bar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+
+    .tui-fmt-btn {
+      min-width: 26px;
+      height: 26px;
+      padding: 0 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      font: inherit;
+      font-size: 0.82rem;
+      color: var(--text-color, #111827);
+      cursor: pointer;
+
+      &:hover { background: rgba(127, 127, 127, 0.12); }
+      &:active { transform: translateY(1px); }
+    }
+
+    .tui-fmt-sep {
+      width: 1px;
+      height: 20px;
+      background: var(--border-color, #111827);
+      opacity: 0.4;
+      margin: 0 4px;
+    }
+
+    .tui-fmt-toggle {
+      height: 26px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: transparent;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-muted, #6b7280);
+      cursor: pointer;
+
+      &:hover { color: var(--text-color, #111827); }
+
+      &.on {
+        background: var(--text-color, #111827);
+        color: var(--container-bg, #fff);
+      }
+    }
+  }
+
+  /* ── markdown cheatsheet ── */
+  .tui-cheatsheet {
+    flex-shrink: 0;
+    margin-bottom: 6px;
+    padding: 8px 10px;
+    background: rgba(127, 127, 127, 0.06);
+    border: 1px dashed var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 3px 14px;
+    font-size: 0.76rem;
+
+    code {
+      font-family: inherit;
+      background: rgba(127, 127, 127, 0.15);
+      border-radius: 3px;
+      padding: 0 4px;
+    }
+
+    .tui-cheatsheet-tip {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px dashed var(--border-color, #111827);
+      color: var(--text-muted, #6b7280);
+
+      kbd {
+        font: inherit;
+        border: 1px solid var(--border-color, #111827);
+        border-radius: 3px;
+        padding: 0 4px;
+      }
+    }
+  }
+
+  /* ── split editor / live preview ── */
+  .tui-editor-split {
+    flex: 1;
+    min-height: 180px;
+    display: flex;
+    gap: 10px;
+
+    .tui-editor-pane { position: relative; flex: 1; display: flex; min-width: 0; }
+
+    &.split .tui-editor-preview {
+      flex: 1;
+      min-width: 0;
+      overflow-y: auto;
+      padding: 8px 10px;
+      background: var(--bg-color, #fdfcf8);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      font-size: 0.86rem;
+      word-break: break-word;
+    }
+  }
+
   /* ── body editor: fills the remaining panel height ── */
   .tui-editor-wrap {
     position: relative;
