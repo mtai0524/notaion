@@ -146,7 +146,7 @@ const MainApp = () => {
     <>
       <Header />
       <Routes>
-        <Route path="/" element={<Navigate to="/notion" />} />
+        <Route path="/" element={<Navigate to="/daily-note" />} />
         <Route path="/signal" element={<Realtime />} />
         <Route path="/login" element={<Login />} />
         <Route path="/login-success" element={<LoginSuccess />} />

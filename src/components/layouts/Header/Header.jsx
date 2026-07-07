@@ -934,19 +934,6 @@ const Header = () => {
             Notaion
           </Link>
           <div className="flex items-center">
-            {token && (
-              <Tooltip title="Daily Notes — ghi chú hằng ngày" placement="bottom">
-                <button
-                  type="button"
-                  onClick={() => navigate("/daily-note")}
-                  className={`nav-daily-btn ${location.pathname === "/daily-note" ? "is-active" : ""}`}
-                >
-                  <FontAwesomeIcon icon={faBookOpen} className="nav-daily-icon" />
-                  <span className="nav-daily-label">Daily Notes</span>
-                </button>
-              </Tooltip>
-            )}
-
             <Tooltip title="guide" placement="left" >
               <QuestionCircleOutlined
                 onClick={() => setOpenTour(true)}

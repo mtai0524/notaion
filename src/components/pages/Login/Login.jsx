@@ -7,7 +7,7 @@ import "./Login.scss";
 import Cookies from "js-cookie";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
-import { GithubIcon, GoogleIcon, DiscordIcon } from "./SocialIcons";
+import { GithubIcon, DiscordIcon } from "./SocialIcons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import * as signalR from "@microsoft/signalr";
 import jwt_decode from "jwt-decode";
@@ -81,7 +81,7 @@ const Login = () => {
     } catch (err) {
       console.error("SignalR connection error: ", err);
     }
-    navigate("/home-page");
+    navigate("/daily-note");
   };
 
   const handleSignIn = async (event) => {
@@ -154,15 +154,6 @@ const Login = () => {
             </button>
             <div className="divider">OR</div>
             <div className="social-login-row">
-              <button
-                type="button"
-                className="social-login-btn google"
-                title="Đăng nhập bằng Google"
-                aria-label="Login with Google"
-                onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/google-login`}
-              >
-                <GoogleIcon />
-              </button>
               <button
                 type="button"
                 className="social-login-btn github"

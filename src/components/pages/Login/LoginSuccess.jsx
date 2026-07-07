@@ -23,8 +23,8 @@ const LoginSuccess = () => {
       
       // Trigger SignalR registration similar to manual login
       handleSignalRRegistration(token);
-      
-      navigate("/home-page");
+
+      navigate("/daily-note");
     } else {
       message.error("Login failed. No token received.");
       navigate("/login");
