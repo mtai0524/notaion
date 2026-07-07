@@ -7,6 +7,7 @@ import "./Login.scss";
 import Cookies from "js-cookie";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
+import { GithubIcon, GoogleIcon, DiscordIcon } from "./SocialIcons";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import * as signalR from "@microsoft/signalr";
 import jwt_decode from "jwt-decode";
@@ -152,20 +153,35 @@ const Login = () => {
               Login
             </button>
             <div className="divider">OR</div>
-            <button
-              type="button"
-              className="discord-login-button"
-              onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/discord-login`}
-            >
-              Login with Discord
-            </button>
-            <button
-              type="button"
-              className="github-login-button"
-              onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/github-login`}
-            >
-              Login with GitHub
-            </button>
+            <div className="social-login-row">
+              <button
+                type="button"
+                className="social-login-btn google"
+                title="Đăng nhập bằng Google"
+                aria-label="Login with Google"
+                onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/google-login`}
+              >
+                <GoogleIcon />
+              </button>
+              <button
+                type="button"
+                className="social-login-btn github"
+                title="Đăng nhập bằng GitHub"
+                aria-label="Login with GitHub"
+                onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/github-login`}
+              >
+                <GithubIcon />
+              </button>
+              <button
+                type="button"
+                className="social-login-btn discord"
+                title="Đăng nhập bằng Discord"
+                aria-label="Login with Discord"
+                onClick={() => window.location.href = `${axiosInstance.defaults.baseURL}/api/account/discord-login`}
+              >
+                <DiscordIcon />
+              </button>
+            </div>
           </form>
         </Spin>
         <div className="flex justify-end w-full">

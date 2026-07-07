@@ -83,30 +83,41 @@
   &::after { right: 0; }
 }
 
-.discord-login-button,
-.github-login-button {
-  width: 100%;
-  padding: 10px;
-  background: #5865F2;
-  color: white;
-  border: 2px solid #111827;
-  box-shadow: -3px 3px 0 0 #111827;
-  font-weight: 900;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.2s;
+/* ── Social login — compact icon buttons (Google · GitHub · Discord) ── */
+.social-login-row {
   display: flex;
+  justify-content: center;
+  gap: 14px;
+}
+
+.social-login-btn {
+  width: 52px;
+  height: 52px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  background: #fff;
+  border: 2px solid #111827;
+  border-radius: 10px;
+  box-shadow: -3px 3px 0 0 #111827;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, color 0.15s ease;
+
+  svg { display: block; }
 
   &:hover {
     transform: translate(-2px, 2px);
-    box-shadow: none;
+    box-shadow: -1px 1px 0 0 #111827;
   }
-}
+  &:active { transform: translate(0, 0); box-shadow: none; }
 
-.github-login-button {
-  margin-top: 10px;
-  background: #24292e;
+  /* GitHub & Discord render in currentColor → give them brand-on-hover */
+  &.github { color: #24292e; }
+  &.github:hover { background: #24292e; color: #fff; }
+
+  &.discord { color: #5865f2; }
+  &.discord:hover { background: #5865f2; color: #fff; }
+
+  /* Google logo is multi-color already; keep a white face */
+  &.google:hover { background: #f5f7fa; }
 }
