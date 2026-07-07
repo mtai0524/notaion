@@ -1,0 +1,80 @@
+/* Notaion extension popup — neo-brutalist, matches the web app. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 260px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  background: #fdfcf8;
+  color: #111827;
+}
+
+.wrap { padding: 16px; }
+
+.hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+.hd .logo {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #111827;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.hd .title { font-size: 1.1rem; font-weight: 800; letter-spacing: 0.3px; }
+
+.sub { font-size: 0.78rem; color: #6b7280; margin: 2px 0 14px 36px; }
+
+.btn {
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #fff;
+  color: #111827;
+  border: 2px solid #111827;
+  border-radius: 8px;
+  box-shadow: -3px 3px 0 0 #111827;
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+}
+.btn:hover { transform: translate(1px, -1px); box-shadow: -4px 4px 0 0 #111827; }
+.btn:active { transform: translate(0, 0); box-shadow: -1px 1px 0 0 #111827; }
+
+.btn.primary { background: #111827; color: #fff; }
+
+.hint {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.72rem;
+  color: #6b7280;
+}
+.hint kbd {
+  background: #fff;
+  border: 1px solid #111827;
+  border-radius: 3px;
+  padding: 0 5px;
+  font-family: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  body { background: #1f2937; color: #f9fafb; }
+  .hd .logo { background: #f9fafb; color: #1f2937; }
+  .sub, .hint { color: #9ca3af; }
+  .btn { background: #1f2937; color: #f9fafb; border-color: #f9fafb; box-shadow: -3px 3px 0 0 #000; }
+  .btn:hover { box-shadow: -4px 4px 0 0 #000; }
+  .btn.primary { background: #f9fafb; color: #1f2937; }
+  .hint kbd { background: #1f2937; border-color: #f9fafb; }
+}
