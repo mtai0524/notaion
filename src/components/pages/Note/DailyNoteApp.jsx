@@ -1333,7 +1333,7 @@ const DailyNoteApp = () => {
   const [connection, setConnection] = useState(null);
   const [userId, setUserId] = useState(null);
 
-  const [viewMode, setViewMode] = useState(() => localStorage.getItem('daily-note-view-mode') || 'canvas'); // 'canvas' or 'kanban'
+  const [viewMode, setViewMode] = useState(() => localStorage.getItem('daily-note-view-mode') || 'tui'); // 'tui' | 'canvas' | 'kanban'
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectionRect, setSelectionRect] = useState(null);
   const canvasRef = React.useRef(null);
@@ -2255,6 +2255,40 @@ const DailyNoteApp = () => {
               🔥 {streakStats.streak}
             </button>
           )}
+
+          {/* View switcher — segmented, cycles/selects tui · canvas · kanban (V) */}
+          <div className="toolbar-view-switch" title="Switch view (V)">
+            <button
+              className={viewMode === 'tui' ? 'active' : ''}
+              onClick={() => setViewMode('tui')}
+              title="TUI view"
+            >
+              <FaTerminal />
+            </button>
+            <button
+              className={viewMode === 'canvas' ? 'active' : ''}
+              onClick={() => setViewMode('canvas')}
+              title="Canvas view"
+            >
+              <FaTh />
+            </button>
+            <button
+              className={viewMode === 'kanban' ? 'active' : ''}
+              onClick={() => setViewMode('kanban')}
+              title="Kanban view"
+            >
+              <FaLayerGroup />
+            </button>
+          </div>
+
+          {/* Theme toggle — light / dark straight on the toolbar (D) */}
+          <button
+            className="nav-btn theme-toggle-btn"
+            onClick={toggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme (D)`}
+          >
+            {theme === 'dark' ? <FaSun /> : <FaMoon />}
+          </button>
 
           <button
             className={`nav-btn sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}

@@ -4450,3 +4450,45 @@
 .daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .streak-chip {
   gap: 5px;
 }
+
+/* ── Toolbar view switcher (segmented tui/canvas/kanban) ── */
+.daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .toolbar-view-switch {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 2px;
+  gap: 2px;
+  background: rgba(127, 127, 127, 0.1);
+  border: var(--global-border-width, 1px) var(--global-border-style, solid) var(--border-color);
+  border-radius: var(--global-border-radius, 4px);
+
+  button {
+    width: 32px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--global-border-radius, 3px);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.12s ease, color 0.12s ease;
+
+    &:hover { color: var(--text-color); }
+
+    /* active view = inverted ink chip (monochrome, no brand blue) */
+    &.active {
+      background: var(--text-color);
+      color: var(--container-bg);
+    }
+  }
+}
+
+/* ── Toolbar theme toggle ── */
+.daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .theme-toggle-btn {
+  color: var(--text-color);
+
+  &:hover { background: rgba(127, 127, 127, 0.12); }
+}
