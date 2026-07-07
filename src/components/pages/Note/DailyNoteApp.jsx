@@ -22,6 +22,8 @@ import { Dropdown, DatePicker, Select } from 'antd';
 import dayjs from 'dayjs';
 import { ensureNotificationPermission } from '../../../utils/notifyBrowser';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
+import CalendarPopup from './CalendarPopup';
+import { wordStats, notesToMarkdown, downloadTextFile } from './noteUtils';
 // TEMPORARY: frontend-only deadline persistence until the backend migration lands.
 import { setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import * as signalR from '@microsoft/signalr';
@@ -1074,6 +1076,10 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
                   ) : (
                     !note.drawingData && <span className="placeholder-text">{'> waiting for input...'}</span>
                   )}
+                  {note.isFullscreen && note.content && (() => {
+                    const s = wordStats(note.content);
+                    return <div className="note-word-stats">{s.words} words · ~{s.minutes} min read</div>;
+                  })()}
                 </div>
               )}
             </div>
@@ -1307,6 +1313,7 @@ const DailyNoteApp = () => {
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const allCurrentNotes = notesByDate[dateKey] || [];
   const currentNotes = allCurrentNotes.filter(n => !n.isDeleted);
+  const [showCalendar, setShowCalendar] = useState(false);
   const isAllTimeSearch = searchScope === 'all';
 
   // Sidebar States
@@ -1557,6 +1564,27 @@ const DailyNoteApp = () => {
   useEffect(() => {
     fetchAllNotes();
   }, [fetchAllNotes]);
+
+  // 'yyyy-MM-dd' -> live note count, for the calendar dots and the
+  // "no entry today" nudge. allNotesIndex covers history; notesByDate wins
+  // for any day already loaded this session (it's fresher).
+  const markedDates = useMemo(() => {
+    const m = {};
+    allNotesIndex.forEach(n => { if (!n.isDeleted && n.date) m[n.date] = (m[n.date] || 0) + 1; });
+    Object.entries(notesByDate).forEach(([d, arr]) => {
+      m[d] = (arr || []).filter(n => !n.isDeleted).length;
+    });
+    Object.keys(m).forEach(k => { if (!m[k]) delete m[k]; });
+    return m;
+  }, [allNotesIndex, notesByDate]);
+
+  const todayKey = format(new Date(), 'yyyy-MM-dd');
+  const todayHasNotes = (markedDates[todayKey] || 0) > 0;
+
+  // Export the visible day's notes as a Markdown file (frontend only).
+  const exportDayMarkdown = () => {
+    downloadTextFile(`daily-note-${dateKey}.md`, notesToMarkdown(dateKey, currentNotes));
+  };
 
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
@@ -2128,7 +2156,19 @@ const DailyNoteApp = () => {
         <div className="date-navigator">
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
           <div className="current-date-display">
-            <h2>{format(currentDate, 'yyyy_MM_dd')}</h2>
+            <h2 className="date-title-btn" onClick={() => setShowCalendar(v => !v)}
+                title="Open calendar — jump to any day">
+              {format(currentDate, 'yyyy_MM_dd')}
+              <FaChevronDown className="date-caret" />
+            </h2>
+            {showCalendar && (
+              <CalendarPopup
+                current={currentDate}
+                marked={markedDates}
+                onSelect={(d) => setCurrentDate(d)}
+                onClose={() => setShowCalendar(false)}
+              />
+            )}
             <div className="status-indicator-container">
               <span className="note-count">ACTIVE_ENTRIES: {searchActive ? searchResults.length : currentNotes.length}</span>
               <span className={`sync-status ${syncStatus}`}>
@@ -2142,6 +2182,16 @@ const DailyNoteApp = () => {
         </div>
 
         <div className="toolbar-actions">
+          {!todayHasNotes && (
+            <button
+              className="nav-btn today-reminder-chip"
+              onClick={() => setCurrentDate(new Date())}
+              title="Hôm nay chưa có ghi chú — bấm để về hôm nay và bắt đầu viết"
+            >
+              <span className="reminder-dot" /> NO_ENTRY_TODAY
+            </button>
+          )}
+
           <button
             className={`nav-btn sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}
             onClick={toggleSidebar}
@@ -2456,6 +2506,15 @@ const DailyNoteApp = () => {
                     <span className="tools-menu-badge">{(trashByDate[dateKey] || []).length}</span>
                   )}
                   <span className="hk-hint">R</span>
+                </button>
+
+                <button
+                  className="tools-menu-item"
+                  onClick={() => { setShowToolsMenu(false); exportDayMarkdown(); }}
+                  disabled={currentNotes.length === 0}
+                  title={currentNotes.length === 0 ? 'No notes to export for this day' : `Export ${dateKey} as Markdown`}
+                >
+                  <FaDownload /> Export Day (.md)
                 </button>
               </div>
             )}

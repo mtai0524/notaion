@@ -95,6 +95,7 @@
 
       .current-date-display {
         text-align: center;
+        position: relative; /* anchors the calendar popup */
 
         h2 {
           margin: 0;
@@ -103,6 +104,19 @@
           color: var(--text-color);
           text-transform: uppercase;
           letter-spacing: 2px;
+        }
+
+        h2.date-title-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          border-radius: var(--global-border-radius, 4px);
+          padding: 0 6px;
+
+          &:hover { background: rgba(127, 127, 127, 0.1); }
+
+          .date-caret { font-size: 0.7rem; color: var(--text-muted); }
         }
 
         // Light theme: date text — same neutral text color
@@ -4303,4 +4317,38 @@
 }
 .overflow-deadline-label {
   font-weight: 600;
+}
+
+/* ── "No entry today" nudge chip in the toolbar ── */
+.daily-note-app-container-cyber .toolbar-actions .today-reminder-chip {
+  width: auto;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: var(--text-color);
+
+  .reminder-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--danger-color, #ef4444);
+    flex-shrink: 0;
+  }
+
+  &:hover { background: rgba(127, 127, 127, 0.1); }
+}
+
+/* ── Word count / reading time under fullscreen note content ── */
+.note-word-stats {
+  margin-top: 10px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--border-color, #111827);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  color: var(--text-muted, #6b7280);
 }

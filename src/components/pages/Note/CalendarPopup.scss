@@ -1,0 +1,137 @@
+/* Calendar jumper for Daily Notes — Notaion neo-brutalist. */
+.note-cal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1290;
+  background: transparent;
+}
+
+.note-cal-popup {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1300;
+  width: 280px;
+  background: var(--container-bg, #fff);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color, #111827);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: var(--box-shadow);
+  padding: 10px;
+  color: var(--text-color, #111827);
+
+  .note-cal-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+
+    .note-cal-title {
+      font-weight: 800;
+      letter-spacing: 1px;
+      font-size: 0.85rem;
+    }
+
+    .note-cal-nav {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      cursor: pointer;
+      font-size: 0.7rem;
+
+      &:hover { background: rgba(127, 127, 127, 0.12); }
+      &:active { transform: translate(1px, 1px); }
+    }
+  }
+
+  .note-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+
+    .note-cal-dow {
+      text-align: center;
+      font-size: 0.58rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--text-muted, #6b7280);
+      padding: 2px 0 4px;
+    }
+
+    .note-cal-day {
+      position: relative;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-sm, 4px);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-color, #111827);
+      cursor: pointer;
+      padding: 0;
+
+      &:hover { background: rgba(127, 127, 127, 0.12); }
+
+      &.other-month { color: var(--text-muted, #9ca3af); opacity: 0.55; }
+
+      &.today { border-color: var(--border-color, #111827); border-style: dashed; }
+
+      &.selected {
+        background: var(--text-color, #111827);
+        color: var(--container-bg, #fff);
+
+        .note-cal-dot { background: var(--container-bg, #fff); }
+      }
+
+      .note-cal-dot {
+        position: absolute;
+        bottom: 3px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 4px;
+        border-radius: 50%;
+        background: var(--text-color, #111827);
+      }
+    }
+  }
+
+  .note-cal-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border-color, #111827);
+
+    .note-cal-today-btn {
+      padding: 3px 10px;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--text-color, #111827);
+      cursor: pointer;
+
+      &:hover { transform: translate(1px, -1px); box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827); }
+      &:active { transform: translate(0, 0); box-shadow: -1px 1px 0 0 var(--shadow-color, #111827); }
+    }
+
+    .note-cal-hint {
+      font-size: 0.6rem;
+      color: var(--text-muted, #9ca3af);
+    }
+  }
+}

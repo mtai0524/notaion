@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { wordStats } from './noteUtils';
 import './TuiView.scss';
 
 /**
@@ -375,6 +376,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 <span className="tag">{catOf(current)}</span>
                 {current.timestamp && <span> · {current.timestamp}</span>}
                 <span> · {current.isCompleted ? 'done' : 'open'}</span>
+                {current.content && (() => {
+                  const s = wordStats(current.content);
+                  return <span> · {s.words}w · ~{s.minutes}m read</span>;
+                })()}
               </div>
               {mode === 'body' ? (
                 <textarea ref={inputRef} className="tui-textarea" value={draft}
