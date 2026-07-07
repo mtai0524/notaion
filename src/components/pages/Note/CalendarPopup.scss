@@ -135,3 +135,15 @@
     }
   }
 }
+
+/* Streak / totals line above the footer */
+.note-cal-popup .note-cal-stats {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+}

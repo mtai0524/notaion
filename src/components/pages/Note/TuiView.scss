@@ -192,6 +192,90 @@
     min-height: 60px;
   }
 
+  .tui-pv-line { min-height: 1.5em; }
+
+  /* clickable `- [ ]` lines in the preview */
+  .tui-check-line {
+    display: flex;
+    gap: 8px;
+    padding: 0 4px;
+    margin: 0 -4px;
+    border-radius: var(--radius-sm, 4px);
+    cursor: pointer;
+
+    &:hover { background: rgba(127, 127, 127, 0.1); }
+
+    .tui-check-box { flex-shrink: 0; font-weight: 700; }
+
+    &.checked .tui-check-text {
+      color: var(--text-muted, #9ca3af);
+      text-decoration: line-through;
+    }
+  }
+
+  /* ── body editor: slash menu + upload indicator ── */
+  .tui-editor-wrap {
+    position: relative;
+
+    .tui-slash {
+      position: absolute;
+      bottom: calc(100% + 6px);
+      left: 0;
+      z-index: 10;
+      min-width: 210px;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 6px);
+      box-shadow: var(--box-shadow-sm);
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+
+      .tui-slash-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 8px;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm, 4px);
+        font: inherit;
+        font-size: 0.8rem;
+        color: var(--text-color, #111827);
+        cursor: pointer;
+        text-align: left;
+
+        .tui-slash-hint {
+          min-width: 38px;
+          text-align: center;
+          font-size: 0.64rem;
+          font-weight: 800;
+          border: 1px solid var(--border-color, #111827);
+          border-radius: 3px;
+          color: var(--text-muted, #6b7280);
+          padding: 0 3px;
+        }
+
+        &:hover { background: rgba(127, 127, 127, 0.1); }
+
+        &.sel {
+          background: var(--text-color, #111827);
+          color: var(--container-bg, #fff);
+
+          .tui-slash-hint { color: var(--container-bg, #fff); border-color: var(--container-bg, #fff); }
+        }
+      }
+    }
+
+    .tui-uploading {
+      margin-top: 4px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted, #6b7280);
+      animation: tui-blink 1s infinite;
+    }
+  }
+
   /* inline / multiline editors */
   .tui-input,
   .tui-textarea {
@@ -391,6 +475,8 @@
       }
     }
   }
+
+  @keyframes tui-blink { 50% { opacity: 0.4; } }
 
   /* "?" button at the right edge of the status bar */
   .tui-help-btn {

@@ -1,7 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
-import { wordStats } from './noteUtils';
+import { wordStats, CHECKBOX_RE, toggleChecklistLine } from './noteUtils';
+import { uploadFilesToCloudinary } from '../../../services/fileService';
 import './TuiView.scss';
+
+// Notion-style "/" block menu for the body editor.
+const SLASH_ITEMS = [
+  { key: 'todo', label: 'To-do', hint: '- [ ]', snippet: '- [ ] ' },
+  { key: 'h1', label: 'Heading 1', hint: '#', snippet: '# ' },
+  { key: 'h2', label: 'Heading 2', hint: '##', snippet: '## ' },
+  { key: 'bullet', label: 'Bullet list', hint: '-', snippet: '- ' },
+  { key: 'numbered', label: 'Numbered list', hint: '1.', snippet: '1. ' },
+  { key: 'quote', label: 'Quote', hint: '>', snippet: '> ' },
+  { key: 'code', label: 'Code block', hint: '```', snippet: '```\n\n```', caret: 4 },
+  { key: 'divider', label: 'Divider', hint: '---', snippet: '---\n' },
+  { key: 'time', label: 'Time stamp', hint: 'HH:mm', snippet: null },
+];
 
 /**
  * Multi-panel TUI for Daily Notes, modelled on clin-rs (a ratatui note app):
@@ -22,6 +36,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
   const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
+  const [uploading, setUploading] = useState(false);
+  const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
@@ -115,6 +131,60 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     if (current) onUpdate(current.id, mode === 'title' ? { title: draft } : { content: draft });
     setMode('normal');
     setDraft('');
+    setSlash(null);
+  };
+
+  /* ── "/" block menu (Notion-style) ── */
+  const slashMatches = slash
+    ? SLASH_ITEMS.filter((it) => it.key.startsWith(slash.filter) || it.label.toLowerCase().includes(slash.filter))
+    : [];
+
+  const applySlash = (item) => {
+    if (!slash) return;
+    const snippet = item.key === 'time' ? `${new Date().toTimeString().slice(0, 5)} ` : item.snippet;
+    const head = draft.slice(0, slash.start);
+    const tail = draft.slice(slash.start + 1 + slash.filter.length);
+    const caret = slash.start + (item.caret ?? snippet.length);
+    setDraft(head + snippet + tail);
+    setSlash(null);
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) { el.focus(); el.setSelectionRange(caret, caret); }
+    });
+  };
+
+  // Track the caret: "/" at a line start opens the menu; typing filters it.
+  const handleBodyChange = (e) => {
+    const val = e.target.value;
+    setDraft(val);
+    const m = val.slice(0, e.target.selectionStart).match(/(?:^|\n)\/([a-zA-Z0-9-]*)$/);
+    if (m) setSlash({ start: e.target.selectionStart - m[1].length - 1, filter: m[1].toLowerCase(), sel: 0 });
+    else setSlash(null);
+  };
+
+  // Paste an image/file into the body editor → upload, insert markdown link.
+  const handleEditorPaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.kind === 'file') { const f = item.getAsFile(); if (f) files.push(f); }
+    }
+    if (!files.length) return;
+    e.preventDefault();
+    setUploading(true);
+    try {
+      const uploaded = await uploadFilesToCloudinary(files);
+      const md = (uploaded || []).map((f) => {
+        const isImg = (f.contentType || '').startsWith('image/');
+        return isImg ? `![${f.originalName}](${f.cloudUrl})` : `[📎 ${f.originalName}](${f.cloudUrl})`;
+      }).filter(Boolean).join('\n');
+      if (md) setDraft((prev) => (prev && !prev.endsWith('\n') ? `${prev}\n` : prev) + `${md}\n`);
+    } catch (err) {
+      console.error('[TUI-UPLOAD-ERROR]', err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   // Clicking anywhere outside an open editor must not strand the TUI in an
@@ -240,6 +310,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const onInputKeyDown = (e) => {
     e.stopPropagation();
+    // The "/" menu captures navigation keys while open.
+    if (mode === 'body' && slash && slashMatches.length > 0) {
+      const sel = Math.min(slash.sel, slashMatches.length - 1);
+      if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+        e.preventDefault();
+        setSlash((s) => ({ ...s, sel: (sel + 1) % slashMatches.length }));
+        return;
+      }
+      if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+        e.preventDefault();
+        setSlash((s) => ({ ...s, sel: (sel - 1 + slashMatches.length) % slashMatches.length }));
+        return;
+      }
+      if (e.key === 'Enter') { e.preventDefault(); applySlash(slashMatches[sel]); return; }
+      if (e.key === 'Escape') { e.preventDefault(); setSlash(null); return; }
+    }
     // body edit is multi-line: Ctrl+Enter saves, Enter inserts newline.
     if (e.key === 'Enter' && (mode === 'title' || mode === 'search' || (mode === 'body' && (e.ctrlKey || e.metaKey)))) {
       e.preventDefault();
@@ -303,6 +389,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       ],
     },
     {
+      title: 'EDITOR',
+      rows: [
+        ['/', 'block menu: todo, heading, code…'],
+        ['paste file/image', 'upload & insert markdown link'],
+        ['click [ ] in preview', 'toggle checklist item'],
+        ['Ctrl+Enter', 'save body'],
+      ],
+    },
+    {
       title: 'MOUSE',
       rows: [
         ['2×click title', 'edit title'],
@@ -315,7 +410,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c/C·m:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
     category: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
-    body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel',
+    body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel  /:blocks  paste:attach file',
     delete: '',
     help: 'press any key to close',
     search: '',
@@ -382,10 +477,49 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                 })()}
               </div>
               {mode === 'body' ? (
-                <textarea ref={inputRef} className="tui-textarea" value={draft}
-                          onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="body… (Ctrl+Enter to save)" />
+                <div className="tui-editor-wrap">
+                  {slash && slashMatches.length > 0 && (
+                    <div className="tui-slash">
+                      {slashMatches.map((it, i) => (
+                        <button key={it.key} type="button"
+                                className={`tui-slash-item ${i === Math.min(slash.sel, slashMatches.length - 1) ? 'sel' : ''}`}
+                                onMouseDown={(e) => { e.preventDefault(); applySlash(it); }}>
+                          <span className="tui-slash-hint">{it.hint}</span>
+                          <span>{it.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <textarea ref={inputRef} className="tui-textarea" value={draft}
+                            onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                            onPaste={handleEditorPaste}
+                            placeholder="body… (Ctrl+Enter save · paste image/file · / for blocks)" />
+                  {uploading && <div className="tui-uploading">uploading attachment…</div>}
+                </div>
               ) : (
-                <pre className="tui-pv-body" onClick={editBody} title="Click to edit">{current.content || '— empty —  (press i or click to edit)'}</pre>
+                <div className="tui-pv-body" onClick={editBody} title="Click to edit">
+                  {current.content ? (
+                    current.content.split('\n').map((ln, li) => {
+                      const m = ln.match(CHECKBOX_RE);
+                      if (!m) return <div key={li} className="tui-pv-line">{ln || ' '}</div>;
+                      const checked = !!m[2].trim();
+                      return (
+                        <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}
+                             title="Click to toggle"
+                             onClick={(e) => {
+                               e.stopPropagation();
+                               const next = toggleChecklistLine(current.content, li);
+                               if (next !== null) onUpdate(current.id, { content: next });
+                             }}>
+                          <span className="tui-check-box">{checked ? '[x]' : '[ ]'}</span>
+                          <span className="tui-check-text">{m[4]}</span>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    '— empty —  (press i or click to edit)'
+                  )}
+                </div>
               )}
             </div>
           ) : (

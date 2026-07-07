@@ -9,7 +9,7 @@ import './CalendarPopup.scss';
  * Days that already have notes carry an ink dot (count in the tooltip),
  * so the calendar doubles as a "which days did I write" history view.
  */
-const CalendarPopup = ({ current, marked, onSelect, onClose }) => {
+const CalendarPopup = ({ current, marked, stats, onSelect, onClose }) => {
   const [viewMonth, setViewMonth] = useState(startOfMonth(current));
   const today = new Date();
 
@@ -69,6 +69,15 @@ const CalendarPopup = ({ current, marked, onSelect, onClose }) => {
           })}
         </div>
 
+        {stats && (
+          <div className="note-cal-stats">
+            <span title="Chuỗi ngày viết liên tục">🔥 {stats.streak}d streak</span>
+            <span>·</span>
+            <span title="Số note trong tháng này">{stats.monthNotes} this month</span>
+            <span>·</span>
+            <span title="Tổng số ngày có ghi chú">{stats.totalDays} days total</span>
+          </div>
+        )}
         <div className="note-cal-foot">
           <button type="button" className="note-cal-today-btn"
                   onClick={() => { onSelect(today); onClose(); }}>
@@ -84,6 +93,7 @@ const CalendarPopup = ({ current, marked, onSelect, onClose }) => {
 CalendarPopup.propTypes = {
   current: PropTypes.instanceOf(Date).isRequired,
   marked: PropTypes.object.isRequired, // { 'yyyy-MM-dd': noteCount }
+  stats: PropTypes.shape({ streak: PropTypes.number, monthNotes: PropTypes.number, totalDays: PropTypes.number }),
   onSelect: PropTypes.func.isRequired,
   onClose: PropTypes.func.isRequired,
 };

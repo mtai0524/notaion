@@ -23,6 +23,21 @@ export const notesToMarkdown = (dateKey, notes) => {
   return lines.join('\n');
 };
 
+/** Matches a markdown task line: `- [ ] thing` / `* [x] thing`. */
+export const CHECKBOX_RE = /^(\s*[-*]\s*\[)( |x|X)(\])\s?(.*)$/;
+
+/**
+ * Flip the checkbox on one line of markdown content.
+ * Returns the new content, or null when that line is not a task line.
+ */
+export const toggleChecklistLine = (content, lineIndex) => {
+  const lines = String(content || '').split('\n');
+  const m = (lines[lineIndex] || '').match(CHECKBOX_RE);
+  if (!m) return null;
+  lines[lineIndex] = `${m[1]}${m[2].trim() ? ' ' : 'x'}${m[3]} ${m[4]}`;
+  return lines.join('\n');
+};
+
 /** Trigger a client-side download of a text file. */
 export const downloadTextFile = (filename, content, mime = 'text/markdown') => {
   const blob = new Blob([content], { type: `${mime};charset=utf-8` });

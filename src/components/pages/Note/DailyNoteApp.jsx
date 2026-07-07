@@ -23,7 +23,34 @@ import dayjs from 'dayjs';
 import { ensureNotificationPermission } from '../../../utils/notifyBrowser';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import CalendarPopup from './CalendarPopup';
-import { wordStats, notesToMarkdown, downloadTextFile } from './noteUtils';
+import { wordStats, notesToMarkdown, downloadTextFile, CHECKBOX_RE, toggleChecklistLine } from './noteUtils';
+
+// ReactMarkdown component map that turns `- [ ]` lines into clickable
+// checkboxes (no remark-gfm in this project, so we parse the source line via
+// the AST position and toggle it in place).
+const taskListComponents = (note, onUpdate) => ({
+  li: ({ node, children, ...props }) => {
+    const line = node?.position?.start?.line;
+    const src = String(note.content || '').split('\n')[line - 1] || '';
+    const m = src.match(CHECKBOX_RE);
+    if (!m) return <li {...props}>{children}</li>;
+    const checked = !!m[2].trim();
+    return (
+      <li
+        className={`md-task-item ${checked ? 'checked' : ''}`}
+        title="Click to toggle"
+        onClick={(e) => {
+          e.stopPropagation();
+          const next = toggleChecklistLine(note.content, line - 1);
+          if (next !== null) onUpdate(note.id, { content: next });
+        }}
+      >
+        <span className="md-task-box" />
+        <span className="md-task-text">{m[4]}</span>
+      </li>
+    );
+  },
+});
 // TEMPORARY: frontend-only deadline persistence until the backend migration lands.
 import { setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import * as signalR from '@microsoft/signalr';
@@ -1072,7 +1099,7 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
                     </div>
                   )}
                   {note.content ? (
-                    <ReactMarkdown>{note.content}</ReactMarkdown>
+                    <ReactMarkdown components={taskListComponents(note, onUpdate)}>{note.content}</ReactMarkdown>
                   ) : (
                     !note.drawingData && <span className="placeholder-text">{'> waiting for input...'}</span>
                   )}
@@ -1329,6 +1356,8 @@ const DailyNoteApp = () => {
   );
   const [newCatInput, setNewCatInput] = useState('');
   const [searchCatFilter, setSearchCatFilter] = useState('ALL'); // category filter for the search bar
+  const [searchDateFrom, setSearchDateFrom] = useState(''); // 'yyyy-MM-dd' or ''
+  const [searchDateTo, setSearchDateTo] = useState('');
 
   const addCustomCategory = (raw) => {
     const cat = String(raw || '').trim().toUpperCase().replace(/\s+/g, '_').slice(0, 16);
@@ -1581,6 +1610,22 @@ const DailyNoteApp = () => {
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const todayHasNotes = (markedDates[todayKey] || 0) > 0;
 
+  // Writing streak: consecutive days with notes, counted back from today
+  // (today not written yet doesn't break the streak — grace of one day).
+  const streakStats = useMemo(() => {
+    const hasDay = (d) => !!markedDates[format(d, 'yyyy-MM-dd')];
+    let cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+    if (!hasDay(cursor)) cursor = subDays(cursor, 1);
+    let streak = 0;
+    while (hasDay(cursor)) { streak += 1; cursor = subDays(cursor, 1); }
+    const monthPrefix = format(new Date(), 'yyyy-MM');
+    const monthNotes = Object.entries(markedDates)
+      .filter(([d]) => d.startsWith(monthPrefix))
+      .reduce((s, [, c]) => s + c, 0);
+    return { streak, monthNotes, totalDays: Object.keys(markedDates).length };
+  }, [markedDates]);
+
   // Export the visible day's notes as a Markdown file (frontend only).
   const exportDayMarkdown = () => {
     downloadTextFile(`daily-note-${dateKey}.md`, notesToMarkdown(dateKey, currentNotes));
@@ -1589,11 +1634,19 @@ const DailyNoteApp = () => {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
   const searchCatActive = searchCatFilter !== 'ALL';
-  const searchActive = !!normalizedSearchQuery || searchCatActive;
+  // Date range only applies to ALL-scope search (DAY scope is a single day).
+  const searchRangeActive = isAllTimeSearch && (!!searchDateFrom || !!searchDateTo);
+  const searchActive = !!normalizedSearchQuery || searchCatActive || searchRangeActive;
   const searchResults = searchActive
     ? searchPool
         .filter(n => !n.isDeleted)
         .filter(n => !searchCatActive || (n.customCategory || n.category) === searchCatFilter)
+        .filter(n => {
+          if (!searchRangeActive) return true;
+          if (searchDateFrom && (!n.date || n.date < searchDateFrom)) return false;
+          if (searchDateTo && (!n.date || n.date > searchDateTo)) return false;
+          return true;
+        })
         .filter(n => {
           if (!normalizedSearchQuery) return true;
           const haystack = [
@@ -2165,6 +2218,7 @@ const DailyNoteApp = () => {
               <CalendarPopup
                 current={currentDate}
                 marked={markedDates}
+                stats={streakStats}
                 onSelect={(d) => setCurrentDate(d)}
                 onClose={() => setShowCalendar(false)}
               />
@@ -2189,6 +2243,16 @@ const DailyNoteApp = () => {
               title="Hôm nay chưa có ghi chú — bấm để về hôm nay và bắt đầu viết"
             >
               <span className="reminder-dot" /> NO_ENTRY_TODAY
+            </button>
+          )}
+
+          {streakStats.streak > 0 && (
+            <button
+              className="nav-btn today-reminder-chip streak-chip"
+              onClick={() => setShowCalendar(true)}
+              title={`Chuỗi ${streakStats.streak} ngày viết liên tục · ${streakStats.monthNotes} note tháng này · ${streakStats.totalDays} ngày có ghi chú`}
+            >
+              🔥 {streakStats.streak}
             </button>
           )}
 
@@ -2271,6 +2335,22 @@ const DailyNoteApp = () => {
                   <span>{isAllTimeSearch ? 'ALL_NOTES_RESULTS' : 'THIS_DAY_RESULTS'}</span>
                   <span>{searchResults.length}</span>
                 </div>
+                {isAllTimeSearch && (
+                  <div className="global-search-range">
+                    <span className="range-label">RANGE</span>
+                    <input type="date" value={searchDateFrom} max={searchDateTo || undefined}
+                           onChange={(e) => setSearchDateFrom(e.target.value)} title="From date" />
+                    <span className="range-sep">→</span>
+                    <input type="date" value={searchDateTo} min={searchDateFrom || undefined}
+                           onChange={(e) => setSearchDateTo(e.target.value)} title="To date" />
+                    {(searchDateFrom || searchDateTo) && (
+                      <button type="button" className="range-clear"
+                              onClick={() => { setSearchDateFrom(''); setSearchDateTo(''); }}>
+                        <FaTimes />
+                      </button>
+                    )}
+                  </div>
+                )}
                 <div className="global-search-list">
                   {searchResults.length === 0 ? (
                     <div className="global-search-empty">No matches found</div>
@@ -3053,7 +3133,7 @@ const KanbanNote = ({ note, onUpdate, onDelete, onFocus, appTheme, dragHandlePro
                     onBlur={() => setIsEditing(false)}
                   />
                 ) : (
-                  <ReactMarkdown>{note.content || '> waiting for input...'}</ReactMarkdown>
+                  <ReactMarkdown components={taskListComponents(note, onUpdate)}>{note.content || '> waiting for input...'}</ReactMarkdown>
                 )}
               </div>
             </>

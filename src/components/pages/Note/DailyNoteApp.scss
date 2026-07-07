@@ -4357,3 +4357,96 @@
   letter-spacing: 0.4px;
   color: var(--text-muted, #6b7280);
 }
+
+/* ── Interactive markdown checklist (canvas + kanban previews) ── */
+.md-task-item {
+  list-style: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  cursor: pointer;
+
+  .md-task-box {
+    flex-shrink: 0;
+    width: 13px;
+    height: 13px;
+    margin-top: 3px;
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
+    color: var(--container-bg, #fff);
+  }
+
+  &:hover .md-task-box { background: rgba(127, 127, 127, 0.15); }
+
+  &.checked {
+    .md-task-box {
+      background: var(--text-color, #111827);
+      border-color: var(--text-color, #111827);
+
+      &::after { content: '✓'; }
+    }
+
+    .md-task-text {
+      color: var(--text-muted, #6b7280);
+      text-decoration: line-through;
+    }
+  }
+}
+
+/* ── Date-range filter row in the ALL-scope search dropdown ── */
+.daily-note-app-container-cyber .global-search-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(127, 127, 127, 0.05);
+
+  .range-label {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  input[type='date'] {
+    flex: 1;
+    min-width: 0;
+    height: 26px;
+    padding: 0 6px;
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--global-border-radius, 4px);
+    background: var(--container-bg);
+    color: var(--text-color);
+    font-family: inherit;
+    font-size: 0.7rem;
+    outline: none;
+
+    &:focus { box-shadow: -2px 2px 0 0 var(--shadow-color); }
+  }
+
+  .range-sep { color: var(--text-muted); font-size: 0.7rem; flex-shrink: 0; }
+
+  .range-clear {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 2px 4px;
+
+    &:hover { color: var(--danger-color, #ef4444); }
+  }
+}
+
+/* ── Streak chip shares the reminder-chip base; just drop the red dot look ── */
+.daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .streak-chip {
+  gap: 5px;
+}
