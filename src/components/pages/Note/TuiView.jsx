@@ -41,6 +41,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
   const catList = categories && categories.length ? categories : ['MEMO'];
@@ -169,19 +170,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     else setSlash(null);
   };
 
-  // Paste an image/file into the body editor → upload, insert markdown link.
-  const handleEditorPaste = async (e) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    const files = [];
-    for (const item of items) {
-      if (item.kind === 'file') { const f = item.getAsFile(); if (f) files.push(f); }
-    }
-    if (!files.length) return;
-    e.preventDefault();
+  // Upload files → insert markdown image/file links into the body draft.
+  // Shared by paste, the "attach" button, and the "/" image block.
+  const uploadFiles = async (files) => {
+    const list = Array.from(files || []).filter((f) => f && f.size > 0);
+    if (!list.length) return;
     setUploading(true);
     try {
-      const uploaded = await uploadFilesToCloudinary(files);
+      const uploaded = await uploadFilesToCloudinary(list);
       const md = (uploaded || []).map((f) => {
         const isImg = (f.contentType || '').startsWith('image/');
         return isImg ? `![${f.originalName}](${f.cloudUrl})` : `[📎 ${f.originalName}](${f.cloudUrl})`;
@@ -192,6 +188,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleEditorPaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const files = [];
+    for (const item of items) {
+      if (item.kind === 'file') { const f = item.getAsFile(); if (f) files.push(f); }
+    }
+    if (!files.length) return;
+    e.preventDefault();
+    uploadFiles(files);
   };
 
   // Clicking anywhere outside an open editor must not strand the TUI in an
@@ -219,7 +227,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
 
     if (mode === 'delete') {
-      if (e.key === 'y' || e.key === 'Y') { if (current) onDelete(current.id, true); }
+      // y/Enter confirms; n/Esc/anything else cancels.
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') { if (current) onDelete(current.id, true); }
       setMode('normal');
       e.preventDefault();
       return;
@@ -457,8 +466,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
             ) : (
               list.map((n, i) => {
                 const sel = i === noteIndex;
+                const pendingDelete = sel && mode === 'delete';
                 return (
-                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''}`}
+                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${pendingDelete ? 'pending-delete' : ''}`}
                        onClick={() => { setNoteIndex(i); setFocus('notes'); }}
                        onDoubleClick={() => { setNoteIndex(i); setDraft(n.title || ''); setMode('title'); }}>
                     <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
@@ -468,6 +478,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                     ) : (
                       <span className="tui-title">{n.title || '(untitled)'}</span>
                     )}
+                    <button type="button" className="tui-row-del" title="Delete note (d)"
+                            onClick={(e) => { e.stopPropagation(); setNoteIndex(i); setMode('delete'); }}>
+                      ×
+                    </button>
                   </div>
                 );
               })
@@ -511,8 +525,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                   <textarea ref={inputRef} className="tui-textarea" value={draft}
                             onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                             onPaste={handleEditorPaste}
-                            placeholder="body… (Ctrl+Enter save · paste image/file · / for blocks)" />
-                  {uploading && <div className="tui-uploading">uploading attachment…</div>}
+                            placeholder="body… (Ctrl+Enter save · / for blocks · attach or paste files)" />
+                  <div className="tui-editor-bar">
+                    <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }}
+                           onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ''; }} />
+                    <button type="button" className="tui-attach-btn" title="Attach image / file"
+                            onMouseDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}>
+                      📎 Attach
+                    </button>
+                    <span className="tui-editor-tip">
+                      {uploading ? 'uploading…' : 'Ctrl+Enter to save · Esc to cancel'}
+                    </span>
+                  </div>
                 </div>
               ) : (
                 <div className="tui-pv-body" onClick={editBody} title="Click to edit">
@@ -552,7 +576,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
           <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
-          <span className="tui-warn">delete &quot;{current?.title || 'untitled'}&quot;? (y/n)</span>
+          <span className="tui-warn">
+            delete &quot;{current?.title || 'untitled'}&quot;?
+            <button type="button" className="tui-warn-btn yes"
+                    onClick={() => { if (current) onDelete(current.id, true); setMode('normal'); rootRef.current?.focus(); }}>
+              Yes (y)
+            </button>
+            <button type="button" className="tui-warn-btn no"
+                    onClick={() => { setMode('normal'); rootRef.current?.focus(); }}>
+              No (n / Esc)
+            </button>
+          </span>
         ) : mode === 'category' ? (
           <span className="tui-cat-pick">
             set category:&nbsp;
@@ -567,6 +601,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         ) : (
           <>
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
+            <span className="tui-focus-tag">◈ {focus.toUpperCase()}</span>
             <span className="tui-hints">{hints[mode]}</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
