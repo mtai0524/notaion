@@ -2100,6 +2100,28 @@ const DailyNoteApp = () => {
     axiosInstance.post('/api/DailyNote', duplicated);
   };
 
+  // Move a note to another day: 0 = today, +1 = tomorrow, -1 = yesterday.
+  // Removes it from the current day and re-dates it; the target day picks it up
+  // on next load (or immediately if already in state).
+  const moveNoteToDate = (id, dayOffset) => {
+    const note = (notesByDate[dateKey] || []).find(n => n.id === id);
+    if (!note) return;
+    const target = dayOffset === 0 ? new Date()
+      : dayOffset > 0 ? addDays(currentDate, dayOffset)
+      : subDays(currentDate, Math.abs(dayOffset));
+    const targetKey = format(target, 'yyyy-MM-dd');
+    if (targetKey === dateKey) return;
+
+    const moved = { ...note, date: targetKey, updatedAt: new Date().toISOString() };
+    setNotesByDate(prev => ({
+      ...prev,
+      [dateKey]: (prev[dateKey] || []).filter(n => n.id !== id),
+      [targetKey]: [...(prev[targetKey] || []), moved],
+    }));
+    // /bulk persists each note under its own `date`, so this re-dates it server-side.
+    saveNotesToBackend([{ ...moved }]);
+  };
+
   const sendToBack = (id) => {
     setNotesByDate(prev => {
       const updated = (prev[dateKey] || []).map(n => ({
@@ -2859,6 +2881,8 @@ const DailyNoteApp = () => {
               onAdd={addNote}
               onUpdate={updateNote}
               onDelete={deleteNote}
+              onDuplicate={duplicateNote}
+              onMoveToDate={moveNoteToDate}
               onChangeDate={(days) => setCurrentDate(prev => days > 0 ? addDays(prev, days) : subDays(prev, Math.abs(days)))}
               dateLabel={format(currentDate, 'yyyy-MM-dd')}
               categories={CATEGORIES}

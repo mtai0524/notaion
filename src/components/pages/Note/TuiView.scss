@@ -802,3 +802,81 @@
     &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
   }
 }
+
+/* ── Pin / sort / multi-select / pomodoro (feature pack) ── */
+.tui {
+  /* sort chip in the NOTES panel title */
+  .tui-panel-title .tui-sort-chip {
+    margin-left: 8px;
+    padding: 0 6px;
+    font: inherit;
+    font-size: 0.85em;
+    font-weight: 700;
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    color: inherit;
+    cursor: pointer;
+    text-transform: lowercase;
+
+    &:hover { opacity: 0.75; }
+  }
+
+  .tui-row {
+    /* per-row select checkbox — hidden until hover / selected / focused */
+    .tui-row-pick {
+      flex-shrink: 0;
+      width: 18px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted, #9ca3af);
+      cursor: pointer;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: opacity 0.12s ease, color 0.12s ease;
+
+      &.on { opacity: 1; color: var(--text-color, #111827); }
+    }
+
+    &:hover .tui-row-pick { opacity: 1; }
+
+    .tui-pin { flex-shrink: 0; font-size: 0.8rem; }
+
+    /* selected for a bulk action */
+    &.picked {
+      background: rgba(127, 127, 127, 0.16);
+      box-shadow: inset 2px 0 0 0 var(--text-color, #111827);
+    }
+
+    /* pinned notes get a subtle left accent */
+    &.pinned .tui-title { font-weight: 700; }
+  }
+
+  /* status-bar selection tag */
+  .tui-status .tui-sel-tag {
+    flex-shrink: 0;
+    padding: 1px 8px;
+    border-radius: var(--radius-sm, 4px);
+    background: var(--text-color, #111827);
+    color: var(--container-bg, #fff);
+    font-weight: 800;
+    font-size: 0.72rem;
+  }
+
+  /* status-bar pomodoro chip */
+  .tui-status .tui-pomo {
+    flex-shrink: 0;
+    padding: 1px 8px;
+    border-radius: var(--radius-sm, 4px);
+    border: 1.5px solid var(--border-color, #111827);
+    background: transparent;
+    color: var(--text-color, #111827);
+    font-weight: 800;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+
+    &.run { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+    &.paused { opacity: 0.7; }
+  }
+}

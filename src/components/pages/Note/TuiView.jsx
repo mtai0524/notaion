@@ -28,11 +28,18 @@ const SLASH_ITEMS = [
  */
 const PANELS = ['folders', 'notes', 'preview'];
 
-const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, categories }) => {
+const SORTS = [
+  { key: 'created', label: 'created' },
+  { key: 'title', label: 'title' },
+  { key: 'status', label: 'status' },
+  { key: 'updated', label: 'updated' },
+];
+
+const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
-  const [mode, setMode] = useState('normal'); // normal | title | body | search | delete | help
+  const [mode, setMode] = useState('normal'); // normal | title | body | search | delete | help | category | move
   const [draft, setDraft] = useState('');
   const [query, setQuery] = useState('');
   const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
@@ -40,6 +47,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
+  const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
+  const [selectedIds, setSelectedIds] = useState([]); // multi-select for bulk actions
+  const [pomodoro, setPomodoro] = useState(null); // { noteId, endsAt, remaining, running }
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
@@ -68,11 +78,37 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       const q = query.toLowerCase();
       l = l.filter((n) => (n.title || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q));
     }
-    return l;
-  }, [notes, activeFolder, query]);
+    // Sort by the chosen key, then always float pinned notes to the top.
+    const cmp = {
+      title: (a, b) => (a.title || '').localeCompare(b.title || ''),
+      status: (a, b) => (a.isCompleted ? 1 : 0) - (b.isCompleted ? 1 : 0),
+      updated: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')),
+      created: (a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')),
+    }[sortBy] || (() => 0);
+    return [...l].sort((a, b) => {
+      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
+      return cmp(a, b);
+    });
+  }, [notes, activeFolder, query, sortBy]);
 
   useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
   useEffect(() => { rootRef.current?.focus(); }, []);
+
+  // Pomodoro countdown — ticks every second while running; notifies at 0.
+  useEffect(() => {
+    if (!pomodoro?.running) return undefined;
+    const id = setInterval(() => {
+      setPomodoro((p) => {
+        if (!p || !p.running) return p;
+        if (p.remaining <= 1) {
+          try { if (Notification?.permission === 'granted') new Notification('🍅 Pomodoro xong!', { body: 'Nghỉ một chút nhé.' }); } catch { /* ignore */ }
+          return { ...p, remaining: 0, running: false };
+        }
+        return { ...p, remaining: p.remaining - 1 };
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [pomodoro?.running]);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search') {
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -131,6 +167,28 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const toggleDone = () => { if (current) onUpdate(current.id, { isCompleted: !current.isCompleted }); };
 
   const scrollPreview = (dy) => previewRef.current?.scrollBy({ top: dy });
+
+  /* ── Pin / sort ── */
+  const togglePin = () => { if (current) onUpdate(current.id, { pinned: !current.pinned }); };
+  const cycleSort = () => setSortBy((s) => SORTS[(SORTS.findIndex(x => x.key === s) + 1) % SORTS.length].key);
+
+  /* ── Multi-select / bulk actions ── */
+  const toggleSelect = (id) => setSelectedIds((ids) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
+  const clearSelection = () => setSelectedIds([]);
+  const selectAllVisible = () => setSelectedIds(list.map(n => n.id));
+  const bulkTargets = () => (selectedIds.length ? list.filter(n => selectedIds.includes(n.id)) : (current ? [current] : []));
+  const bulkComplete = (done) => { bulkTargets().forEach(n => onUpdate(n.id, { isCompleted: done })); };
+  const bulkCategory = (cat) => { bulkTargets().forEach(n => onUpdate(n.id, { category: cat, customCategory: cat })); };
+  const bulkDelete = () => { bulkTargets().forEach(n => onDelete(n.id, true)); clearSelection(); };
+  const bulkMove = (offset) => { bulkTargets().forEach(n => onMoveToDate?.(n.id, offset)); clearSelection(); };
+
+  /* ── Pomodoro focus timer (25 min) bound to the selected note ── */
+  const startPomodoro = () => {
+    if (!current) return;
+    setPomodoro({ noteId: current.id, remaining: 25 * 60, running: true });
+  };
+  const stopPomodoro = () => setPomodoro(null);
+  const togglePomodoro = () => setPomodoro((p) => (p ? { ...p, running: !p.running } : p));
 
   const commit = () => {
     if (mode !== 'title' && mode !== 'body') return;
@@ -377,7 +435,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
     if (mode === 'delete') {
       // y/Enter confirms; n/Esc/anything else cancels.
-      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') { if (current) onDelete(current.id, true); }
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
+        if (selectedIds.length) bulkDelete();
+        else if (current) onDelete(current.id, true);
+      }
       setMode('normal');
       e.preventDefault();
       return;
@@ -385,7 +446,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
     if (mode === 'category') {
       const idx = parseInt(e.key, 10);
-      if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) setCategory(catList[idx - 1]);
+      if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) {
+        if (selectedIds.length) bulkCategory(catList[idx - 1]);
+        else setCategory(catList[idx - 1]);
+      }
+      setMode('normal');
+      e.preventDefault();
+      return;
+    }
+
+    // Move mode: pick a target day for the current note (or the selection).
+    if (mode === 'move') {
+      const map = { '1': 0, '2': 1, '3': -1, '7': 7 };
+      if (e.key in map) {
+        if (selectedIds.length) bulkMove(map[e.key]);
+        else if (current) onMoveToDate?.(current.id, map[e.key]);
+      }
       setMode('normal');
       e.preventDefault();
       return;
@@ -409,8 +485,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
       case 'n': createNote('blank'); e.preventDefault(); return;
       case 'N': createNote('todo'); e.preventDefault(); return;
       case 'm': if (current) setMode('category'); e.preventDefault(); return;
+      case 'M': if (current || selectedIds.length) setMode('move'); e.preventDefault(); return;
+      case 'p': togglePin(); e.preventDefault(); return;
+      case 'S': cycleSort(); e.preventDefault(); return;
+      case 'y': if (current) onDuplicate?.({ ...current }); e.preventDefault(); return;
+      case 'a': selectedIds.length === list.length ? clearSelection() : selectAllVisible(); e.preventDefault(); return;
+      case '.': pomodoro ? stopPomodoro() : startPomodoro(); e.preventDefault(); return;
+      case ',': togglePomodoro(); e.preventDefault(); return;
       case 'Escape':
         if (query) setQuery('');
+        else if (selectedIds.length) clearSelection();
         else setFocus('notes');
         e.preventDefault();
         return;
@@ -438,10 +522,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         case 'l': case 'L': case 'ArrowRight': setFocus('preview'); break;
         case 'Enter': case 'e': editTitle(); break;
         case 'i': editBody(); break;
-        case 'x': case ' ': toggleDone(); break;
+        case 'x':
+          if (selectedIds.length) bulkComplete(!bulkTargets().every(n => n.isCompleted));
+          else toggleDone();
+          break;
+        case ' ': if (current) toggleSelect(current.id); break;
         case 'c': cycleCategory(1); break;
         case 'C': cycleCategory(-1); break;
-        case 'd': if (current) setMode('delete'); break;
+        case 'd': if (selectedIds.length) setMode('delete'); else if (current) setMode('delete'); break;
         default: return;
       }
       e.preventDefault();
@@ -530,17 +618,41 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         ['g / G', 'first / last note'],
         ['Enter / e', 'edit title'],
         ['i', 'edit body · Ctrl+Enter saves'],
-        ['x / space', 'toggle done'],
+        ['x', 'toggle done'],
+        ['p', 'pin / unpin (pinned float to top)'],
+        ['S', 'cycle sort (created/title/status/updated)'],
+        ['y', 'duplicate note'],
         ['d → y', 'delete note'],
         ['n / N', 'new note / todo (active folder)'],
       ],
     },
     {
-      title: 'CATEGORY',
+      title: 'SELECT & BULK',
       rows: [
-        ['c / C', 'cycle forward / back'],
+        ['space', 'select / deselect note'],
+        ['Ctrl+click', 'select with mouse'],
+        ['a', 'select all / clear'],
+        ['x', 'complete / reopen selected'],
+        ['d', 'delete selected'],
+        ['m → 1-N', 'set category for selected'],
+        ['M → 1/2/3/7', 'move selected to day'],
+        ['Esc', 'clear selection'],
+      ],
+    },
+    {
+      title: 'CATEGORY & MOVE',
+      rows: [
+        ['c / C', 'cycle category fwd / back'],
         [`m → 1-${catList.length}`, 'set category directly'],
+        ['M', 'move note → today/tomorrow/…'],
         ['f / F', 'folder filter next / prev'],
+      ],
+    },
+    {
+      title: 'FOCUS TIMER',
+      rows: [
+        ['.', 'start / stop pomodoro (25m)'],
+        [',', 'pause / resume'],
       ],
     },
     {
@@ -579,8 +691,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     },
   ];
   const hints = {
-    normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  c/C·m:cat  f:folder  n/N:new  d:del  [ ]:day  t:today  /:find  ?:help',
+    normal: '1/2/3:panel  j/k:move  Enter/e:title  i:body  x:done  p:pin  S:sort  space:select  y:dup  m/M:cat/move  n/N:new  d:del  .:pomodoro  /:find  ?:help',
     category: '',
+    move: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
     body: '── EDIT BODY ──  Ctrl+Enter:save  Esc:cancel  /:blocks  paste:attach file',
     delete: '',
@@ -608,19 +721,35 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
         {/* NOTES */}
         <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`}>
-          <span className="tui-panel-title"><kbd>2</kbd>{`NOTES · ${dateLabel}`}</span>
+          <span className="tui-panel-title">
+            <kbd>2</kbd>{`NOTES · ${dateLabel}`}
+            <button type="button" className="tui-sort-chip" title="Sort order (S)"
+                    onMouseDown={(e) => { e.preventDefault(); cycleSort(); }}>
+              ⇅ {sortBy}
+            </button>
+          </span>
           <div className="tui-scroll">
             {list.length === 0 ? (
               <div className="tui-empty">{query ? 'no matches' : 'no entries — press n'}</div>
             ) : (
               list.map((n, i) => {
                 const sel = i === noteIndex;
-                const pendingDelete = sel && mode === 'delete';
+                const picked = selectedIds.includes(n.id);
+                const pendingDelete = mode === 'delete' && (selectedIds.length ? picked : sel);
                 return (
-                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${pendingDelete ? 'pending-delete' : ''}`}
-                       onClick={() => { setNoteIndex(i); setFocus('notes'); }}
+                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
+                       onClick={(e) => {
+                         if (e.ctrlKey || e.metaKey) { toggleSelect(n.id); return; }
+                         setNoteIndex(i); setFocus('notes');
+                       }}
                        onDoubleClick={() => { setNoteIndex(i); setDraft(n.title || ''); setMode('title'); }}>
+                    <button type="button" className={`tui-row-pick ${picked ? 'on' : ''}`}
+                            title="Select (Space / Ctrl+click)"
+                            onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}>
+                      {picked ? '☑' : '☐'}
+                    </button>
                     <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
+                    {n.pinned && <span className="tui-pin" title="Pinned">📌</span>}
                     {sel && mode === 'title' ? (
                       <input ref={inputRef} className="tui-input" value={draft}
                              onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="title…" />
@@ -764,9 +893,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">
-            delete &quot;{current?.title || 'untitled'}&quot;?
+            {selectedIds.length
+              ? `delete ${selectedIds.length} selected note${selectedIds.length > 1 ? 's' : ''}?`
+              : `delete "${current?.title || 'untitled'}"?`}
             <button type="button" className="tui-warn-btn yes"
-                    onClick={() => { if (current) onDelete(current.id, true); setMode('normal'); rootRef.current?.focus(); }}>
+                    onClick={() => { if (selectedIds.length) bulkDelete(); else if (current) onDelete(current.id, true); setMode('normal'); rootRef.current?.focus(); }}>
               Yes (y)
             </button>
             <button type="button" className="tui-warn-btn no"
@@ -776,11 +907,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
           </span>
         ) : mode === 'category' ? (
           <span className="tui-cat-pick">
-            set category:&nbsp;
+            {selectedIds.length ? `category → ${selectedIds.length} notes:` : 'set category:'}&nbsp;
             {catList.map((c, i) => (
-              <span key={c} className={`tui-cat-opt ${catOf(current) === c ? 'cur' : ''}`}
-                    onClick={() => { setCategory(c); setMode('normal'); }}>
+              <span key={c} className={`tui-cat-opt ${!selectedIds.length && catOf(current) === c ? 'cur' : ''}`}
+                    onClick={() => { if (selectedIds.length) bulkCategory(c); else setCategory(c); setMode('normal'); }}>
                 <kbd>{i + 1}</kbd>{c}
+              </span>
+            ))}
+            <span className="tui-cat-esc">Esc:cancel</span>
+          </span>
+        ) : mode === 'move' ? (
+          <span className="tui-cat-pick">
+            {selectedIds.length ? `move ${selectedIds.length} notes to:` : 'move to:'}&nbsp;
+            {[['1', 'Today', 0], ['2', 'Tomorrow', 1], ['3', 'Yesterday', -1], ['7', '+1 week', 7]].map(([k, lbl, off]) => (
+              <span key={k} className="tui-cat-opt"
+                    onClick={() => { if (selectedIds.length) bulkMove(off); else if (current) onMoveToDate?.(current.id, off); setMode('normal'); }}>
+                <kbd>{k}</kbd>{lbl}
               </span>
             ))}
             <span className="tui-cat-esc">Esc:cancel</span>
@@ -789,6 +931,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
           <>
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
             <span className="tui-focus-tag">◈ {focus.toUpperCase()}</span>
+            {selectedIds.length > 0 && (
+              <span className="tui-sel-tag" title="Selected — d/m/M act on all; Esc clears">✓ {selectedIds.length} selected</span>
+            )}
+            {pomodoro && (
+              <button type="button" className={`tui-pomo ${pomodoro.running ? 'run' : 'paused'}`}
+                      title="Pomodoro — , pause/resume · . stop"
+                      onClick={(e) => { e.stopPropagation(); togglePomodoro(); rootRef.current?.focus(); }}>
+                🍅 {String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0')}:{String(pomodoro.remaining % 60).padStart(2, '0')}
+                {!pomodoro.running && ' ⏸'}
+              </button>
+            )}
             <span className="tui-hints">{hints[mode]}</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
@@ -835,6 +988,8 @@ TuiView.propTypes = {
   onAdd: PropTypes.func.isRequired,
   onUpdate: PropTypes.func.isRequired,
   onDelete: PropTypes.func.isRequired,
+  onDuplicate: PropTypes.func,
+  onMoveToDate: PropTypes.func,
   onChangeDate: PropTypes.func.isRequired,
   dateLabel: PropTypes.string.isRequired,
   categories: PropTypes.array,
