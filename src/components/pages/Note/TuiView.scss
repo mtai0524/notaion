@@ -218,11 +218,15 @@
     position: relative;
 
     .tui-slash {
+      /* Overlay the textarea itself (below its first line) — anchoring above
+         gets clipped by the panel's scroll container. */
       position: absolute;
-      bottom: calc(100% + 6px);
-      left: 0;
+      top: 30px;
+      left: 8px;
       z-index: 10;
       min-width: 210px;
+      max-height: 185px;
+      overflow-y: auto;
       background: var(--container-bg, #fff);
       border: 1.5px solid var(--border-color, #111827);
       border-radius: var(--radius-sm, 6px);

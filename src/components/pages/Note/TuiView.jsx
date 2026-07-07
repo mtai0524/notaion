@@ -141,10 +141,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
 
   const applySlash = (item) => {
     if (!slash) return;
-    const snippet = item.key === 'time' ? `${new Date().toTimeString().slice(0, 5)} ` : item.snippet;
+    const base = item.key === 'time' ? `${new Date().toTimeString().slice(0, 5)} ` : item.snippet;
+    // Markdown blocks only work at a line start — when triggered mid-line,
+    // break to a new line first (time stamp is inline, no break needed).
+    const atLineStart = slash.start === 0 || draft[slash.start - 1] === '\n';
+    const prefix = item.key !== 'time' && !atLineStart ? '\n' : '';
+    const snippet = prefix + base;
     const head = draft.slice(0, slash.start);
     const tail = draft.slice(slash.start + 1 + slash.filter.length);
-    const caret = slash.start + (item.caret ?? snippet.length);
+    const caret = slash.start + prefix.length + (item.caret ?? base.length);
     setDraft(head + snippet + tail);
     setSlash(null);
     requestAnimationFrame(() => {
@@ -153,11 +158,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     });
   };
 
-  // Track the caret: "/" at a line start opens the menu; typing filters it.
+  // Track the caret: "/" after start-of-line or whitespace opens the menu
+  // (Notion-style — works mid-line too); typing filters it. A "/" glued to a
+  // word or another "/" (URLs like https://…) does NOT trigger it.
   const handleBodyChange = (e) => {
     const val = e.target.value;
     setDraft(val);
-    const m = val.slice(0, e.target.selectionStart).match(/(?:^|\n)\/([a-zA-Z0-9-]*)$/);
+    const m = val.slice(0, e.target.selectionStart).match(/(?:^|[\s\n])\/([a-zA-Z0-9-]*)$/);
     if (m) setSlash({ start: e.target.selectionStart - m[1].length - 1, filter: m[1].toLowerCase(), sel: 0 });
     else setSlash(null);
   };
