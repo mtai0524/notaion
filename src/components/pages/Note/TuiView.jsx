@@ -42,6 +42,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   const inputRef = useRef(null);
   const previewRef = useRef(null);
   const fileInputRef = useRef(null);
+  // While true, the textarea's onBlur must NOT commit/close the editor —
+  // opening the file dialog blurs the textarea, and we want to come back to it.
+  const suppressBlurRef = useRef(false);
 
   const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
   const catList = categories && categories.length ? categories : ['MEMO'];
@@ -170,11 +173,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
     else setSlash(null);
   };
 
-  // Upload files → insert markdown image/file links into the body draft.
-  // Shared by paste, the "attach" button, and the "/" image block.
+  // Upload files → append markdown image/file links to the note body.
+  // Shared by paste and the "attach" button. Because the upload is async and
+  // the editor may close before it resolves, we write straight to the note via
+  // onUpdate (source of truth), and also sync the live draft if still editing.
   const uploadFiles = async (files) => {
     const list = Array.from(files || []).filter((f) => f && f.size > 0);
-    if (!list.length) return;
+    if (!list.length || !current) return;
     setUploading(true);
     try {
       const uploaded = await uploadFilesToCloudinary(list);
@@ -182,11 +187,23 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
         const isImg = (f.contentType || '').startsWith('image/');
         return isImg ? `![${f.originalName}](${f.cloudUrl})` : `[📎 ${f.originalName}](${f.cloudUrl})`;
       }).filter(Boolean).join('\n');
-      if (md) setDraft((prev) => (prev && !prev.endsWith('\n') ? `${prev}\n` : prev) + `${md}\n`);
+      if (!md) return;
+      const append = (prev) => (prev && !prev.endsWith('\n') ? `${prev}\n` : prev) + `${md}\n`;
+      if (mode === 'body') {
+        // editing: grow the draft (commit will persist it)
+        setDraft((prev) => append(prev));
+        requestAnimationFrame(() => inputRef.current?.focus());
+      } else {
+        // editor already closed: persist directly onto the note
+        onUpdate(current.id, { content: append(current.content || '') });
+      }
     } catch (err) {
       console.error('[TUI-UPLOAD-ERROR]', err);
+      // eslint-disable-next-line no-alert
+      alert('Upload thất bại — thử lại.');
     } finally {
       setUploading(false);
+      suppressBlurRef.current = false;
     }
   };
 
@@ -206,6 +223,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
   // edit mode with no focused input (all shortcuts would go dead) — commit
   // the draft on blur instead.
   const onInputBlur = () => {
+    if (suppressBlurRef.current) return; // file dialog / attach — stay in edit mode
     if (mode === 'search') setMode('normal');
     else commit();
   };
@@ -524,17 +542,26 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                   )}
                   <textarea ref={inputRef} className="tui-textarea" value={draft}
                             onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                            onFocus={() => { suppressBlurRef.current = false; }}
                             onPaste={handleEditorPaste}
                             placeholder="body… (Ctrl+Enter save · / for blocks · attach or paste files)" />
                   <div className="tui-editor-bar">
-                    <input type="file" ref={fileInputRef} multiple style={{ display: 'none' }}
-                           onChange={(e) => { if (e.target.files?.length) uploadFiles(e.target.files); e.target.value = ''; }} />
+                    <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
+                           onChange={(e) => {
+                             if (e.target.files?.length) uploadFiles(e.target.files);
+                             else suppressBlurRef.current = false; // dialog cancelled
+                             e.target.value = '';
+                           }} />
                     <button type="button" className="tui-attach-btn" title="Attach image / file"
-                            onMouseDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); }}>
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              suppressBlurRef.current = true; // keep editor open through the file dialog
+                              fileInputRef.current?.click();
+                            }}>
                       📎 Attach
                     </button>
                     <span className="tui-editor-tip">
-                      {uploading ? 'uploading…' : 'Ctrl+Enter to save · Esc to cancel'}
+                      {uploading ? '⏳ uploading…' : 'Ctrl+Enter to save · Esc to cancel'}
                     </span>
                   </div>
                 </div>
@@ -543,7 +570,27 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onChangeDate, dateLabel, ca
                   {current.content ? (
                     current.content.split('\n').map((ln, li) => {
                       const m = ln.match(CHECKBOX_RE);
-                      if (!m) return <div key={li} className="tui-pv-line">{ln || ' '}</div>;
+                      if (!m) {
+                        const img = ln.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
+                        if (img) {
+                          return (
+                            <a key={li} href={img[2]} target="_blank" rel="noopener noreferrer"
+                               className="tui-pv-img" onClick={(e) => e.stopPropagation()}>
+                              <img src={img[2]} alt={img[1]} loading="lazy" />
+                            </a>
+                          );
+                        }
+                        const link = ln.match(/^\[([^\]]+)\]\(([^)]+)\)\s*$/);
+                        if (link) {
+                          return (
+                            <a key={li} href={link[2]} target="_blank" rel="noopener noreferrer"
+                               className="tui-pv-file" onClick={(e) => e.stopPropagation()}>
+                              {link[1]}
+                            </a>
+                          );
+                        }
+                        return <div key={li} className="tui-pv-line">{ln || ' '}</div>;
+                      }
                       const checked = !!m[2].trim();
                       return (
                         <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}

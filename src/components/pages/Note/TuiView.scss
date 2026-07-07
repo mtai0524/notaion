@@ -247,6 +247,36 @@
 
   .tui-pv-line { min-height: 1.5em; }
 
+  /* uploaded image thumbnail in the preview */
+  .tui-pv-img {
+    display: block;
+    margin: 6px 0;
+
+    img {
+      max-width: 100%;
+      max-height: 260px;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      object-fit: contain;
+    }
+  }
+
+  /* uploaded non-image file link */
+  .tui-pv-file {
+    display: inline-flex;
+    align-items: center;
+    margin: 4px 0;
+    padding: 3px 10px;
+    background: rgba(127, 127, 127, 0.1);
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-color, #111827);
+    text-decoration: none;
+    font-size: 0.82rem;
+
+    &:hover { background: rgba(127, 127, 127, 0.18); }
+  }
+
   /* clickable `- [ ]` lines in the preview */
   .tui-check-line {
     display: flex;
