@@ -1055,3 +1055,356 @@
   0%, 100% { transform: translateY(0); }
   40% { transform: translateY(-14px); }
 }
+
+/* ════════ TUI feature pack: themes · zen · heatmap · tags · chips ·
+   command line · weekly review · pomodoro phases ════════ */
+
+/* ── TUI color themes — override the CSS vars the panels already use ── */
+.tui[data-tui-theme='catppuccin'] {
+  --bg-color: #1e1e2e;
+  --container-bg: #181825;
+  --text-color: #cdd6f4;
+  --text-muted: #7f849c;
+  --border-color: #45475a;
+  --tui-accent: #f38ba8;
+}
+.tui[data-tui-theme='gruvbox'] {
+  --bg-color: #282828;
+  --container-bg: #1d2021;
+  --text-color: #ebdbb2;
+  --text-muted: #928374;
+  --border-color: #504945;
+  --tui-accent: #fe8019;
+}
+.tui[data-tui-theme='nord'] {
+  --bg-color: #2e3440;
+  --container-bg: #272c36;
+  --text-color: #d8dee9;
+  --text-muted: #616e88;
+  --border-color: #434c5e;
+  --tui-accent: #88c0d0;
+}
+.tui[data-tui-theme='dracula'] {
+  --bg-color: #282a36;
+  --container-bg: #21222c;
+  --text-color: #f8f8f2;
+  --text-muted: #6272a4;
+  --border-color: #44475a;
+  --tui-accent: #bd93f9;
+}
+.tui[data-tui-theme] {
+  background: var(--bg-color);
+  color: var(--text-color);
+  .tui-panel { background: var(--container-bg); }
+}
+
+/* ── Zen mode: notes panel only ── */
+.tui.tui-zen {
+  .tui-folders, .tui-preview { display: none; }
+  .tui-notes { flex: 1 1 100%; max-width: 900px; margin: 0 auto; width: 100%; }
+}
+
+/* ── FOLDERS panel extras ── */
+.tui .tui-side-h {
+  margin: 14px 0 6px;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--text-muted, #6b7280);
+}
+.tui .tui-folder.archive { opacity: 0.85; font-style: italic; }
+
+.tui .tui-tags {
+  padding: 0 2px;
+  .tui-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 4px 4px 0;
+    padding: 1px 7px;
+    background: transparent;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 999px;
+    color: var(--text-muted, #6b7280);
+    font: inherit;
+    font-size: 0.72rem;
+    cursor: pointer;
+    .n { font-size: 0.65rem; opacity: 0.7; }
+    &:hover { color: var(--text-color); border-color: var(--text-color); }
+    &.on {
+      background: var(--tui-accent, var(--text-color, #111827));
+      border-color: var(--tui-accent, var(--text-color, #111827));
+      color: var(--container-bg, #fff);
+    }
+  }
+}
+
+.tui .tui-heatmap {
+  padding: 0 2px 10px;
+  .tui-heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+  }
+  .hm {
+    aspect-ratio: 1;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--text-muted, #9ca3af);
+    font: inherit;
+    font-size: 0.58rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    &:hover { border-color: var(--text-color); color: var(--text-color); }
+    /* activity levels — same hue ramp regardless of theme */
+    &.lv1 { background: rgba(34, 197, 94, 0.22); }
+    &.lv2 { background: rgba(34, 197, 94, 0.45); color: #fff; }
+    &.lv3 { background: rgba(34, 197, 94, 0.68); color: #fff; }
+    &.lv4 { background: rgba(22, 163, 74, 0.95); color: #fff; }
+    &.cur { outline: 2px solid var(--tui-accent, #111827); outline-offset: -1px; font-weight: 800; }
+  }
+}
+
+/* ── NOTES panel: day progress + row chips ── */
+.tui .tui-day-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  .bar {
+    width: 54px;
+    height: 6px;
+    border: 1px solid var(--border-color, #d1d5db);
+    border-radius: 3px;
+    overflow: hidden;
+    display: inline-block;
+    .fill { display: block; height: 100%; background: #22c55e; transition: width 0.25s ease; }
+  }
+}
+.tui .tui-tagfilter-chip {
+  margin-left: 8px;
+  padding: 0 7px;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--tui-accent, #111827);
+  color: var(--container-bg, #fff);
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tui .tui-sub-chip {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  &.full { color: #16a34a; }
+}
+.tui .tui-due-chip {
+  flex-shrink: 0;
+  margin-left: 6px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  color: var(--text-muted, #6b7280);
+  &.overdue { color: #dc2626; animation: tui-pomo-blink 1.2s steps(1) infinite; }
+}
+
+/* ── inline #tag & [[wiki-link]] in preview ── */
+.tui .tui-tag-inline {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(127, 127, 127, 0.14);
+  cursor: pointer;
+  &:hover { background: rgba(127, 127, 127, 0.28); }
+  &.on { background: var(--tui-accent, #111827); color: var(--container-bg, #fff); }
+}
+.tui .tui-wikilink {
+  color: var(--tui-accent, #2563eb);
+  text-decoration: underline dotted;
+  cursor: pointer;
+  &:hover { text-decoration-style: solid; }
+}
+.tui .tui-pv-overdue { color: #dc2626; font-weight: 700; }
+
+/* ── status bar: command line, flash, chips ── */
+.tui .tui-cmdline { font-weight: 700; }
+.tui .tui-flash {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--tui-accent, #111827);
+}
+.tui .tui-count-tag {
+  padding: 0 6px;
+  border: 1.5px solid var(--text-color, #111827);
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+.tui .tui-pomo-count {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+.tui .tui-zen-tag { font-size: 0.7rem; font-weight: 700; color: var(--text-muted, #6b7280); }
+.tui .tui-theme-chip {
+  flex-shrink: 0;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 999px;
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+  &:hover { color: var(--text-color); border-color: var(--text-color); }
+}
+
+/* status-bar pomodoro chip during breaks — calm green instead of red */
+.tui .tui-status .tui-pomo.phase-break.run,
+.tui .tui-status .tui-pomo.phase-long.run {
+  background: #0d9488;
+  border-color: #0d9488;
+  animation: none;
+}
+
+/* ── pomodoro overlay: break phase + config row ── */
+.tui-pomo-stage {
+  .tui-pomo-sub {
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    color: rgba(253, 252, 248, 0.55);
+  }
+  .tui-pomo-cfg {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    button {
+      padding: 3px 10px;
+      background: transparent;
+      border: 1px solid rgba(253, 252, 248, 0.3);
+      border-radius: 999px;
+      color: rgba(253, 252, 248, 0.6);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      &:hover { color: #fdfcf8; border-color: rgba(253, 252, 248, 0.7); }
+      &.on { background: rgba(253, 252, 248, 0.16); color: #fdfcf8; border-color: #fdfcf8; }
+    }
+  }
+  &.break {
+    .tui-pomo-rings span { border-color: rgba(13, 148, 136, 0.6); }
+    .tui-pomo-tomato { filter: drop-shadow(0 0 18px rgba(13, 148, 136, 0.6)); }
+    .tui-pomo-time { text-shadow: 0 0 32px rgba(13, 148, 136, 0.45); }
+    .tui-pomo-bar .fill { color: #14b8a6; }
+  }
+}
+
+/* ── weekly review overlay ── */
+.tui-week-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 13, 20, 0.72);
+  backdrop-filter: blur(4px);
+  animation: tui-pomo-fade 0.2s ease-out;
+}
+.tui-week-box {
+  width: min(680px, 92vw);
+  max-height: 84vh;
+  overflow: auto;
+  background: var(--container-bg, #fdfcf8);
+  color: var(--text-color, #111827);
+  border: 2px solid var(--border-color, #111827);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  animation: tui-pomo-pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  .tui-week-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border-color, #111827);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    button {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+  }
+
+  .tui-week-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    th, td { padding: 7px 12px; text-align: left; white-space: nowrap; }
+    th {
+      font-size: 0.64rem;
+      letter-spacing: 1px;
+      color: var(--text-muted, #6b7280);
+      border-bottom: 1px solid var(--border-color, #e5e7eb);
+    }
+    tbody tr {
+      cursor: pointer;
+      &:hover { background: rgba(127, 127, 127, 0.1); }
+      &.cur { background: rgba(127, 127, 127, 0.14); font-weight: 700; }
+    }
+    tfoot td {
+      border-top: 2px solid var(--border-color, #111827);
+      font-weight: 800;
+    }
+    .wk-bar {
+      display: inline-block;
+      width: 70px;
+      height: 7px;
+      border: 1px solid var(--border-color, #d1d5db);
+      border-radius: 3px;
+      overflow: hidden;
+      vertical-align: middle;
+      span { display: block; height: 100%; background: #22c55e; }
+    }
+  }
+
+  .tui-week-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: 0.68rem;
+    color: var(--text-muted, #6b7280);
+    button {
+      padding: 4px 12px;
+      background: transparent;
+      border: 1.5px solid var(--text-color, #111827);
+      border-radius: 4px;
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+    }
+  }
+}

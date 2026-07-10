@@ -2122,6 +2122,49 @@ const DailyNoteApp = () => {
     saveNotesToBackend([{ ...moved }]);
   };
 
+  // Carry-over (TUI "B" / :carry): re-date every unfinished note from the past
+  // 7 days onto `targetKey`. Uses the all-notes index for cross-day lookup.
+  const carryOverUnfinished = async (targetKey) => {
+    const target = targetKey || format(new Date(), 'yyyy-MM-dd');
+    const cutoff = new Date(`${target}T00:00:00`);
+    const inWindow = (d) => {
+      const delta = (cutoff - new Date(`${d}T00:00:00`)) / 86400000;
+      return delta >= 1 && delta <= 7;
+    };
+    // Prefer freshly loaded per-day state over the (possibly stale) index.
+    const seen = new Set();
+    const candidates = [];
+    Object.entries(notesByDate).forEach(([d, arr]) => {
+      if (!inWindow(d)) return;
+      (arr || []).forEach(n => { seen.add(n.id); if (!n.isDeleted && !n.isCompleted) candidates.push(n); });
+    });
+    allNotesIndex.forEach(n => {
+      if (n.date && inWindow(n.date) && !n.isDeleted && !n.isCompleted && !seen.has(n.id)) candidates.push(n);
+    });
+    if (!candidates.length) return 0;
+
+    const stamp = new Date().toISOString();
+    const moved = candidates.map(({ isFocused, isDeleting, ...n }) => ({ ...n, date: target, updatedAt: stamp }));
+    try {
+      setSyncStatus('saving');
+      await axiosInstance.post('/api/DailyNote/bulk', moved);
+      setSyncStatus('saved');
+    } catch (err) {
+      console.error('[CARRY-OVER-ERROR]', err);
+      setSyncStatus('error');
+      throw err;
+    }
+    setNotesByDate(prev => {
+      const next = { ...prev };
+      const movedIds = new Set(moved.map(n => n.id));
+      Object.keys(next).forEach(d => { next[d] = (next[d] || []).filter(n => !movedIds.has(n.id)); });
+      next[target] = [...(next[target] || []), ...moved];
+      return next;
+    });
+    fetchAllNotes();
+    return moved.length;
+  };
+
   const sendToBack = (id) => {
     setNotesByDate(prev => {
       const updated = (prev[dateKey] || []).map(n => ({
@@ -2886,6 +2929,10 @@ const DailyNoteApp = () => {
               onChangeDate={(days) => setCurrentDate(prev => days > 0 ? addDays(prev, days) : subDays(prev, Math.abs(days)))}
               dateLabel={format(currentDate, 'yyyy-MM-dd')}
               categories={CATEGORIES}
+              allNotes={allNotesIndex}
+              markedDates={markedDates}
+              onRestore={restoreNote}
+              onCarryOver={carryOverUnfinished}
             />
           ) : viewMode === 'canvas' ? (
             <div className="notes-canvas">
