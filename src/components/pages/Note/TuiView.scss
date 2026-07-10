@@ -1411,48 +1411,52 @@
   }
 }
 
-/* ── Options popup (T) — neo-brutalist: hard ink borders, offset shadow ── */
+/* ── Options popup (T) — follows the Notaion design tokens: --font-main,
+   --radius-sm, --box-shadow (-4px 4px hard offset), ink borders ── */
 .tui-opt-box {
   width: min(480px, 94vw);
   max-height: 86vh;
   overflow: auto;
   background: var(--container-bg, #fdfcf8);
   color: var(--text-color, #111827);
-  border: 3px solid var(--text-color, #111827);
-  border-radius: 0;
-  box-shadow: 10px 10px 0 var(--text-color, #111827);
-  font-family: var(--tui-font, monospace);
+  border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color, #111827);
+  border-radius: var(--radius-sm, 6px);
+  box-shadow: var(--box-shadow, -4px 4px 0 0 #111827);
   animation: tui-pomo-pop 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  /* the popup is app-chrome, not note content — use the app font like every
+     other Notaion dialog (font-preview rows override inline) */
+  &, & * { font-family: var(--font-main, inherit); }
 
   .tui-opt-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 10px 14px;
+    padding: 8px 14px;
     background: var(--text-color, #111827);
     color: var(--container-bg, #fdfcf8);
 
     .tui-opt-title {
       font-size: 0.8rem;
-      font-weight: 800;
-      letter-spacing: 2px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
     }
 
     .tui-opt-close {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       background: var(--container-bg, #fdfcf8);
-      border: 2px solid var(--container-bg, #fdfcf8);
+      border: 1.5px solid var(--container-bg, #fdfcf8);
+      border-radius: var(--radius-sm, 4px);
       color: var(--text-color, #111827);
-      font-size: 1rem;
-      font-weight: 800;
+      font-size: 0.95rem;
+      font-weight: 700;
       line-height: 1;
       cursor: pointer;
-      box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
-      &:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35); }
+      &:hover { transform: translate(1px, -1px); }
     }
   }
 
@@ -1463,84 +1467,88 @@
     padding: 12px 14px 0;
 
     button {
-      padding: 4px 14px;
+      padding: 3px 14px;
       background: var(--container-bg, #fdfcf8);
-      border: 2.5px solid var(--text-color, #111827);
-      border-radius: 0;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
       color: var(--text-color, #111827);
       font: inherit;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 1.5px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 1px;
       cursor: pointer;
-      box-shadow: 4px 4px 0 var(--text-color, #111827);
-      transition: transform 0.08s ease, box-shadow 0.08s ease;
+      box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+      transition: transform 0.1s ease, box-shadow 0.1s ease;
 
-      &:hover { transform: translate(1px, 1px); box-shadow: 3px 3px 0 var(--text-color, #111827); }
+      &:hover { transform: translate(1px, -1px); box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827); }
 
       &.on {
         background: var(--text-color, #111827);
         color: var(--container-bg, #fdfcf8);
-        transform: translate(3px, 3px);
-        box-shadow: 1px 1px 0 var(--text-color, #111827);
+        transform: translate(-1px, 1px);
+        box-shadow: none;
       }
     }
 
     .tui-opt-tabhint {
       margin-left: auto;
-      font-size: 0.62rem;
-      font-weight: 700;
+      font-size: 0.64rem;
       color: var(--text-muted, #6b7280);
     }
   }
 
-  .tui-opt-body { padding: 14px; }
+  .tui-opt-body { padding: 12px 14px 14px; }
 
   .tui-opt-row {
     display: flex;
     align-items: center;
     gap: 10px;
     width: 100%;
-    padding: 7px 10px;
-    margin-bottom: 6px;
+    padding: 5px 10px;
+    margin-bottom: 5px;
     background: var(--container-bg, #fdfcf8);
-    border: 2px solid var(--border-color, #d1d5db);
-    border-radius: 0;
+    border: 1.5px solid var(--border-color, #d1d5db);
+    border-radius: var(--radius-sm, 4px);
     color: var(--text-color, #111827);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     cursor: pointer;
     text-align: left;
-    transition: transform 0.08s ease, box-shadow 0.08s ease, border-color 0.08s ease;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, border-color 0.1s ease;
 
     kbd {
       min-width: 22px;
       text-align: center;
       padding: 0 5px;
-      border: 1.5px solid var(--text-color, #111827);
-      border-radius: 0;
+      border: 1px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 3px);
       font: inherit;
       font-size: 0.7rem;
-      font-weight: 800;
-      background: var(--container-bg, #fdfcf8);
+      font-weight: 700;
+      color: var(--text-muted, #6b7280);
     }
 
     .sw {
-      width: 15px;
-      height: 15px;
-      border: 1.5px solid var(--text-color, #111827);
+      width: 14px;
+      height: 14px;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 3px);
       flex-shrink: 0;
     }
 
     .nm { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .fx { color: var(--text-muted, #6b7280); font-size: 0.72rem; flex-shrink: 0; }
-    .cur { min-width: 30px; text-align: right; font-size: 0.7rem; font-weight: 800; color: var(--text-muted, #6b7280); }
+    .cur { min-width: 30px; text-align: right; font-size: 0.72rem; font-weight: 700; color: var(--text-muted, #6b7280); }
 
-    /* keyboard cursor — the loud neo-brutalist "you are here" */
+    &:hover { background: rgba(127, 127, 127, 0.08); }
+
+    /* keyboard cursor — same treatment as Notaion's raised buttons */
     &.sel {
       border-color: var(--text-color, #111827);
-      box-shadow: 5px 5px 0 var(--text-color, #111827);
-      transform: translate(-1px, -1px);
+      box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827);
+      transform: translate(1px, -1px);
+
+      kbd { color: var(--text-color, #111827); border-color: var(--text-color, #111827); }
     }
 
     &.on .cur { color: #16a34a; }
@@ -1559,41 +1567,40 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-top: 12px;
-    padding: 8px 10px;
-    border: 2px dashed var(--border-color, #d1d5db);
+    margin-top: 10px;
+    padding: 7px 10px;
+    border: 1.5px dashed var(--border-color, #d1d5db);
+    border-radius: var(--radius-sm, 4px);
 
-    .lbl { font-size: 0.62rem; font-weight: 800; letter-spacing: 1.5px; color: var(--text-muted, #6b7280); }
+    .lbl { font-size: 0.64rem; font-weight: 700; letter-spacing: 1px; color: var(--text-muted, #6b7280); }
 
     button {
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       background: var(--container-bg, #fdfcf8);
-      border: 2px solid var(--text-color, #111827);
-      border-radius: 0;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
       color: var(--text-color, #111827);
       font: inherit;
-      font-size: 1rem;
-      font-weight: 800;
+      font-size: 0.95rem;
+      font-weight: 700;
       cursor: pointer;
-      box-shadow: 3px 3px 0 var(--text-color, #111827);
-      &:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--text-color, #111827); }
-      &:active { transform: translate(3px, 3px); box-shadow: none; }
+      box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+      &:hover { transform: translate(1px, -1px); box-shadow: -2.5px 2.5px 0 0 var(--shadow-color, #111827); }
+      &:active { transform: translate(-1px, 1px); box-shadow: none; }
     }
 
-    .pct { min-width: 44px; text-align: center; font-weight: 800; font-size: 0.8rem; }
+    .pct { min-width: 44px; text-align: center; font-weight: 700; font-size: 0.8rem; }
     .sample { color: var(--text-muted, #6b7280); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
   }
 
   .tui-opt-foot {
-    padding: 10px 14px;
-    border-top: 3px solid var(--text-color, #111827);
-    font-size: 0.64rem;
-    font-weight: 700;
-    letter-spacing: 0.5px;
+    padding: 8px 14px;
+    border-top: 1.5px dashed var(--border-color, #d1d5db);
+    font-size: 0.66rem;
     color: var(--text-muted, #6b7280);
   }
 }

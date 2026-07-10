@@ -585,6 +585,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     applyFontFam({ key: 'custom', label: clean, stack: `'${clean}', monospace` });
     setFontDraft(null);
   };
+  // Unmounting the custom-font input drops DOM focus to <body> — reclaim it
+  // so the popup keeps reacting to j/k/l/Esc.
+  useEffect(() => {
+    if (fontDraft === null && showTheme) requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
+  }, [fontDraft, showTheme]);
 
   // Rows per popup tab (for j/k navigation): font tab has the families + the
   // custom row; options tab has zen · sound · pomodoro length.
