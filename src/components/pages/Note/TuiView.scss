@@ -1736,6 +1736,9 @@
 /* title edit inline in the PREVIEW pane (click title / e — the only way on phone) */
 .tui .tui-pv-title { cursor: text; }
 .tui .tui-pv-title-input {
+  /* .tui-input's flex:1 would stretch it VERTICALLY here (preview is a
+     flex column) — pin it to one text line */
+  flex: 0 0 auto;
   width: 100%;
   margin-bottom: 4px;
   padding: 2px 6px;
