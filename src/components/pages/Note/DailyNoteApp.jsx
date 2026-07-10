@@ -1326,6 +1326,8 @@ const DailyNoteApp = () => {
   const [showTrash, setShowTrash] = useState(false);
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false); // toolbar search expands from an icon
+  const searchInputRef = useRef(null);
   const [showHotkeyHelp, setShowHotkeyHelp] = useState(false);
   // Canvas right-click menu: { screenX, screenY, canvasX, canvasY } or null.
   const [ctxMenu, setCtxMenu] = useState(null);
@@ -2381,24 +2383,23 @@ const DailyNoteApp = () => {
             >
               <FaLayerGroup />
             </button>
+            <span className="vs-divider" />
+            {/* theme + sidebar live in the same cluster — one tidy group */}
+            <button
+              className="theme-toggle-btn"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme (D)`}
+            >
+              {theme === 'dark' ? <FaSun /> : <FaMoon />}
+            </button>
+            <button
+              className={`sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}
+              onClick={toggleSidebar}
+              title="Toggle Sidebar Index (S)"
+            >
+              <FaListUl />
+            </button>
           </div>
-
-          {/* Theme toggle — light / dark straight on the toolbar (D) */}
-          <button
-            className="nav-btn theme-toggle-btn"
-            onClick={toggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme (D)`}
-          >
-            {theme === 'dark' ? <FaSun /> : <FaMoon />}
-          </button>
-
-          <button
-            className={`nav-btn sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}
-            onClick={toggleSidebar}
-            title="Toggle Sidebar Index (S)"
-          >
-            <FaListUl />
-          </button>
 
           {selectedIds.length > 0 && (
             <button className="nav-btn delete-selected-btn" onClick={deleteSelectedNotes} title="Delete Selected">
@@ -2407,9 +2408,22 @@ const DailyNoteApp = () => {
           )}
 
           <div className="toolbar-group toolbar-group-search">
+            {!searchOpen && !searchActive ? (
+              <button
+                className="nav-btn search-open-btn"
+                title="Search (/)"
+                onClick={() => {
+                  setSearchOpen(true);
+                  requestAnimationFrame(() => searchInputRef.current?.focus());
+                }}
+              >
+                <FaSearch />
+              </button>
+            ) : (
             <div className={`search-box-cyber ${searchActive ? 'is-active' : ''}`}>
               <FaSearch className="search-icon" />
               <input
+                ref={searchInputRef}
                 type="text"
                 placeholder={isAllTimeSearch ? "SEARCH_ALL..." : "SEARCH..."}
                 value={searchQuery}
@@ -2418,8 +2432,13 @@ const DailyNoteApp = () => {
                   setShowGlobalSearchResults(true);
                 }}
                 onFocus={() => setShowGlobalSearchResults(true)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') { setSearchQuery(''); setSearchOpen(false); e.currentTarget.blur(); }
+                }}
                 onBlur={() => {
                   window.setTimeout(() => setShowGlobalSearchResults(false), 150);
+                  // fold back to the icon when nothing is being filtered
+                  window.setTimeout(() => { if (!searchInputRef.current?.value && !searchCatActive) setSearchOpen(false); }, 160);
                 }}
               />
               {searchQuery && (
@@ -2465,6 +2484,7 @@ const DailyNoteApp = () => {
                 </button>
               </div>
             </div>
+            )}
             {showGlobalSearchResults && searchActive && (
               <div className="global-search-dropdown" onMouseDown={(e) => e.preventDefault()}>
                 <div className="global-search-header">
@@ -2732,17 +2752,16 @@ const DailyNoteApp = () => {
                 >
                   <FaDownload /> Export Day (.md)
                 </button>
+
+                <button
+                  className="tools-menu-item"
+                  onClick={() => { setShowToolsMenu(false); setShowHotkeyHelp(true); }}
+                >
+                  <FaKeyboard /> Keyboard Shortcuts <span className="hk-hint">?</span>
+                </button>
               </div>
             )}
           </div>
-
-          <button
-            className="nav-btn hotkey-help-btn"
-            onClick={() => setShowHotkeyHelp(true)}
-            title="Keyboard shortcuts (?)"
-          >
-            <FaKeyboard />
-          </button>
         </div>
       </header>
 

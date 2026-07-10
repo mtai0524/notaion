@@ -4497,3 +4497,13 @@
 
   &:hover { background: rgba(127, 127, 127, 0.12); }
 }
+
+/* divider inside the merged view/theme/sidebar cluster */
+.daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .toolbar-view-switch .vs-divider {
+  width: 1.5px;
+  height: 20px;
+  margin: 0 3px;
+  background: var(--border-color);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
