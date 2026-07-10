@@ -92,7 +92,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   }, [notes, activeFolder, query, sortBy]);
 
   useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
-  useEffect(() => { rootRef.current?.focus(); }, []);
+  useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
   // Pomodoro countdown — ticks every second while running; notifies at 0.
   useEffect(() => {
@@ -115,7 +115,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     } else {
       // Leaving an edit mode unmounts the focused input, which would drop DOM
       // focus (and all shortcuts) — hand it back to the TUI root.
-      requestAnimationFrame(() => rootRef.current?.focus());
+      requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
     }
   }, [mode]);
 
@@ -703,7 +703,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   return (
     <div className="tui" tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
-         onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus(); }}>
+         onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus({ preventScroll: true }); }}>
       <div className="tui-body">
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
@@ -897,11 +897,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               ? `delete ${selectedIds.length} selected note${selectedIds.length > 1 ? 's' : ''}?`
               : `delete "${current?.title || 'untitled'}"?`}
             <button type="button" className="tui-warn-btn yes"
-                    onClick={() => { if (selectedIds.length) bulkDelete(); else if (current) onDelete(current.id, true); setMode('normal'); rootRef.current?.focus(); }}>
+                    onClick={() => { if (selectedIds.length) bulkDelete(); else if (current) onDelete(current.id, true); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
               Yes (y)
             </button>
             <button type="button" className="tui-warn-btn no"
-                    onClick={() => { setMode('normal'); rootRef.current?.focus(); }}>
+                    onClick={() => { setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
               No (n / Esc)
             </button>
           </span>
@@ -937,7 +937,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             {pomodoro && (
               <button type="button" className={`tui-pomo ${pomodoro.running ? 'run' : 'paused'}`}
                       title="Pomodoro — , pause/resume · . stop"
-                      onClick={(e) => { e.stopPropagation(); togglePomodoro(); rootRef.current?.focus(); }}>
+                      onClick={(e) => { e.stopPropagation(); togglePomodoro(); rootRef.current?.focus({ preventScroll: true }); }}>
                 🍅 {String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0')}:{String(pomodoro.remaining % 60).padStart(2, '0')}
                 {!pomodoro.running && ' ⏸'}
               </button>
@@ -945,7 +945,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             <span className="tui-hints">{hints[mode]}</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
-                    onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus(); }}>?</button>
+                    onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus({ preventScroll: true }); }}>?</button>
           </>
         )}
       </div>
@@ -956,7 +956,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             <div className="tui-help-head">
               <span className="tui-help-h">DAILY NOTES · TUI — KEYMAP</span>
               <button type="button" className="tui-help-close" title="Close (any key)"
-                      onClick={() => { setMode('normal'); rootRef.current?.focus(); }}>×</button>
+                      onClick={() => { setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>×</button>
             </div>
             <div className="tui-help-grid">
               {helpSections.map((sec) => (
