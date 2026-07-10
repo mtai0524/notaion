@@ -120,7 +120,7 @@ const loadPomodoro = () => {
 };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, onRestore, onCarryOver }) => {
+  allNotes, markedDates, onRestore, onCarryOver, onRedate }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -174,8 +174,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const catList = categories && categories.length ? categories : ['MEMO'];
 
   // Deadlines live in the local overlay store until the backend migration
-  // lands — merge them so rows/preview can show ⏰ badges.
-  const notesWithMeta = useMemo(() => overlayDeadlines(notes), [notes]);
+  // lands — merge them so rows/preview can show ⏰ badges. overlayDeadlines
+  // also appends orphaned store entries (meant for the reminder engine);
+  // those are not real notes, so keep only ids that exist on this day.
+  const notesWithMeta = useMemo(() => {
+    const ids = new Set(notes.map((n) => n.id));
+    return overlayDeadlines(notes).filter((n) => ids.has(n.id));
+  }, [notes]);
 
   const archivedSet = useMemo(() => new Set(archivedIds), [archivedIds]);
 
@@ -321,6 +326,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }
   }, [mode]);
 
+  // Closing an overlay unmounts whatever was DOM-focused inside it (e.g. the
+  // 45m button), dropping focus to <body> and killing every shortcut — hand
+  // focus back to the TUI root, unless an editor input owns it.
+  useEffect(() => {
+    if (pomoOverlay || showWeek) return;
+    if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
+    requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
+  }, [pomoOverlay, showWeek]);
+
   const current = list[noteIndex] || null;
 
   // Once the freshly created note lands in the list, select it and open the
@@ -376,6 +390,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const doDelete = (n) => {
     if (!n) return;
     pushUndo({ type: 'delete', note: { ...n } });
+    if (n.deadline) { setLocalDeadline(n.id, { deadline: null }); clearFiredForNote(n.id); }
     onDelete(n.id, true);
   };
 
@@ -385,9 +400,25 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     redoRef.current.push(e);
     if (e.type === 'update') { onUpdate(e.id, e.prev); flashMsg('undo: edit'); }
     else if (e.type === 'delete') {
-      if (onRestore) { onRestore(e.note); flashMsg(`undo: restored "${e.note.title || 'untitled'}"`); }
-      else flashMsg('undo: cannot restore (no handler)');
+      if (onRestore) {
+        onRestore(e.note);
+        if (e.note.deadline) {
+          setLocalDeadline(e.note.id, {
+            deadline: e.note.deadline,
+            reminderLeadMinutes: e.note.reminderLeadMinutes ?? null,
+            reminderDone: !!e.note.reminderDone,
+          });
+        }
+        flashMsg(`undo: restored "${e.note.title || 'untitled'}"`);
+      } else flashMsg('undo: cannot restore (no handler)');
     } else if (e.type === 'add') { onDelete(e.note.id, true); flashMsg('undo: create'); }
+    else if (e.type === 'carry') {
+      if (onRedate) {
+        Promise.resolve(onRedate(e.moves.map((m) => ({ id: m.id, date: m.from }))))
+          .then(() => flashMsg(`undo: ${e.moves.length} notes back to their original days`))
+          .catch(() => flashMsg('undo carry failed'));
+      } else flashMsg('undo: cannot revert carry (no handler)');
+    }
   };
 
   const redo = () => {
@@ -397,6 +428,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (e.type === 'update') { onUpdate(e.id, e.next); flashMsg('redo: edit'); }
     else if (e.type === 'delete') { onDelete(e.note.id, true); flashMsg('redo: delete'); }
     else if (e.type === 'add') { if (onRestore) onRestore(e.note); flashMsg('redo: create'); }
+    else if (e.type === 'carry') {
+      if (onRedate) {
+        Promise.resolve(onRedate(e.moves.map((m) => ({ id: m.id, date: m.to }))))
+          .then(() => flashMsg(`redo: carried ${e.moves.length} notes again`));
+      }
+    }
   };
 
   // New notes inherit the active folder's category, so "n" inside TASK
@@ -523,12 +560,31 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (Number.isFinite(delta) && delta !== 0) onChangeDate(delta);
   };
 
-  /* ── Carry-over: bring unfinished notes from the past week to this day ── */
-  const carryOver = () => {
+  /* ── Carry-over: bring unfinished notes from the past week to this day.
+     Destructive-ish (re-dates many notes at once), so it always asks first
+     and the whole batch is one undo step. ── */
+  const carryCandidates = useMemo(() => {
+    const cutoff = new Date(`${dateLabel}T00:00:00`);
+    const inWindow = (d) => {
+      if (!d) return false;
+      const delta = (cutoff - new Date(`${d}T00:00:00`)) / 86400000;
+      return delta >= 1 && delta <= 7;
+    };
+    return (allNotes || []).filter((n) => !n.isDeleted && !n.isCompleted && inWindow(n.date));
+  }, [allNotes, dateLabel]);
+
+  const askCarryOver = () => {
     if (!onCarryOver) { flashMsg('carry-over unavailable'); return; }
+    if (!carryCandidates.length) { flashMsg('nothing to carry over (no unfinished notes in the last 7 days)'); return; }
+    setMode('carry');
+  };
+
+  const doCarryOver = () => {
     flashMsg('carrying over unfinished notes…');
-    Promise.resolve(onCarryOver(dateLabel)).then((n) => {
-      flashMsg(n > 0 ? `carried over ${n} unfinished note${n > 1 ? 's' : ''}` : 'nothing to carry over');
+    Promise.resolve(onCarryOver(dateLabel)).then((moves) => {
+      const n = Array.isArray(moves) ? moves.length : (moves || 0);
+      if (Array.isArray(moves) && moves.length) pushUndo({ type: 'carry', moves });
+      flashMsg(n > 0 ? `carried over ${n} note${n > 1 ? 's' : ''} — u to undo` : 'nothing to carry over');
     }).catch(() => flashMsg('carry-over failed'));
   };
 
@@ -647,7 +703,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     switch ((name || '').toLowerCase()) {
       case 'export': arg === 'week' ? exportWeek() : exportDay(arg === 'clip'); break;
       case 'week': setShowWeek(true); break;
-      case 'carry': carryOver(); break;
+      case 'carry': askCarryOver(); break;
       case 'due': setDue(arg, args[1]); break;
       case 'recur':
         if (arg === 'daily' || arg === 'weekly' || arg === 'off') setRecurring(arg);
@@ -998,6 +1054,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       return;
     }
 
+    if (mode === 'carry') {
+      // y/Enter runs the carry-over; anything else cancels.
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') doCarryOver();
+      setMode('normal');
+      e.preventDefault();
+      return;
+    }
+
     if (mode === 'category') {
       const idx = parseInt(e.key, 10);
       if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) {
@@ -1060,7 +1124,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case 'A': toggleArchive(); e.preventDefault(); return;
       case 'z': toggleZen(); e.preventDefault(); return;
       case 'W': setShowWeek(true); e.preventDefault(); return;
-      case 'B': carryOver(); e.preventDefault(); return;
+      case 'B': askCarryOver(); e.preventDefault(); return;
       case ';': setMode('markset'); e.preventDefault(); return;
       case "'": setMode('markjump'); e.preventDefault(); return;
       case 'u': if (!e.ctrlKey) { undo(); e.preventDefault(); return; } break;
@@ -1245,7 +1309,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['t', 'jump to today'],
         ['/', 'search · Esc clears'],
         ['W', 'weekly review'],
-        ['B', 'carry-over việc dở dang tuần trước'],
+        ['B → y', 'carry-over (hỏi trước) · u hoàn tác'],
         ['click heatmap', 'jump to that day'],
       ],
     },
@@ -1309,6 +1373,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     help: 'press any key to close',
     search: '',
     command: '',
+    carry: '',
     markset: 'mark: press a letter (a-z) to tag this note',
     markjump: "jump: press a mark letter (a-z)",
   };
@@ -1421,7 +1486,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
                     {n.pinned && <span className="tui-pin" title="Pinned">📌</span>}
                     {sel && mode === 'title' ? (
-                      <input ref={inputRef} className="tui-input" value={draft}
+                      // eslint-disable-next-line jsx-a11y/no-autofocus
+                      <input ref={inputRef} autoFocus className="tui-input" value={draft}
                              onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="title…" />
                     ) : (
                       <span className="tui-title">{n.title || '(untitled)'}</span>
@@ -1597,7 +1663,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       {/* STATUS BAR */}
       <div className="tui-status">
         {mode === 'command' ? (
-          <span className="tui-search tui-cmdline">:<input ref={inputRef} className="tui-input inline" value={cmd}
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          <span className="tui-search tui-cmdline">:<input ref={inputRef} autoFocus className="tui-input inline" value={cmd}
             onChange={(e) => setCmd(e.target.value)}
             onKeyDown={(e) => {
               e.stopPropagation();
@@ -1607,7 +1674,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             onBlur={() => { setCmd(''); setMode('normal'); }}
             placeholder="export · week · carry · due HH:mm · recur daily · theme · pomo 45 · tag x · goto…" /></span>
         ) : mode === 'search' ? (
-          <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
+          <span className="tui-search">/<input ref={inputRef} autoFocus className="tui-input inline" value={query}
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">
@@ -1616,6 +1683,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               : `delete "${current?.title || 'untitled'}"?`}
             <button type="button" className="tui-warn-btn yes"
                     onClick={() => { if (selectedIds.length) bulkDelete(); else if (current) doDelete(current); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
+              Yes (y)
+            </button>
+            <button type="button" className="tui-warn-btn no"
+                    onClick={() => { setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
+              No (n / Esc)
+            </button>
+          </span>
+        ) : mode === 'carry' ? (
+          <span className="tui-warn">
+            carry over {carryCandidates.length} unfinished note{carryCandidates.length > 1 ? 's' : ''} from the last 7 days to {dateLabel}?
+            <button type="button" className="tui-warn-btn yes"
+                    onClick={() => { doCarryOver(); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
               Yes (y)
             </button>
             <button type="button" className="tui-warn-btn no"
@@ -1830,6 +1909,7 @@ TuiView.propTypes = {
   markedDates: PropTypes.object,
   onRestore: PropTypes.func,
   onCarryOver: PropTypes.func,
+  onRedate: PropTypes.func,
 };
 
 export default TuiView;

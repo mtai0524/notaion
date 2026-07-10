@@ -2141,7 +2141,7 @@ const DailyNoteApp = () => {
     allNotesIndex.forEach(n => {
       if (n.date && inWindow(n.date) && !n.isDeleted && !n.isCompleted && !seen.has(n.id)) candidates.push(n);
     });
-    if (!candidates.length) return 0;
+    if (!candidates.length) return [];
 
     const stamp = new Date().toISOString();
     const moved = candidates.map(({ isFocused, isDeleting, ...n }) => ({ ...n, date: target, updatedAt: stamp }));
@@ -2159,6 +2159,36 @@ const DailyNoteApp = () => {
       const movedIds = new Set(moved.map(n => n.id));
       Object.keys(next).forEach(d => { next[d] = (next[d] || []).filter(n => !movedIds.has(n.id)); });
       next[target] = [...(next[target] || []), ...moved];
+      return next;
+    });
+    fetchAllNotes();
+    // The TUI stores this list as one undo step (u puts every note back).
+    return candidates.map(n => ({ id: n.id, from: n.date, to: target }));
+  };
+
+  // Re-date a batch of notes (TUI undo/redo for carry-over): [{id, date}].
+  const redateNotes = async (pairs) => {
+    const byId = new Map(pairs.map(p => [p.id, p.date]));
+    const pool = new Map();
+    Object.values(notesByDate).forEach(arr => (arr || []).forEach(n => { if (byId.has(n.id)) pool.set(n.id, n); }));
+    allNotesIndex.forEach(n => { if (byId.has(n.id) && !pool.has(n.id)) pool.set(n.id, n); });
+    const stamp = new Date().toISOString();
+    const moved = [...pool.values()].map(({ isFocused, isDeleting, ...n }) => ({ ...n, date: byId.get(n.id), updatedAt: stamp }));
+    if (!moved.length) return 0;
+    try {
+      setSyncStatus('saving');
+      await axiosInstance.post('/api/DailyNote/bulk', moved);
+      setSyncStatus('saved');
+    } catch (err) {
+      console.error('[REDATE-ERROR]', err);
+      setSyncStatus('error');
+      throw err;
+    }
+    setNotesByDate(prev => {
+      const next = { ...prev };
+      const movedIds = new Set(moved.map(n => n.id));
+      Object.keys(next).forEach(d => { next[d] = (next[d] || []).filter(n => !movedIds.has(n.id)); });
+      moved.forEach(n => { next[n.date] = [...(next[n.date] || []), n]; });
       return next;
     });
     fetchAllNotes();
@@ -2933,6 +2963,7 @@ const DailyNoteApp = () => {
               markedDates={markedDates}
               onRestore={restoreNote}
               onCarryOver={carryOverUnfinished}
+              onRedate={redateNotes}
             />
           ) : viewMode === 'canvas' ? (
             <div className="notes-canvas">
