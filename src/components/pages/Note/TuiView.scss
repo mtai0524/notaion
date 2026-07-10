@@ -1604,3 +1604,106 @@
     color: var(--text-muted, #6b7280);
   }
 }
+
+/* ════════ Mobile (≤768px): one panel at a time + touch-sized targets ════════ */
+.tui .tui-mobile-nav { display: none; }
+
+@media (max-width: 768px) {
+  .tui {
+    padding: 8px;
+    gap: 8px;
+
+    .tui-mobile-nav {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+
+      button {
+        flex: 1;
+        min-width: 0;
+        padding: 7px 4px;
+        background: var(--container-bg, #fff);
+        border: 1.5px solid var(--border-color, #111827);
+        border-radius: var(--radius-sm, 4px);
+        color: var(--text-muted, #6b7280);
+        font: inherit;
+        font-size: 0.66rem;
+        font-weight: 800;
+        letter-spacing: 0.8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+
+        &.on {
+          background: var(--text-color, #111827);
+          color: var(--container-bg, #fff);
+          box-shadow: none;
+          transform: translate(-1px, 1px);
+        }
+      }
+    }
+
+    /* one panel at a time — whichever has focus */
+    .tui-panel { display: none; }
+    .tui-panel.focused { display: flex; flex: 1 1 100%; width: 100%; }
+    .tui-folders { width: 100%; }
+
+    /* fingers, not cursors */
+    .tui-folder { padding: 9px 10px; }
+    .tui-row { padding: 9px 8px; .tui-row-del { opacity: 1; } }
+    .tui-tags .tui-tag-chip { padding: 4px 10px; }
+    .tui-heatmap .hm { font-size: 0.66rem; }
+
+    /* status bar: the long keymap hint has no place on a phone */
+    .tui-status {
+      flex-wrap: wrap;
+      white-space: normal;
+      row-gap: 4px;
+      gap: 8px;
+      padding-right: 46px;
+
+      .tui-hints { display: none; }
+      .tui-stat { margin-left: auto; }
+    }
+
+    /* editor: live preview stacks under the textarea */
+    .tui-editor-split.split { flex-direction: column; }
+  }
+
+  /* ── overlays on small screens ── */
+  .tui-pomo-stage {
+    padding: 24px 12px;
+    gap: 10px;
+
+    .tui-pomo-rings { display: none; }
+    .tui-pomo-tomato { font-size: 3rem; }
+    .tui-pomo-time { font-size: 3.4rem; letter-spacing: 3px; }
+    .tui-pomo-bar { font-size: 0.72rem; letter-spacing: 1px; }
+    .tui-pomo-label { font-size: 0.7rem; max-width: 92vw; }
+    .tui-pomo-sub { font-size: 0.66rem; }
+    .tui-pomo-ctl, .tui-pomo-cfg { flex-wrap: wrap; justify-content: center; }
+  }
+
+  .tui-week-box {
+    width: 96vw;
+
+    .tui-week-table {
+      font-size: 0.68rem;
+      th, td { padding: 5px 6px; }
+      .wk-bar { width: 40px; }
+    }
+
+    .tui-week-foot { flex-direction: column; align-items: flex-start; }
+  }
+
+  .tui-opt-box {
+    width: 96vw;
+    max-height: 90vh;
+
+    /* the ligature sample column is too wide for phone rows */
+    .tui-opt-row .fx { display: none; }
+    .tui-opt-size .sample { display: none; }
+  }
+}

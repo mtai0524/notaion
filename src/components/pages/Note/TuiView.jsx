@@ -1484,6 +1484,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
          style={{ fontSize: `${tuiFont}rem`, '--tui-font': tuiFontFam.stack }}
          tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
          onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus({ preventScroll: true }); }}>
+      {/* Mobile: one panel at a time — this switcher only renders under 768px (CSS) */}
+      <div className="tui-mobile-nav">
+        <button type="button" className={focus === 'folders' ? 'on' : ''}
+                onClick={() => setFocus('folders')}>◧ FOLDERS</button>
+        <button type="button" className={focus === 'notes' ? 'on' : ''}
+                onClick={() => setFocus('notes')}>☰ NOTES{list.length ? ` · ${list.length}` : ''}</button>
+        <button type="button" className={focus === 'preview' ? 'on' : ''}
+                onClick={() => setFocus('preview')}>◨ PREVIEW</button>
+      </div>
       <div className="tui-body">
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
@@ -1554,7 +1563,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                   <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
                        onClick={(e) => {
                          if (e.ctrlKey || e.metaKey) { toggleSelect(n.id); return; }
-                         setNoteIndex(i); setFocus('notes');
+                         setNoteIndex(i);
+                         // phone: tapping a note drills into its preview
+                         setFocus(window.matchMedia('(max-width: 768px)').matches ? 'preview' : 'notes');
                        }}
                        onDoubleClick={() => { setNoteIndex(i); setDraft(n.title || ''); setMode('title'); }}>
                     <button type="button" className={`tui-row-pick ${picked ? 'on' : ''}`}
