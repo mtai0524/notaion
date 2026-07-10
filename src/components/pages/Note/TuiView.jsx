@@ -53,6 +53,16 @@ const BREAK_LONG = 15 * 60;
 const LONG_EVERY = 4; // long break after every 4th focus
 const FOCUS_CHOICES = [25, 45, 90];
 const TUI_THEMES = ['default', 'catppuccin', 'gruvbox', 'nord', 'dracula'];
+const TUI_FONT_KEY = 'daily-note-tui-font';
+const FONT_STEPS = [0.8, 0.9, 1.0, 1.1];
+// swatches for the appearance popup: [background, accent]
+const THEME_SWATCH = {
+  default: ['#fdfcf8', '#111827'],
+  catppuccin: ['#1e1e2e', '#f38ba8'],
+  gruvbox: ['#282828', '#fe8019'],
+  nord: ['#2e3440', '#88c0d0'],
+  dracula: ['#282a36', '#bd93f9'],
+};
 const TAG_RE = /#([\p{L}0-9_-]{2,30})/gu;
 
 const lsGet = (key, fallback) => {
@@ -141,6 +151,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [focusTimes, setFocusTimes] = useState(() => lsGet(FOCUS_TIME_KEY, {})); // seconds per note
   const [archivedIds, setArchivedIds] = useState(() => lsGet(ARCHIVE_KEY, [])); // local archive
   const [tuiTheme, setTuiTheme] = useState(() => lsGet(TUI_THEME_KEY, 'default'));
+  const [tuiFont, setTuiFont] = useState(() => lsGet(TUI_FONT_KEY, 0.9)); // rem
+  const [showTheme, setShowTheme] = useState(false); // appearance popup (T)
   const [zen, setZen] = useState(() => lsGet(TUI_ZEN_KEY, false)); // notes-only layout
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
@@ -330,10 +342,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // 45m button), dropping focus to <body> and killing every shortcut — hand
   // focus back to the TUI root, unless an editor input owns it.
   useEffect(() => {
-    if (pomoOverlay || showWeek) return;
+    if (pomoOverlay || showWeek || showTheme) return;
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
     requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
-  }, [pomoOverlay, showWeek]);
+  }, [pomoOverlay, showWeek, showTheme]);
 
   const current = list[noteIndex] || null;
 
@@ -536,6 +548,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   /* ── Zen / theme / archive ── */
   const toggleZen = () => setZen((z) => { lsSet(TUI_ZEN_KEY, !z); return !z; });
+
+  const stepFont = (dir) => {
+    const i = FONT_STEPS.indexOf(tuiFont);
+    const next = FONT_STEPS[Math.max(0, Math.min(FONT_STEPS.length - 1, (i === -1 ? 1 : i) + dir))];
+    setTuiFont(next); lsSet(TUI_FONT_KEY, next);
+    flashMsg(`font: ${Math.round(next * 100)}%`);
+  };
 
   const setTheme = (name) => {
     const t = name === 'next'
@@ -1017,6 +1036,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
     if (mode === 'command') return; // the ":" input handles its own keys
 
+    // Appearance popup: 1-5 theme · +/- font · z zen · Esc/T/q closes.
+    if (showTheme) {
+      const ti = parseInt(e.key, 10) - 1;
+      if (ti >= 0 && ti < TUI_THEMES.length) setTheme(TUI_THEMES[ti]);
+      else if (e.key === '+' || e.key === '=') stepFont(1);
+      else if (e.key === '-') stepFont(-1);
+      else if (e.key === 'z') toggleZen();
+      else if (e.key === 'Escape' || e.key === 'T' || e.key === 'q') setShowTheme(false);
+      e.preventDefault();
+      return;
+    }
+
     // Weekly review overlay: any of Esc / W / q closes.
     if (showWeek) {
       if (e.key === 'Escape' || e.key === 'W' || e.key === 'q') setShowWeek(false);
@@ -1124,6 +1155,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case 'A': toggleArchive(); e.preventDefault(); return;
       case 'z': toggleZen(); e.preventDefault(); return;
       case 'W': setShowWeek(true); e.preventDefault(); return;
+      case 'T': setShowTheme(true); e.preventDefault(); return;
       case 'B': askCarryOver(); e.preventDefault(); return;
       case ';': setMode('markset'); e.preventDefault(); return;
       case "'": setMode('markjump'); e.preventDefault(); return;
@@ -1322,6 +1354,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['Y / P', 'yank / paste (cross-day)'],
         [';a → \'a', 'set mark a → jump to it'],
         ['z', 'zen mode (notes only)'],
+        ['T', 'appearance popup — theme · font · zen'],
         ['A', 'archive / unarchive → 📦'],
       ],
     },
@@ -1391,6 +1424,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   return (
     <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
+         style={{ fontSize: `${tuiFont}rem` }}
          tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
          onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus({ preventScroll: true }); }}>
       <div className="tui-body">
@@ -1736,8 +1770,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             {zen && <span className="tui-zen-tag" title="Zen mode (z)">◎ zen</span>}
-            <button type="button" className="tui-theme-chip" title="TUI theme — click to cycle (:theme)"
-                    onClick={(e) => { e.stopPropagation(); setTheme('next'); rootRef.current?.focus({ preventScroll: true }); }}>
+            <button type="button" className="tui-theme-chip" title="Appearance — theme, font, zen (T)"
+                    onClick={(e) => { e.stopPropagation(); setShowTheme(true); }}>
               ◐ {tuiTheme}
             </button>
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
@@ -1829,6 +1863,51 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </div>
         );
       })()}
+
+      {/* ── Appearance popup (T / click ◐) — theme · font · zen ── */}
+      {showTheme && (
+        <div className="tui-week-overlay" onClick={() => setShowTheme(false)}>
+          <div className="tui-week-box tui-theme-box" onClick={(e) => e.stopPropagation()}>
+            <div className="tui-week-head">
+              <span>APPEARANCE</span>
+              <button type="button" title="Close (Esc)" onClick={() => setShowTheme(false)}>×</button>
+            </div>
+            <div className="tui-theme-sec">
+              <div className="tui-theme-sec-h">THEME</div>
+              {TUI_THEMES.map((t, i) => (
+                <button key={t} type="button"
+                        className={`tui-theme-row ${tuiTheme === t ? 'on' : ''}`}
+                        onClick={() => setTheme(t)}>
+                  <kbd>{i + 1}</kbd>
+                  <span className="sw" style={{ background: THEME_SWATCH[t][0] }} />
+                  <span className="sw" style={{ background: THEME_SWATCH[t][1] }} />
+                  <span className="nm">{t}</span>
+                  {tuiTheme === t && <span className="cur">● current</span>}
+                </button>
+              ))}
+            </div>
+            <div className="tui-theme-sec">
+              <div className="tui-theme-sec-h">FONT SIZE</div>
+              <div className="tui-theme-font">
+                <button type="button" title="Smaller (-)" onClick={() => stepFont(-1)}>−</button>
+                <span className="pct">{Math.round(tuiFont * 100)}%</span>
+                <button type="button" title="Larger (+)" onClick={() => stepFont(1)}>+</button>
+                <span className="sample" style={{ fontSize: `${tuiFont}rem` }}>the quick brown fox 🦊</span>
+              </div>
+            </div>
+            <div className="tui-theme-sec">
+              <div className="tui-theme-sec-h">LAYOUT</div>
+              <button type="button" className={`tui-theme-row ${zen ? 'on' : ''}`} onClick={toggleZen}>
+                <kbd>z</kbd><span className="nm">zen mode — chỉ hiện panel NOTES</span>
+                <span className="cur">{zen ? '● on' : '○ off'}</span>
+              </button>
+            </div>
+            <div className="tui-week-foot">
+              <span>1-5: theme · +/−: font · z: zen · Esc: close</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Weekly review overlay (W / :week) ── */}
       {showWeek && weekReview && (
