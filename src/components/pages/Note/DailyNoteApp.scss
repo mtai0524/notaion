@@ -4507,3 +4507,76 @@
   opacity: 0.55;
   flex-shrink: 0;
 }
+
+/* ════════ Mobile toolbar (≤768px): compact 2-row header ════════ */
+@media (max-width: 768px) {
+  .daily-note-app-container-cyber .app-toolbar-cyber {
+    padding: 0.45rem 0.6rem;
+    gap: 6px;
+    row-gap: 6px;
+
+    .date-navigator {
+      width: 100%;
+      justify-content: center;
+      gap: 10px;
+
+      .nav-btn { width: 32px; height: 32px; flex-shrink: 0; }
+    }
+
+    .date-navigator .current-date-display {
+      .date-title-btn { font-size: 1.05rem; white-space: nowrap; }
+
+      .status-indicator-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+
+        /* the long "ACTIVE_ENTRIES: N" label is redundant on phone —
+           the count already shows in the TUI panel switcher */
+        .note-count { display: none; }
+
+        /* "[ SYNC_COMPLETE ]" text → a small status dot (keeps its
+           state colors from .saving/.saved/.error) */
+        .sync-status {
+          font-size: 0;
+          letter-spacing: 0;
+          &::before { content: '●'; font-size: 0.62rem; }
+        }
+      }
+    }
+
+    .toolbar-actions {
+      justify-content: center;
+      gap: 6px;
+      row-gap: 6px;
+
+      .nav-btn,
+      .tools-menu-btn { height: 32px; min-width: 32px; width: 32px; font-size: 0.85rem; }
+
+      .today-reminder-chip { height: 32px; font-size: 0.58rem; padding: 0 8px; gap: 5px; }
+
+      .toolbar-view-switch {
+        height: 32px;
+        button { width: 28px; height: 26px; font-size: 0.78rem; }
+        .vs-divider { height: 16px; }
+      }
+
+      /* NEW_ENTRY shrinks to a single + button */
+      .create-note-btn {
+        height: 32px;
+        min-width: 32px;
+        padding: 0 9px;
+        .btn-label, .caret { display: none; }
+      }
+    }
+  }
+}
+
+/* phone: the nudge chip shrinks to its pulsing dot (tap = jump to today) */
+@media (max-width: 768px) {
+  .daily-note-app-container-cyber .app-toolbar-cyber .toolbar-actions .today-reminder-chip .chip-label {
+    display: none;
+  }
+}

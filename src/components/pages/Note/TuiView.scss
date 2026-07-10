@@ -1707,3 +1707,28 @@
     .tui-opt-size .sample { display: none; }
   }
 }
+
+/* ── extra phone polish for the TUI chrome ── */
+@media (max-width: 768px) {
+  .tui {
+    min-height: calc(100dvh - 190px);
+
+    /* smaller panel-title chips; drop the ACTIVE suffix (the switcher
+       already tells you where you are) */
+    .tui-panel-title { font-size: 0.56rem; letter-spacing: 0.8px; gap: 4px; padding: 0 6px; }
+    .tui-panel.focused .tui-panel-title::after { content: none; }
+
+    .tui-status {
+      font-size: 0.72rem;
+      gap: 6px;
+      padding: 5px 8px 5px;
+      padding-right: 40px;
+
+      /* ◈ NOTES tag duplicates the mobile switcher */
+      .tui-focus-tag { display: none; }
+      .tui-zen-tag { display: none; }
+      .tui-badge { font-size: 0.66rem; }
+      .tui-stat { font-size: 0.66rem; }
+    }
+  }
+}

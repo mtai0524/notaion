@@ -2346,7 +2346,7 @@ const DailyNoteApp = () => {
               onClick={() => setCurrentDate(new Date())}
               title="Hôm nay chưa có ghi chú — bấm để về hôm nay và bắt đầu viết"
             >
-              <span className="reminder-dot" /> NO_ENTRY_TODAY
+              <span className="reminder-dot" /> <span className="chip-label">NO_ENTRY_TODAY</span>
             </button>
           )}
 
@@ -2627,7 +2627,7 @@ const DailyNoteApp = () => {
 
           <div className="new-menu-container">
             <button className="create-note-btn" onClick={() => setShowNewMenu(v => !v)}>
-              <FaPlus /> NEW_ENTRY <FaChevronDown className="caret" />
+              <FaPlus /> <span className="btn-label">NEW_ENTRY</span> <FaChevronDown className="caret" />
             </button>
             {showNewMenu && (
               <div className="new-menu-dropdown" onClick={(e) => e.stopPropagation()}>
