@@ -1270,6 +1270,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (focus === 'preview') {
       switch (k) {
         case 'i': case 'Enter': editBody(); break;
+        case 'e': editTitle(); break;
         case 'h': case 'ArrowLeft': setFocus('notes'); break;
         case 'j': case 'ArrowDown': scrollPreview(48); break;
         case 'k': case 'ArrowUp': scrollPreview(-48); break;
@@ -1429,6 +1430,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     {
       title: 'PREVIEW',
       rows: [
+        ['e / click title', 'edit title'],
         ['j / k', 'scroll'],
         ['g / G', 'top / bottom'],
         ['Ctrl+d / Ctrl+u', 'half page down / up'],
@@ -1574,7 +1576,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       {picked ? '☑' : '☐'}
                     </button>
                     {n.pinned && <span className="tui-pin" title="Pinned">📌</span>}
-                    {sel && mode === 'title' ? (
+                    {sel && mode === 'title' && focus !== 'preview' ? (
                       // eslint-disable-next-line jsx-a11y/no-autofocus
                       <input ref={inputRef} autoFocus className="tui-input" value={draft}
                              onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="title…" />
@@ -1617,7 +1619,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           <span className="tui-panel-title"><kbd>3</kbd>PREVIEW</span>
           {current ? (
             <div className="tui-scroll" ref={previewRef}>
-              <div className="tui-pv-title">{current.title || '(untitled)'}</div>
+              {mode === 'title' && focus === 'preview' ? (
+                // eslint-disable-next-line jsx-a11y/no-autofocus
+                <input ref={inputRef} autoFocus className="tui-input tui-pv-title-input" value={draft}
+                       onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                       placeholder="title…" />
+              ) : (
+                <div className="tui-pv-title" title="Click to edit title"
+                     onClick={() => { setFocus('preview'); editTitle(); }}>
+                  {current.title || '(untitled)'}
+                </div>
+              )}
               <div className="tui-pv-meta">
                 <span className="tag">{catOf(current)}</span>
                 {current.timestamp && <span> · {current.timestamp}</span>}
