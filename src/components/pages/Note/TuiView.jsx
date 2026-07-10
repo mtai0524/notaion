@@ -54,7 +54,22 @@ const LONG_EVERY = 4; // long break after every 4th focus
 const FOCUS_CHOICES = [25, 45, 90];
 const TUI_THEMES = ['default', 'catppuccin', 'gruvbox', 'nord', 'dracula'];
 const TUI_FONT_KEY = 'daily-note-tui-font';
+const TUI_FONTFAM_KEY = 'daily-note-tui-fontfam';
 const FONT_STEPS = [0.8, 0.9, 1.0, 1.1];
+// nvim-crowd monospace fonts — each renders in itself in the picker; missing
+// fonts silently fall back to the next in the stack.
+const FONT_FAMILIES = [
+  { key: 'jetbrains', label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Fira Code', monospace" },
+  { key: 'fira', label: 'Fira Code', stack: "'Fira Code', 'JetBrains Mono', monospace" },
+  { key: 'cascadia', label: 'Cascadia Code', stack: "'Cascadia Code', 'Cascadia Mono', monospace" },
+  { key: 'hack', label: 'Hack', stack: "'Hack', monospace" },
+  { key: 'sourcecode', label: 'Source Code Pro', stack: "'Source Code Pro', monospace" },
+  { key: 'plex', label: 'IBM Plex Mono', stack: "'IBM Plex Mono', monospace" },
+  { key: 'ubuntu', label: 'Ubuntu Mono', stack: "'Ubuntu Mono', monospace" },
+  { key: 'consolas', label: 'Consolas / Menlo', stack: "Consolas, Menlo, monospace" },
+  { key: 'system', label: 'System mono', stack: 'ui-monospace, SFMono-Regular, monospace' },
+];
+const OPT_TABS = ['theme', 'font', 'options'];
 // swatches for the appearance popup: [background, accent]
 const THEME_SWATCH = {
   default: ['#fdfcf8', '#111827'],
@@ -152,7 +167,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [archivedIds, setArchivedIds] = useState(() => lsGet(ARCHIVE_KEY, [])); // local archive
   const [tuiTheme, setTuiTheme] = useState(() => lsGet(TUI_THEME_KEY, 'default'));
   const [tuiFont, setTuiFont] = useState(() => lsGet(TUI_FONT_KEY, 0.9)); // rem
+  const [tuiFontFam, setTuiFontFam] = useState(() => lsGet(TUI_FONTFAM_KEY, FONT_FAMILIES[0])); // {key,label,stack}
   const [showTheme, setShowTheme] = useState(false); // appearance popup (T)
+  const [optTab, setOptTab] = useState('theme'); // active popup tab
+  const [optSel, setOptSel] = useState(0); // keyboard row selection in the tab
+  const [fontDraft, setFontDraft] = useState(null); // custom font input value (null = not editing)
   const [zen, setZen] = useState(() => lsGet(TUI_ZEN_KEY, false)); // notes-only layout
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
@@ -554,6 +573,30 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const next = FONT_STEPS[Math.max(0, Math.min(FONT_STEPS.length - 1, (i === -1 ? 1 : i) + dir))];
     setTuiFont(next); lsSet(TUI_FONT_KEY, next);
     flashMsg(`font: ${Math.round(next * 100)}%`);
+  };
+
+  const applyFontFam = (fam) => {
+    setTuiFontFam(fam); lsSet(TUI_FONTFAM_KEY, fam);
+    flashMsg(`font: ${fam.label}`);
+  };
+  const applyCustomFont = (name) => {
+    const clean = String(name || '').trim().replace(/["']/g, '');
+    if (!clean) { setFontDraft(null); return; }
+    applyFontFam({ key: 'custom', label: clean, stack: `'${clean}', monospace` });
+    setFontDraft(null);
+  };
+
+  // Rows per popup tab (for j/k navigation): font tab has the families + the
+  // custom row; options tab has zen · sound · pomodoro length.
+  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : 3;
+  const optActivate = (sel) => {
+    if (optTab === 'theme') setTheme(TUI_THEMES[sel]);
+    else if (optTab === 'font') {
+      if (sel < FONT_FAMILIES.length) applyFontFam(FONT_FAMILIES[sel]);
+      else setFontDraft(tuiFontFam.key === 'custom' ? tuiFontFam.label : '');
+    } else if (sel === 0) toggleZen();
+    else if (sel === 1) toggleSound();
+    else setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]);
   };
 
   const setTheme = (name) => {
@@ -1036,14 +1079,23 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
     if (mode === 'command') return; // the ":" input handles its own keys
 
-    // Appearance popup: 1-5 theme · +/- font · z zen · Esc/T/q closes.
+    // Appearance popup: h/l or Tab switch tabs · j/k move · Enter apply ·
+    // 1-9 quick-pick · +/- font size · Esc/T/q closes.
     if (showTheme) {
-      const ti = parseInt(e.key, 10) - 1;
-      if (ti >= 0 && ti < TUI_THEMES.length) setTheme(TUI_THEMES[ti]);
-      else if (e.key === '+' || e.key === '=') stepFont(1);
-      else if (e.key === '-') stepFont(-1);
-      else if (e.key === 'z') toggleZen();
-      else if (e.key === 'Escape' || e.key === 'T' || e.key === 'q') setShowTheme(false);
+      if (fontDraft !== null) return; // the custom-font input handles its own keys
+      const k2 = e.key;
+      if (k2 === 'Tab' || k2 === 'l' || k2 === 'ArrowRight' || k2 === 'h' || k2 === 'ArrowLeft') {
+        const dir = (k2 === 'h' || k2 === 'ArrowLeft' || (k2 === 'Tab' && e.shiftKey)) ? -1 : 1;
+        setOptTab((t) => OPT_TABS[(OPT_TABS.indexOf(t) + dir + OPT_TABS.length) % OPT_TABS.length]);
+        setOptSel(0);
+      } else if (k2 === 'j' || k2 === 'ArrowDown') setOptSel((s) => Math.min(s + 1, optRows - 1));
+      else if (k2 === 'k' || k2 === 'ArrowUp') setOptSel((s) => Math.max(s - 1, 0));
+      else if (k2 === 'Enter' || k2 === ' ') optActivate(optSel);
+      else if (/^[1-9]$/.test(k2) && +k2 <= optRows) { setOptSel(+k2 - 1); optActivate(+k2 - 1); }
+      else if (k2 === '+' || k2 === '=') stepFont(1);
+      else if (k2 === '-') stepFont(-1);
+      else if (k2 === 'z') toggleZen();
+      else if (k2 === 'Escape' || k2 === 'T' || k2 === 'q') setShowTheme(false);
       e.preventDefault();
       return;
     }
@@ -1424,7 +1476,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   return (
     <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
-         style={{ fontSize: `${tuiFont}rem` }}
+         style={{ fontSize: `${tuiFont}rem`, '--tui-font': tuiFontFam.stack }}
          tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
          onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus({ preventScroll: true }); }}>
       <div className="tui-body">
@@ -1864,46 +1916,110 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         );
       })()}
 
-      {/* ── Appearance popup (T / click ◐) — theme · font · zen ── */}
+      {/* ── Options popup (T / click ◐) — tabbed: THEME · FONT · OPTIONS ── */}
       {showTheme && (
         <div className="tui-week-overlay" onClick={() => setShowTheme(false)}>
-          <div className="tui-week-box tui-theme-box" onClick={(e) => e.stopPropagation()}>
-            <div className="tui-week-head">
-              <span>APPEARANCE</span>
-              <button type="button" title="Close (Esc)" onClick={() => setShowTheme(false)}>×</button>
+          <div className="tui-opt-box" onClick={(e) => e.stopPropagation()}>
+            <div className="tui-opt-head">
+              <span className="tui-opt-title">◈ OPTIONS</span>
+              <button type="button" className="tui-opt-close" title="Close (Esc)" onClick={() => setShowTheme(false)}>×</button>
             </div>
-            <div className="tui-theme-sec">
-              <div className="tui-theme-sec-h">THEME</div>
-              {TUI_THEMES.map((t, i) => (
+
+            <div className="tui-opt-tabs">
+              {OPT_TABS.map((t) => (
+                <button key={t} type="button" className={optTab === t ? 'on' : ''}
+                        onClick={() => { setOptTab(t); setOptSel(0); }}>
+                  {t.toUpperCase()}
+                </button>
+              ))}
+              <span className="tui-opt-tabhint">h/l · Tab</span>
+            </div>
+
+            <div className="tui-opt-body">
+              {optTab === 'theme' && TUI_THEMES.map((t, i) => (
                 <button key={t} type="button"
-                        className={`tui-theme-row ${tuiTheme === t ? 'on' : ''}`}
-                        onClick={() => setTheme(t)}>
+                        className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${tuiTheme === t ? 'on' : ''}`}
+                        onMouseEnter={() => setOptSel(i)}
+                        onClick={() => { setOptSel(i); setTheme(t); }}>
                   <kbd>{i + 1}</kbd>
                   <span className="sw" style={{ background: THEME_SWATCH[t][0] }} />
                   <span className="sw" style={{ background: THEME_SWATCH[t][1] }} />
                   <span className="nm">{t}</span>
-                  {tuiTheme === t && <span className="cur">● current</span>}
+                  <span className="cur">{tuiTheme === t ? '●' : ''}</span>
                 </button>
               ))}
+
+              {optTab === 'font' && (
+                <>
+                  {FONT_FAMILIES.map((f, i) => (
+                    <button key={f.key} type="button"
+                            className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${tuiFontFam.key === f.key ? 'on' : ''}`}
+                            onMouseEnter={() => setOptSel(i)}
+                            onClick={() => { setOptSel(i); applyFontFam(f); }}>
+                      <kbd>{i + 1}</kbd>
+                      <span className="nm" style={{ fontFamily: f.stack }}>{f.label}</span>
+                      <span className="fx" style={{ fontFamily: f.stack }}>{'{ } => 0O 1lI'}</span>
+                      <span className="cur">{tuiFontFam.key === f.key ? '●' : ''}</span>
+                    </button>
+                  ))}
+                  {fontDraft !== null ? (
+                    <div className="tui-opt-row sel tui-opt-custom">
+                      <kbd>✎</kbd>
+                      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+                      <input autoFocus value={fontDraft} placeholder="tên font trên máy bạn, vd: Iosevka"
+                             onChange={(e) => setFontDraft(e.target.value)}
+                             onKeyDown={(e) => {
+                               e.stopPropagation();
+                               if (e.key === 'Enter') applyCustomFont(fontDraft);
+                               else if (e.key === 'Escape') setFontDraft(null);
+                             }}
+                             onBlur={() => setFontDraft(null)} />
+                    </div>
+                  ) : (
+                    <button type="button"
+                            className={`tui-opt-row ${optSel === FONT_FAMILIES.length ? 'sel' : ''} ${tuiFontFam.key === 'custom' ? 'on' : ''}`}
+                            onMouseEnter={() => setOptSel(FONT_FAMILIES.length)}
+                            onClick={() => optActivate(FONT_FAMILIES.length)}>
+                      <kbd>✎</kbd>
+                      <span className="nm">custom…{tuiFontFam.key === 'custom' ? ` (${tuiFontFam.label})` : ''}</span>
+                      <span className="cur">{tuiFontFam.key === 'custom' ? '●' : ''}</span>
+                    </button>
+                  )}
+                  <div className="tui-opt-size">
+                    <span className="lbl">SIZE</span>
+                    <button type="button" title="Smaller (-)" onClick={() => stepFont(-1)}>−</button>
+                    <span className="pct">{Math.round(tuiFont * 100)}%</span>
+                    <button type="button" title="Larger (+)" onClick={() => stepFont(1)}>+</button>
+                    <span className="sample" style={{ fontSize: `${tuiFont}rem`, fontFamily: tuiFontFam.stack }}>
+                      xin chào — the quick fox 🦊
+                    </span>
+                  </div>
+                </>
+              )}
+
+              {optTab === 'options' && (
+                <>
+                  <button type="button" className={`tui-opt-row ${optSel === 0 ? 'sel' : ''} ${zen ? 'on' : ''}`}
+                          onMouseEnter={() => setOptSel(0)} onClick={() => optActivate(0)}>
+                    <kbd>z</kbd><span className="nm">zen mode — chỉ hiện panel NOTES</span>
+                    <span className="cur">{zen ? 'on' : 'off'}</span>
+                  </button>
+                  <button type="button" className={`tui-opt-row ${optSel === 1 ? 'sel' : ''} ${pomoCfg.soundOn ? 'on' : ''}`}
+                          onMouseEnter={() => setOptSel(1)} onClick={() => optActivate(1)}>
+                    <kbd>♪</kbd><span className="nm">pomodoro sound — chuông + tick</span>
+                    <span className="cur">{pomoCfg.soundOn ? 'on' : 'off'}</span>
+                  </button>
+                  <button type="button" className={`tui-opt-row ${optSel === 2 ? 'sel' : ''} on`}
+                          onMouseEnter={() => setOptSel(2)} onClick={() => optActivate(2)}>
+                    <kbd>🍅</kbd><span className="nm">pomodoro length — Enter để đổi</span>
+                    <span className="cur">{pomoCfg.focusMin}m</span>
+                  </button>
+                </>
+              )}
             </div>
-            <div className="tui-theme-sec">
-              <div className="tui-theme-sec-h">FONT SIZE</div>
-              <div className="tui-theme-font">
-                <button type="button" title="Smaller (-)" onClick={() => stepFont(-1)}>−</button>
-                <span className="pct">{Math.round(tuiFont * 100)}%</span>
-                <button type="button" title="Larger (+)" onClick={() => stepFont(1)}>+</button>
-                <span className="sample" style={{ fontSize: `${tuiFont}rem` }}>the quick brown fox 🦊</span>
-              </div>
-            </div>
-            <div className="tui-theme-sec">
-              <div className="tui-theme-sec-h">LAYOUT</div>
-              <button type="button" className={`tui-theme-row ${zen ? 'on' : ''}`} onClick={toggleZen}>
-                <kbd>z</kbd><span className="nm">zen mode — chỉ hiện panel NOTES</span>
-                <span className="cur">{zen ? '● on' : '○ off'}</span>
-              </button>
-            </div>
-            <div className="tui-week-foot">
-              <span>1-5: theme · +/−: font · z: zen · Esc: close</span>
+
+            <div className="tui-opt-foot">
+              h/l:tab · j/k:move · Enter:apply · 1-9:pick · +/−:size · Esc:close
             </div>
           </div>
         </div>

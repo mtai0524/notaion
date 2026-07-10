@@ -18,7 +18,9 @@
   padding: 12px;
   gap: 12px;
 
-  &, & * { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
+  /* --tui-font is set inline from the appearance popup (font picker) */
+  --tui-font: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  &, & * { font-family: var(--tui-font); }
 
   ::selection { background: rgba(127, 127, 127, 0.3); }
 
@@ -1409,71 +1411,159 @@
   }
 }
 
-/* ── Appearance popup (T) ── */
-.tui-theme-box {
-  width: min(420px, 92vw);
+/* ── Options popup (T) — neo-brutalist: hard ink borders, offset shadow ── */
+.tui-opt-box {
+  width: min(480px, 94vw);
+  max-height: 86vh;
+  overflow: auto;
+  background: var(--container-bg, #fdfcf8);
+  color: var(--text-color, #111827);
+  border: 3px solid var(--text-color, #111827);
+  border-radius: 0;
+  box-shadow: 10px 10px 0 var(--text-color, #111827);
+  font-family: var(--tui-font, monospace);
+  animation: tui-pomo-pop 0.22s cubic-bezier(0.2, 1.4, 0.4, 1);
 
-  .tui-theme-sec {
-    padding: 10px 16px 4px;
+  .tui-opt-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--text-color, #111827);
+    color: var(--container-bg, #fdfcf8);
 
-    .tui-theme-sec-h {
-      font-size: 0.62rem;
+    .tui-opt-title {
+      font-size: 0.8rem;
       font-weight: 800;
-      letter-spacing: 1.5px;
-      color: var(--text-muted, #6b7280);
-      margin-bottom: 6px;
+      letter-spacing: 2px;
+    }
+
+    .tui-opt-close {
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--container-bg, #fdfcf8);
+      border: 2px solid var(--container-bg, #fdfcf8);
+      color: var(--text-color, #111827);
+      font-size: 1rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.35);
+      &:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35); }
     }
   }
 
-  .tui-theme-row {
+  .tui-opt-tabs {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 12px 14px 0;
+
+    button {
+      padding: 4px 14px;
+      background: var(--container-bg, #fdfcf8);
+      border: 2.5px solid var(--text-color, #111827);
+      border-radius: 0;
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      box-shadow: 4px 4px 0 var(--text-color, #111827);
+      transition: transform 0.08s ease, box-shadow 0.08s ease;
+
+      &:hover { transform: translate(1px, 1px); box-shadow: 3px 3px 0 var(--text-color, #111827); }
+
+      &.on {
+        background: var(--text-color, #111827);
+        color: var(--container-bg, #fdfcf8);
+        transform: translate(3px, 3px);
+        box-shadow: 1px 1px 0 var(--text-color, #111827);
+      }
+    }
+
+    .tui-opt-tabhint {
+      margin-left: auto;
+      font-size: 0.62rem;
+      font-weight: 700;
+      color: var(--text-muted, #6b7280);
+    }
+  }
+
+  .tui-opt-body { padding: 14px; }
+
+  .tui-opt-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    padding: 5px 8px;
-    margin-bottom: 3px;
-    background: transparent;
-    border: 1.5px solid transparent;
-    border-radius: var(--radius-sm, 4px);
+    padding: 7px 10px;
+    margin-bottom: 6px;
+    background: var(--container-bg, #fdfcf8);
+    border: 2px solid var(--border-color, #d1d5db);
+    border-radius: 0;
     color: var(--text-color, #111827);
     font: inherit;
     font-size: 0.8rem;
     cursor: pointer;
     text-align: left;
+    transition: transform 0.08s ease, box-shadow 0.08s ease, border-color 0.08s ease;
 
     kbd {
+      min-width: 22px;
+      text-align: center;
       padding: 0 5px;
-      border: 1px solid var(--border-color, #d1d5db);
-      border-radius: 3px;
+      border: 1.5px solid var(--text-color, #111827);
+      border-radius: 0;
       font: inherit;
       font-size: 0.7rem;
+      font-weight: 800;
+      background: var(--container-bg, #fdfcf8);
     }
 
     .sw {
-      width: 14px;
-      height: 14px;
-      border-radius: 4px;
-      border: 1px solid var(--border-color, #d1d5db);
+      width: 15px;
+      height: 15px;
+      border: 1.5px solid var(--text-color, #111827);
       flex-shrink: 0;
     }
 
-    .nm { flex: 1; font-weight: 700; }
+    .nm { flex: 1; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fx { color: var(--text-muted, #6b7280); font-size: 0.72rem; flex-shrink: 0; }
+    .cur { min-width: 30px; text-align: right; font-size: 0.7rem; font-weight: 800; color: var(--text-muted, #6b7280); }
 
-    .cur { font-size: 0.68rem; color: var(--text-muted, #6b7280); }
-
-    &:hover { background: rgba(127, 127, 127, 0.1); }
-
-    &.on {
+    /* keyboard cursor — the loud neo-brutalist "you are here" */
+    &.sel {
       border-color: var(--text-color, #111827);
-      .cur { color: #16a34a; font-weight: 700; }
+      box-shadow: 5px 5px 0 var(--text-color, #111827);
+      transform: translate(-1px, -1px);
+    }
+
+    &.on .cur { color: #16a34a; }
+
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: inherit;
+      font: inherit;
     }
   }
 
-  .tui-theme-font {
+  .tui-opt-size {
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 2px 8px 8px;
+    margin-top: 12px;
+    padding: 8px 10px;
+    border: 2px dashed var(--border-color, #d1d5db);
+
+    .lbl { font-size: 0.62rem; font-weight: 800; letter-spacing: 1.5px; color: var(--text-muted, #6b7280); }
 
     button {
       width: 26px;
@@ -1481,18 +1571,29 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: transparent;
-      border: 1.5px solid var(--text-color, #111827);
-      border-radius: 4px;
+      background: var(--container-bg, #fdfcf8);
+      border: 2px solid var(--text-color, #111827);
+      border-radius: 0;
       color: var(--text-color, #111827);
       font: inherit;
       font-size: 1rem;
       font-weight: 800;
       cursor: pointer;
-      &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+      box-shadow: 3px 3px 0 var(--text-color, #111827);
+      &:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 var(--text-color, #111827); }
+      &:active { transform: translate(3px, 3px); box-shadow: none; }
     }
 
     .pct { min-width: 44px; text-align: center; font-weight: 800; font-size: 0.8rem; }
     .sample { color: var(--text-muted, #6b7280); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  }
+
+  .tui-opt-foot {
+    padding: 10px 14px;
+    border-top: 3px solid var(--text-color, #111827);
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--text-muted, #6b7280);
   }
 }
