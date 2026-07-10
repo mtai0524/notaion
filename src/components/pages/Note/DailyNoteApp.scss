@@ -186,6 +186,11 @@
         width: 36px;
         padding: 0;
         font-size: 0.95rem;
+        /* Tailwind preflight makes svg display:block, so text-align:center
+           no longer centers the icon — flex-center it explicitly. */
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
       }
 
       .create-note-btn {

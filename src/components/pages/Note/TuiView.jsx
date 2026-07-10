@@ -35,6 +35,22 @@ const SORTS = [
   { key: 'updated', label: 'updated' },
 ];
 
+const POMO_TOTAL = 25 * 60; // one pomodoro = 25 minutes
+const POMO_LS_KEY = 'daily-note-tui-pomodoro';
+
+// Restore a persisted pomodoro, subtracting the time that passed while the
+// page was closed (only when it was left running).
+const loadPomodoro = () => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(POMO_LS_KEY));
+    if (!saved || typeof saved.remaining !== 'number') return null;
+    const elapsed = saved.running ? Math.floor((Date.now() - (saved.savedAt || Date.now())) / 1000) : 0;
+    const remaining = Math.max(0, saved.remaining - elapsed);
+    if (remaining <= 0) { localStorage.removeItem(POMO_LS_KEY); return null; }
+    return { noteId: saved.noteId ?? null, remaining, running: !!saved.running };
+  } catch { return null; }
+};
+
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
@@ -49,7 +65,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
   const [selectedIds, setSelectedIds] = useState([]); // multi-select for bulk actions
-  const [pomodoro, setPomodoro] = useState(null); // { noteId, endsAt, remaining, running }
+  const [pomodoro, setPomodoro] = useState(loadPomodoro); // { noteId, remaining, running }
+  const [pomoOverlay, setPomoOverlay] = useState(false); // fullscreen focus overlay
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
@@ -109,6 +126,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }, 1000);
     return () => clearInterval(id);
   }, [pomodoro?.running]);
+
+  // Persist the pomodoro so a reload (or accidental close) doesn't lose it.
+  useEffect(() => {
+    try {
+      if (pomodoro) localStorage.setItem(POMO_LS_KEY, JSON.stringify({ ...pomodoro, savedAt: Date.now() }));
+      else localStorage.removeItem(POMO_LS_KEY);
+    } catch { /* storage full/blocked — timer still works in-memory */ }
+  }, [pomodoro]);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search') {
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -185,9 +210,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   /* ── Pomodoro focus timer (25 min) bound to the selected note ── */
   const startPomodoro = () => {
     if (!current) return;
-    setPomodoro({ noteId: current.id, remaining: 25 * 60, running: true });
+    setPomodoro({ noteId: current.id, remaining: POMO_TOTAL, running: true });
   };
-  const stopPomodoro = () => setPomodoro(null);
+  const stopPomodoro = () => { setPomodoro(null); setPomoOverlay(false); };
   const togglePomodoro = () => setPomodoro((p) => (p ? { ...p, running: !p.running } : p));
 
   const commit = () => {
@@ -433,6 +458,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
 
+    // Pomodoro focus overlay swallows keys: , or Space pause/resume · . stop · Esc/q close.
+    if (pomoOverlay) {
+      if (e.key === ',' || e.key === ' ') togglePomodoro();
+      else if (e.key === '.') stopPomodoro();
+      else if (e.key === 'Escape' || e.key === 'q') setPomoOverlay(false);
+      e.preventDefault();
+      return;
+    }
+
     if (mode === 'delete') {
       // y/Enter confirms; n/Esc/anything else cancels.
       if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
@@ -653,6 +687,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       rows: [
         ['.', 'start / stop pomodoro (25m)'],
         [',', 'pause / resume'],
+        ['click 🍅', 'fullscreen focus overlay'],
       ],
     },
     {
@@ -935,11 +970,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <span className="tui-sel-tag" title="Selected — d/m/M act on all; Esc clears">✓ {selectedIds.length} selected</span>
             )}
             {pomodoro && (
-              <button type="button" className={`tui-pomo ${pomodoro.running ? 'run' : 'paused'}`}
-                      title="Pomodoro — , pause/resume · . stop"
-                      onClick={(e) => { e.stopPropagation(); togglePomodoro(); rootRef.current?.focus({ preventScroll: true }); }}>
+              <button type="button"
+                      className={`tui-pomo ${pomodoro.remaining === 0 ? 'done' : pomodoro.running ? 'run' : 'paused'}`}
+                      title="Pomodoro — click: focus overlay · , pause/resume · . stop"
+                      onClick={(e) => { e.stopPropagation(); setPomoOverlay(true); rootRef.current?.focus({ preventScroll: true }); }}>
                 🍅 {String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0')}:{String(pomodoro.remaining % 60).padStart(2, '0')}
-                {!pomodoro.running && ' ⏸'}
+                {!pomodoro.running && pomodoro.remaining > 0 && ' ⏸'}
               </button>
             )}
             <span className="tui-hints">{hints[mode]}</span>
@@ -979,6 +1015,46 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </div>
         </div>
       )}
+
+      {/* ── Pomodoro focus overlay — big animated timer over the whole screen ── */}
+      {pomoOverlay && pomodoro && (() => {
+        const done = pomodoro.remaining === 0;
+        const frac = Math.max(0, Math.min(1, pomodoro.remaining / POMO_TOTAL));
+        const mm = String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0');
+        const ss = String(pomodoro.remaining % 60).padStart(2, '0');
+        const CELLS = 28;
+        const filledCells = Math.round(frac * CELLS);
+        const focusNote = notes.find((n) => n.id === pomodoro.noteId);
+        return (
+          <div className="tui-pomo-overlay" onClick={() => setPomoOverlay(false)}>
+            <div className={`tui-pomo-stage ${done ? 'done' : pomodoro.running ? 'run' : 'paused'}`}
+                 onClick={(e) => e.stopPropagation()}>
+              <div className="tui-pomo-rings"><span /><span /><span /></div>
+              <div className="tui-pomo-tomato">{done ? '☕' : '🍅'}</div>
+              <div className="tui-pomo-time">
+                {mm}<span className="tui-pomo-colon">:</span>{ss}
+              </div>
+              <div className="tui-pomo-bar">
+                <span className="fill">{'▓'.repeat(filledCells)}</span>{'░'.repeat(CELLS - filledCells)}
+              </div>
+              <div className="tui-pomo-label">
+                {done
+                  ? 'HẾT GIỜ — NGHỈ MỘT CHÚT ☕'
+                  : `FOCUS · ${focusNote?.title || 'deep work'}${pomodoro.running ? '' : ' · PAUSED'}`}
+              </div>
+              <div className="tui-pomo-ctl">
+                {!done && (
+                  <button type="button" onClick={togglePomodoro}>
+                    {pomodoro.running ? '⏸ pause' : '▶ resume'} <kbd>,</kbd>
+                  </button>
+                )}
+                <button type="button" onClick={stopPomodoro}>■ stop <kbd>.</kbd></button>
+                <button type="button" onClick={() => setPomoOverlay(false)}>× close <kbd>Esc</kbd></button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

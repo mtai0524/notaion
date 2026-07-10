@@ -863,20 +863,195 @@
     font-size: 0.72rem;
   }
 
-  /* status-bar pomodoro chip */
+  /* status-bar pomodoro chip — loud on purpose: it's a running timer */
   .tui-status .tui-pomo {
     flex-shrink: 0;
-    padding: 1px 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 10px;
     border-radius: var(--radius-sm, 4px);
     border: 1.5px solid var(--border-color, #111827);
     background: transparent;
     color: var(--text-color, #111827);
     font-weight: 800;
-    font-size: 0.72rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
     font-variant-numeric: tabular-nums;
     cursor: pointer;
 
-    &.run { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
-    &.paused { opacity: 0.7; }
+    &.run {
+      background: #e11d48;
+      border-color: #e11d48;
+      color: #fff;
+      animation: tui-pomo-pulse 2s ease-in-out infinite;
+    }
+    &.paused { opacity: 0.75; }
+    &.done {
+      background: #16a34a;
+      border-color: #16a34a;
+      color: #fff;
+      animation: tui-pomo-pulse 1s ease-in-out infinite;
+    }
   }
+}
+
+@keyframes tui-pomo-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.45); }
+  50% { box-shadow: 0 0 0 6px rgba(225, 29, 72, 0); }
+}
+
+/* ── Pomodoro focus overlay ── */
+.tui-pomo-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 13, 20, 0.88);
+  backdrop-filter: blur(6px);
+  animation: tui-pomo-fade 0.25s ease-out;
+  /* faint CRT scanlines to match the TUI look */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0 3px,
+      rgba(255, 255, 255, 0.025) 3px 4px
+    );
+  }
+}
+
+.tui-pomo-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 72px;
+  color: #fdfcf8;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  text-align: center;
+  animation: tui-pomo-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  .tui-pomo-rings {
+    position: absolute;
+    top: 74px;
+    left: 50%;
+    width: 0;
+    height: 0;
+    span {
+      position: absolute;
+      top: 0; left: 0;
+      width: 130px;
+      height: 130px;
+      margin: -65px 0 0 -65px;
+      border: 2px solid rgba(225, 29, 72, 0.55);
+      border-radius: 50%;
+      animation: tui-pomo-ping 2.4s ease-out infinite;
+    }
+    span:nth-child(2) { animation-delay: 0.8s; }
+    span:nth-child(3) { animation-delay: 1.6s; }
+  }
+
+  .tui-pomo-tomato {
+    font-size: 4.6rem;
+    line-height: 1;
+    animation: tui-pomo-breathe 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 18px rgba(225, 29, 72, 0.55));
+  }
+
+  .tui-pomo-time {
+    font-size: 6.5rem;
+    font-weight: 900;
+    letter-spacing: 6px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 32px rgba(225, 29, 72, 0.35);
+    .tui-pomo-colon { animation: tui-pomo-blink 1s steps(1) infinite; }
+  }
+
+  .tui-pomo-bar {
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: rgba(253, 252, 248, 0.35);
+    .fill { color: #e11d48; }
+  }
+
+  .tui-pomo-label {
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: rgba(253, 252, 248, 0.75);
+    max-width: 560px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tui-pomo-ctl {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    button {
+      padding: 6px 14px;
+      background: transparent;
+      border: 1.5px solid rgba(253, 252, 248, 0.45);
+      border-radius: 4px;
+      color: #fdfcf8;
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+      &:hover { background: rgba(253, 252, 248, 0.12); border-color: #fdfcf8; }
+      kbd {
+        margin-left: 4px;
+        padding: 0 4px;
+        border: 1px solid rgba(253, 252, 248, 0.4);
+        border-radius: 3px;
+        font-size: 0.7rem;
+      }
+    }
+  }
+
+  /* paused — freeze the motion so the state reads at a glance */
+  &.paused {
+    .tui-pomo-tomato, .tui-pomo-rings span, .tui-pomo-colon { animation-play-state: paused; }
+    .tui-pomo-time { opacity: 0.6; }
+  }
+
+  /* done — green, celebratory bounce */
+  &.done {
+    .tui-pomo-rings span { border-color: rgba(22, 163, 74, 0.6); }
+    .tui-pomo-tomato {
+      animation: tui-pomo-bounce 0.8s ease infinite;
+      filter: drop-shadow(0 0 18px rgba(22, 163, 74, 0.6));
+    }
+    .tui-pomo-time { text-shadow: 0 0 32px rgba(22, 163, 74, 0.45); }
+    .tui-pomo-bar .fill { color: #16a34a; }
+    .tui-pomo-label { color: #4ade80; }
+  }
+}
+
+@keyframes tui-pomo-fade { from { opacity: 0; } }
+@keyframes tui-pomo-pop { from { transform: scale(0.92); opacity: 0; } }
+@keyframes tui-pomo-blink { 50% { opacity: 0.15; } }
+@keyframes tui-pomo-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.09); }
+}
+@keyframes tui-pomo-ping {
+  0% { transform: scale(0.55); opacity: 0.9; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes tui-pomo-bounce {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-14px); }
 }
