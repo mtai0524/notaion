@@ -4560,7 +4560,13 @@
       .toolbar-view-switch {
         height: 32px;
         button { width: 28px; height: 26px; font-size: 0.78rem; }
-        .vs-divider { height: 16px; }
+        .vs-divider { display: none; }
+
+        /* phone: view switching lives in the ⋯ menu (VIEW section) —
+           the trio here is noise; keep only theme + sidebar */
+        > button:nth-of-type(1),
+        > button:nth-of-type(2),
+        > button:nth-of-type(3) { display: none; }
       }
 
       /* NEW_ENTRY shrinks to a single + button */
