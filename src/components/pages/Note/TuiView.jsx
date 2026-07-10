@@ -1450,18 +1450,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 #{tagFilter} ×
               </button>
             )}
-            {(() => {
-              const day = notesWithMeta.filter((n) => !archivedSet.has(n.id));
-              if (!day.length) return null;
-              const done = day.filter((n) => n.isCompleted).length;
-              const pct = Math.round((done / day.length) * 100);
-              return (
-                <span className="tui-day-progress" title={`${done}/${day.length} done today`}>
-                  <span className="bar"><span className="fill" style={{ width: `${pct}%` }} /></span>
-                  {pct}%
-                </span>
-              );
-            })()}
           </span>
           <div className="tui-scroll">
             {list.length === 0 ? (
@@ -1483,7 +1471,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                             onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}>
                       {picked ? '☑' : '☐'}
                     </button>
-                    <span className="tui-check">{n.isCompleted ? '[x]' : '[ ]'}</span>
                     {n.pinned && <span className="tui-pin" title="Pinned">📌</span>}
                     {sel && mode === 'title' ? (
                       // eslint-disable-next-line jsx-a11y/no-autofocus
