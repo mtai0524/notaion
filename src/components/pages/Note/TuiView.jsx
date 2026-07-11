@@ -4,6 +4,7 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
+import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import './TuiView.scss';
 
 // Notion-style "/" block menu for the body editor.
@@ -38,7 +39,7 @@ const SORTS = [
 ];
 
 const POMO_LS_KEY = 'daily-note-tui-pomodoro';
-const POMO_CFG_KEY = 'daily-note-pomo-cfg';        // { focusMin, soundOn }
+const POMO_CFG_KEY = 'daily-note-pomo-cfg';        // { focusMin, soundOn, ambient }
 const POMO_STATS_KEY = 'daily-note-pomo-stats';    // { 'yyyy-MM-dd': finished count }
 const FOCUS_TIME_KEY = 'daily-note-focus-time';    // { noteId: seconds focused }
 const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
@@ -95,7 +96,7 @@ const todayStr = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
-const loadPomoCfg = () => ({ focusMin: 25, soundOn: true, ...lsGet(POMO_CFG_KEY, {}) });
+const loadPomoCfg = () => ({ focusMin: 25, soundOn: true, ambient: 'off', ...lsGet(POMO_CFG_KEY, {}) });
 
 /* Tiny WebAudio chime/tick — no assets, degrades silently. */
 let audioCtx = null;
@@ -143,6 +144,58 @@ const loadPomodoro = () => {
     };
   } catch { return null; }
 };
+
+/* LED-style equalizer for the ambient soundscape — reads the WebAudio
+   analyser each frame straight onto a canvas (no React state per frame).
+   Bars melt to zero when the sound stops, thanks to analyser smoothing. */
+const PomoWave = ({ color }) => {
+  const canvasRef = useRef(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return undefined;
+    const W = 300;
+    const H = 40;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
+    const g2d = canvas.getContext('2d');
+    g2d.scale(dpr, dpr);
+    const BARS = 28;
+    const SEG = 4;   // LED segment height
+    const ROWS = Math.floor(H / (SEG + 1));
+    const bw = W / BARS;
+    let raf;
+    let data = null;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      g2d.clearRect(0, 0, W, H);
+      // Re-query every frame: the analyser is created by startAmbient, which
+      // runs in a parent effect AFTER this child effect on first activation.
+      const analyser = getAmbientAnalyser();
+      if (!analyser) return;
+      if (!data || data.length !== analyser.frequencyBinCount) data = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(data);
+      const usable = Math.floor(data.length * 0.72); // ambience lives low in the spectrum
+      for (let b = 0; b < BARS; b += 1) {
+        const start = Math.floor((b / BARS) * usable);
+        const end = Math.max(start + 1, Math.floor(((b + 1) / BARS) * usable));
+        let sum = 0;
+        for (let i = start; i < end; i += 1) sum += data[i];
+        const segs = Math.round(((sum / (end - start)) / 255) * ROWS);
+        g2d.fillStyle = color;
+        for (let s = 0; s < segs; s += 1) {
+          g2d.globalAlpha = 0.35 + (0.65 * s) / ROWS;
+          g2d.fillRect(b * bw + 1, H - (s + 1) * (SEG + 1), bw - 2, SEG);
+        }
+      }
+      g2d.globalAlpha = 1;
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [color]);
+  return <canvas ref={canvasRef} className="tui-pomo-wave" aria-hidden />;
+};
+PomoWave.propTypes = { color: PropTypes.string.isRequired };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
   allNotes, markedDates, onRestore, onCarryOver, onRedate }) => {
@@ -347,6 +400,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       else localStorage.removeItem(POMO_LS_KEY);
     } catch { /* storage full/blocked — timer still works in-memory */ }
   }, [pomodoro]);
+
+  // Ambient soundscape follows the timer: plays while a focus phase is
+  // running (even with the overlay closed), fades out on pause/break/stop.
+  useEffect(() => {
+    if (pomodoro?.running && pomodoro.phase === 'focus' && pomoCfg.ambient !== 'off') startAmbient(pomoCfg.ambient);
+    else stopAmbient();
+  }, [pomodoro?.running, pomodoro?.phase, pomoCfg.ambient]);
+  useEffect(() => () => stopAmbient(), []);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') {
       requestAnimationFrame(() => inputRef.current?.focus());
@@ -524,6 +585,19 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const cfg = { ...pomoCfg, soundOn: !pomoCfg.soundOn };
     setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
     if (cfg.soundOn) playSound('tick');
+  };
+
+  // Ambient soundscape (rain / lofi / waves). Clicking the active chip
+  // turns it off; m (in the overlay) cycles through all of them.
+  const setAmbientKind = (kind) => {
+    const next = pomoCfg.ambient === kind ? 'off' : kind;
+    const cfg = { ...pomoCfg, ambient: next };
+    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
+    flashMsg(`ambient: ${next}`);
+  };
+  const cycleAmbient = () => {
+    const order = ['off', ...AMBIENT_KINDS];
+    setAmbientKind(order[(order.indexOf(pomoCfg.ambient || 'off') + 1) % order.length]);
   };
 
   /* ── Yank / paste (cross-day via localStorage) ── */
@@ -1113,11 +1187,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }
 
     // Pomodoro focus overlay swallows keys: , or Space pause/resume · . stop ·
-    // s sound · Esc/q close.
+    // s sound · m ambient · Esc/q close.
     if (pomoOverlay) {
       if (e.key === ',' || e.key === ' ') togglePomodoro();
       else if (e.key === '.') stopPomodoro();
       else if (e.key === 's') toggleSound();
+      else if (e.key === 'm') cycleAmbient();
       else if (e.key === 'Escape' || e.key === 'q') setPomoOverlay(false);
       e.preventDefault();
       return;
@@ -1387,6 +1462,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         [',', 'pause / resume'],
         ['click 🍅', 'fullscreen focus overlay'],
         ['s (overlay)', 'sound on / off'],
+        ['m (overlay)', 'ambient — rain / lofi / waves'],
         [':pomo 25|45|90', 'session length'],
         ['auto', 'break 5m · long break 15m sau 4 🍅'],
         ['auto', 'log "🍅 25m HH:mm" vào note khi xong'],
@@ -1912,6 +1988,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <div className="tui-pomo-bar">
                 <span className="fill">{'▓'.repeat(filledCells)}</span>{'░'.repeat(CELLS - filledCells)}
               </div>
+              {pomoCfg.ambient !== 'off' && !isBreak && <PomoWave color="#e11d48" />}
               <div className="tui-pomo-label">
                 {isBreak
                   ? `${pomodoro.phase === 'long' ? 'LONG BREAK' : 'BREAK'} · NGHỈ MỘT CHÚT ☕${pomodoro.running ? '' : ' · PAUSED'}`
@@ -1938,6 +2015,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         title="Chime + tick sound (s)" onClick={toggleSound}>
                   {pomoCfg.soundOn ? '♪ on' : '♪ off'}
                 </button>
+              </div>
+              <div className="tui-pomo-cfg tui-pomo-amb">
+                {AMBIENT_KINDS.map((k) => (
+                  <button key={k} type="button" className={pomoCfg.ambient === k ? 'on' : ''}
+                          title={`Ambient: ${k} — m để đổi, bấm lại để tắt`}
+                          onClick={() => setAmbientKind(k)}>
+                    {k === 'rain' ? '⛆ rain' : k === 'lofi' ? '♫ lofi' : '≈ waves'}
+                  </button>
+                ))}
               </div>
             </div>
           </div>

@@ -1307,6 +1307,14 @@
       &.on { background: rgba(253, 252, 248, 0.16); color: #fdfcf8; border-color: #fdfcf8; }
     }
   }
+  .tui-pomo-amb { margin-top: 0; }
+  .tui-pomo-wave {
+    display: block;
+    width: 300px;
+    height: 40px;
+    margin: -4px 0;
+    opacity: 0.9;
+  }
   &.break {
     .tui-pomo-rings span { border-color: rgba(13, 148, 136, 0.6); }
     .tui-pomo-tomato { filter: drop-shadow(0 0 18px rgba(13, 148, 136, 0.6)); }
