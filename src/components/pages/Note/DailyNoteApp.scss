@@ -65,6 +65,25 @@
 
     }
 
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-color);
+      user-select: none;
+
+      .toolbar-brand-name {
+        font-family: 'Press Start 2P', monospace;
+        font-size: 0.6rem;
+        letter-spacing: 1px;
+      }
+
+      @media (max-width: 768px) {
+        .toolbar-brand-name { display: none; }
+        svg { width: 22px; height: 22px; }
+      }
+    }
+
     // Light theme toolbar emphasis
     .theme-light & {
       border-bottom-color: var(--border-color);

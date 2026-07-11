@@ -61,6 +61,7 @@ import axiosInstance from '../../../axiosConfig';
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import debounce from 'lodash.debounce';
 import TuiView from './TuiView';
+import NotaionMark from '../../pixel/NotaionMark';
 import './DailyNoteApp.scss';
 
 const COLORS = [
@@ -2310,6 +2311,10 @@ const DailyNoteApp = () => {
       className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''}`}
     >
       <header className="app-toolbar-cyber">
+        <div className="toolbar-brand" title="NOTAION — daily notes">
+          <NotaionMark size={26} />
+          <span className="toolbar-brand-name">NOTAION</span>
+        </div>
         <div className="date-navigator">
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
           <div className="current-date-display">

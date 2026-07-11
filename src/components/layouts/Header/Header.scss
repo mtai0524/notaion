@@ -4,6 +4,19 @@
   justify-content: center;
 }
 
+.nav-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+
+  .nav-brand-name {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+  }
+}
+
 .nav-user-badge {
   position: relative;
   width: 40px;

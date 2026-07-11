@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" shape-rendering="crispEdges">
+  <!-- Notaion pixel mark — favicon twin of components/pixel/NotaionMark.jsx.
+       Ink/paper swap with the browser theme so the tab icon stays visible. -->
+  <style>
+    .ink { fill: #111827; }
+    .paper { fill: #fdfcf8; }
+    @media (prefers-color-scheme: dark) {
+      .ink { fill: #fdfcf8; }
+      .paper { fill: #111827; }
+    }
+  </style>
+  <path class="ink" d="M3 0h10v1H3zM2 1h12v14H2zM3 15h10v1H3z"/>
+  <rect class="paper" x="4" y="2" width="8" height="6"/>
+  <rect class="ink" x="5" y="3" width="6" height="1"/>
+  <rect x="5" y="5" width="1" height="1" fill="#e11d48"/>
+  <rect class="ink" x="7" y="5" width="3" height="1"/>
+  <path class="paper" d="M5 10h1v3H5zM4 11h3v1H4z"/>
+  <rect class="paper" x="11" y="10" width="1" height="1"/>
+  <rect class="paper" x="9" y="11" width="1" height="1"/>
+  <rect class="paper" x="6" y="13" width="1" height="1"/>
+  <rect class="paper" x="8" y="13" width="1" height="1"/>
+</svg>

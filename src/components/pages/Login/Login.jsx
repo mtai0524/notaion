@@ -8,6 +8,7 @@ import Cookies from "js-cookie";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircleRight } from "@fortawesome/free-regular-svg-icons";
 import { GithubIcon, DiscordIcon } from "./SocialIcons";
+import NotaionMark from "../../pixel/NotaionMark";
 import { HubConnectionBuilder } from "@microsoft/signalr";
 import * as signalR from "@microsoft/signalr";
 import jwt_decode from "jwt-decode";
@@ -121,6 +122,10 @@ const Login = () => {
   return (
     <div className="login-container">
       <div>
+        <div className="login-brand">
+          <NotaionMark size={44} />
+          <span className="login-brand-name">NOTAION</span>
+        </div>
         <h1 className="font-bold text-xl text-center">Login</h1>
         <br />
         <Spin spinning={loading}>
