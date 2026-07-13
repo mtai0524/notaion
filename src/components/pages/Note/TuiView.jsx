@@ -1888,7 +1888,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 const picked = selectedIds.includes(n.id);
                 const pendingDelete = mode === 'delete' && (selectedIds.length ? picked : sel);
                 return (
-                  <div key={n.id} className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
+                  <div key={n.id}
+                       ref={sel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
+                       className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
                        onClick={(e) => {
                          if (e.ctrlKey || e.metaKey) { toggleSelect(n.id); return; }
                          setNoteIndex(i);

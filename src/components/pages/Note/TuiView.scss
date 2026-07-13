@@ -192,10 +192,11 @@
     }
 
     &.sel {
-      background: rgba(127, 127, 127, 0.12);
-      border-left-color: var(--text-color, #111827);
+      background: color-mix(in srgb, var(--tui-accent, #2563eb) 16%, transparent);
+      border-left-color: var(--tui-accent, #2563eb);
+      border-left-width: 3px;
 
-      .tui-title { font-weight: 700; }
+      .tui-title { font-weight: 700; color: var(--text-color, #111827); }
       .tui-row-del { opacity: 1; }
     }
 
