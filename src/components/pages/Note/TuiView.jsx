@@ -1458,18 +1458,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const rep = Math.max(1, parseInt(count || '1', 10));
     const consumeCount = () => { if (count) setCount(''); };
 
-    // Global keys regardless of focused panel.
-    // Telescope: Ctrl+p always; <leader>ff (Space then f) only when nvim is on
-    // (Space otherwise keeps its select/toggle role in the notes panel).
-    if (k === 'p' && e.ctrlKey) { setShowTele(true); e.preventDefault(); return; }
-    if (nvim) {
-      if (leaderRef.current) {
-        leaderRef.current = false;
-        if (k === 'f') { setShowTele(true); e.preventDefault(); return; }
-        // other keys fall through to normal handling
-      }
-      if (k === ' ') { leaderRef.current = true; e.preventDefault(); return; }
-    }
+    // (Telescope open keys — Ctrl+p, Space-leader — are handled in the root's
+    //  onKeyDownCapture so child buttons/browser don't swallow them.)
 
     switch (k) {
       case 'Tab': moveFocus(e.shiftKey ? -1 : 1); e.preventDefault(); return;
@@ -1785,6 +1775,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
          style={{ fontSize: `${tuiFont}rem`, '--tui-font': tuiFontFam.stack }}
          tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
+         onKeyDownCapture={(e) => {
+           // Telescope open keys must be caught at CAPTURE phase: focus often sits
+           // on a child <button> (note row / folder), which would swallow Space
+           // (button click) and the browser swallows Ctrl+p (print) before the
+           // bubbling handler sees them. Only in list context (not editing).
+           if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
+           if (e.key === 'p' && e.ctrlKey) { e.preventDefault(); setShowTele(true); return; }
+           if (nvim && e.key === ' ') { e.preventDefault(); leaderRef.current = true; return; }
+           if (nvim && leaderRef.current && e.key === 'f') { e.preventDefault(); leaderRef.current = false; setShowTele(true); return; }
+           if (nvim && leaderRef.current) leaderRef.current = false; // any other key clears the leader
+         }}
          onClick={(e) => {
            // Don't steal focus from an editable target — inputs, textareas, or a
            // contentEditable block (Notion mode). Otherwise clicking a block
