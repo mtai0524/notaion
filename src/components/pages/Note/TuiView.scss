@@ -322,6 +322,57 @@
   .tui-pv-hr { border: none; border-top: 1px dashed var(--border-color, #111827); margin: 8px 0; }
   .tui-pv-empty { color: var(--text-muted, #9ca3af); }
 
+  /* ── Notion-style callout — icon + tinted box, semantic accent per kind ── */
+  .tui-pv-callout {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 6px 0;
+    padding: 8px 10px;
+    border: 1.5px solid var(--callout-accent, #6b7280);
+    border-left-width: 4px;
+    border-radius: var(--radius-sm, 5px);
+    background: color-mix(in srgb, var(--callout-accent, #6b7280) 10%, transparent);
+
+    .tui-pv-callout-icon { flex-shrink: 0; line-height: 1.5; }
+    .tui-pv-callout-body { min-width: 0; flex: 1; }
+    .tui-pv-callout-line { min-height: 1.4em; }
+
+    &.kind-note    { --callout-accent: #8b5cf6; }
+    &.kind-info    { --callout-accent: #2563eb; }
+    &.kind-warning { --callout-accent: #d97706; }
+    &.kind-success { --callout-accent: #16a34a; }
+    &.kind-danger  { --callout-accent: #dc2626; }
+  }
+
+  /* ── Notion-style toggle — click the caret to fold/unfold children ── */
+  .tui-pv-toggle {
+    margin: 3px 0;
+
+    .tui-pv-toggle-head {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      cursor: pointer;
+      font-weight: 700;
+      user-select: none;
+      &:hover .tui-pv-toggle-caret { color: var(--text-color, #111827); }
+    }
+    .tui-pv-toggle-caret {
+      flex-shrink: 0;
+      color: var(--text-muted, #6b7280);
+      transition: transform 0.12s ease;
+      transform: rotate(90deg);
+    }
+    &.collapsed .tui-pv-toggle-caret { transform: rotate(0deg); }
+
+    .tui-pv-toggle-body {
+      margin: 2px 0 2px 16px;
+      padding-left: 10px;
+      border-left: 1.5px solid var(--border-color, #d1d5db);
+    }
+  }
+
   /* ── formatting toolbar (helps users who don't know markdown) ── */
   .tui-format-bar {
     flex-shrink: 0;
