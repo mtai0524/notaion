@@ -1575,6 +1575,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (!el) return false;
     // In NORMAL, Escape/Ctrl+Enter fall through to the normal exit/save flow.
     if (mdVim === 'normal' && (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return false;
+    setKbDbg(`mdVim key=${e.key} vim=${mdVim} edCmd=${edCmd}`);
     // NORMAL ":" opens the Ex command-line.
     if (mdVim === 'normal' && e.key === ':') { e.preventDefault(); setEdCmd(''); return true; }
     const state = { text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current };
