@@ -1419,6 +1419,101 @@
   }
 }
 
+/* ── Keyboard-driven calendar (c) — month grid, arrow keys move the cursor.
+   Reuses .tui-week-overlay for the backdrop; head/foot mirror .tui-week-box. ── */
+.tui-cal-box {
+  width: min(360px, 92vw);
+  background: var(--container-bg, #fdfcf8);
+  color: var(--text-color, #111827);
+  border: 2px solid var(--border-color, #111827);
+  border-radius: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  animation: tui-pomo-pop 0.25s cubic-bezier(0.2, 1.4, 0.4, 1);
+
+  .tui-week-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border-color, #111827);
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    button {
+      background: transparent;
+      border: none;
+      color: inherit;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+  }
+
+  .tui-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+    padding: 12px;
+  }
+
+  .tui-cal-dow {
+    text-align: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text-muted, #6b7280);
+    padding-bottom: 4px;
+  }
+
+  .tui-cal-day {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    color: var(--text-color, #111827);
+    font: inherit;
+    font-size: 0.78rem;
+    cursor: pointer;
+
+    &.other-month { color: var(--text-muted, #9ca3af); opacity: 0.5; }
+    &.today { font-weight: 800; text-decoration: underline; }
+    &.current { border-color: var(--border-color, #111827); }
+    &.cursor {
+      background: var(--tui-accent, #111827);
+      border-color: var(--tui-accent, #111827);
+      color: var(--container-bg, #fff);
+      font-weight: 800;
+    }
+    .tui-cal-dot {
+      position: absolute;
+      bottom: 3px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--tui-accent, #22c55e);
+    }
+    &.cursor .tui-cal-dot { background: var(--container-bg, #fff); }
+  }
+
+  .tui-cal-stats {
+    padding: 0 16px 8px;
+    font-size: 0.66rem;
+    color: var(--text-muted, #6b7280);
+    text-align: center;
+  }
+
+  .tui-week-foot {
+    padding: 10px 16px;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+    font-size: 0.62rem;
+    color: var(--text-muted, #6b7280);
+    text-align: center;
+  }
+}
+
 /* ── Options popup (T) — follows the Notaion design tokens: --font-main,
    --radius-sm, --box-shadow (-4px 4px hard offset), ink borders ── */
 .tui-opt-box {

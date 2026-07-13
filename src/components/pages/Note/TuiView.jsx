@@ -1458,9 +1458,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       rows: [
         ['[ / ]', 'previous / next day (5] = +5 days)'],
         ['t', 'jump to today'],
+        ['c', 'calendar — ←↑↓→ chọn ngày · Enter chốt · Esc đóng'],
         ['/', 'search · Esc clears'],
         ['W', 'weekly review'],
-        ['B → y', 'carry-over (hỏi trước) · u hoàn tác'],
         ['click heatmap', 'jump to that day'],
       ],
     },
@@ -1517,7 +1517,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     },
   ];
   const hints = {
-    normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  A:arch  W:week  B:carry  ;/\':marks  :cmd  .:pomodoro  ?:help',
+    normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  A:arch  c:calendar  W:week  ;/\':marks  :cmd  .:pomodoro  ?:help',
     category: '',
     move: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
@@ -1526,7 +1526,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     help: 'press any key to close',
     search: '',
     command: '',
-    carry: '',
+    archive: '',
     markset: 'mark: press a letter (a-z) to tag this note',
     markjump: "jump: press a mark letter (a-z)",
   };
@@ -1834,7 +1834,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               else if (e.key === 'Escape') { e.preventDefault(); setCmd(''); setMode('normal'); }
             }}
             onBlur={() => { setCmd(''); setMode('normal'); }}
-            placeholder="export · week · carry · due HH:mm · recur daily · theme · pomo 45 · tag x · goto…" /></span>
+            placeholder="export · week · cal · due HH:mm · recur daily · theme · pomo 45 · tag x · goto…" /></span>
         ) : mode === 'search' ? (
           <span className="tui-search">/<input ref={inputRef} autoFocus className="tui-input inline" value={query}
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
@@ -2172,6 +2172,61 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </div>
         </div>
       )}
+
+      {showCal && (
+        <div className="tui-week-overlay" onClick={() => setShowCal(false)}>
+          <div className="tui-cal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="tui-week-head">
+              <span>CALENDAR — {format(calCursor, 'MMMM yyyy')}</span>
+              <button type="button" title="Close (Esc)" onClick={() => setShowCal(false)}>×</button>
+            </div>
+            <div className="tui-cal-grid">
+              {['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].map((d) => (
+                <span key={d} className="tui-cal-dow">{d}</span>
+              ))}
+              {(() => {
+                const first = startOfWeek(startOfMonth(calCursor), { weekStartsOn: 1 });
+                const days = Array.from({ length: 42 }, (_, i) => addDays(first, i));
+                const todayD = new Date();
+                const curDay = new Date(`${dateLabel}T00:00:00`);
+                return days.map((day) => {
+                  const key = format(day, 'yyyy-MM-dd');
+                  const count = (markedDates && markedDates[key]) || 0;
+                  const cls = [
+                    'tui-cal-day',
+                    isSameMonth(day, calCursor) ? '' : 'other-month',
+                    isSameDay(day, calCursor) ? 'cursor' : '',
+                    isSameDay(day, curDay) ? 'current' : '',
+                    isSameDay(day, todayD) ? 'today' : '',
+                    count > 0 ? 'has-notes' : '',
+                  ].filter(Boolean).join(' ');
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      className={cls}
+                      title={count > 0 ? `${key} · ${count} note${count > 1 ? 's' : ''}` : key}
+                      onClick={() => { onGoToDate?.(day); setShowCal(false); }}
+                      onMouseEnter={() => setCalCursor(day)}
+                    >
+                      {format(day, 'd')}
+                      {count > 0 && <span className="tui-cal-dot" />}
+                    </button>
+                  );
+                });
+              })()}
+            </div>
+            {streakStats && (
+              <div className="tui-cal-stats">
+                🔥 {streakStats.streak}d · {streakStats.monthNotes} this month · {streakStats.totalDays} days total
+              </div>
+            )}
+            <div className="tui-week-foot">
+              <span>←↑↓→ / hjkl move · [ ] month · t today · Enter open · Esc close</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -2188,9 +2243,9 @@ TuiView.propTypes = {
   categories: PropTypes.array,
   allNotes: PropTypes.array,
   markedDates: PropTypes.object,
+  streakStats: PropTypes.object,
   onRestore: PropTypes.func,
-  onCarryOver: PropTypes.func,
-  onRedate: PropTypes.func,
+  onGoToDate: PropTypes.func,
 };
 
 export default TuiView;
