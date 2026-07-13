@@ -8,14 +8,32 @@ import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import './TuiView.scss';
 
+// Callout kinds — shared by the "/" menu, the toolbar and the renderer so the
+// icon/colour of `> [!kind]` stays in one place. Markdown-friendly syntax
+// (GitHub/Obsidian admonition) so notes still export as readable markdown.
+const CALLOUT_KINDS = {
+  note:    { icon: '💡', label: 'Note' },
+  info:    { icon: 'ℹ️', label: 'Info' },
+  warning: { icon: '⚠️', label: 'Warning' },
+  success: { icon: '✅', label: 'Success' },
+  danger:  { icon: '🔥', label: 'Danger' },
+};
+
 // Notion-style "/" block menu for the body editor.
 const SLASH_ITEMS = [
   { key: 'todo', label: 'To-do', hint: '- [ ]', snippet: '- [ ] ' },
   { key: 'h1', label: 'Heading 1', hint: '#', snippet: '# ' },
   { key: 'h2', label: 'Heading 2', hint: '##', snippet: '## ' },
+  { key: 'h3', label: 'Heading 3', hint: '###', snippet: '### ' },
   { key: 'bullet', label: 'Bullet list', hint: '-', snippet: '- ' },
   { key: 'numbered', label: 'Numbered list', hint: '1.', snippet: '1. ' },
   { key: 'quote', label: 'Quote', hint: '>', snippet: '> ' },
+  { key: 'toggle', label: 'Toggle list', hint: '> [>]', snippet: '> [>] Toggle\n    ', caret: 6 },
+  { key: 'callout', label: 'Callout', hint: '> [!note]', snippet: '> [!note] ', caret: 10 },
+  { key: 'info', label: 'Callout · info', hint: 'ℹ️', snippet: '> [!info] ', caret: 10 },
+  { key: 'warning', label: 'Callout · warning', hint: '⚠️', snippet: '> [!warning] ', caret: 13 },
+  { key: 'success', label: 'Callout · success', hint: '✅', snippet: '> [!success] ', caret: 13 },
+  { key: 'danger', label: 'Callout · danger', hint: '🔥', snippet: '> [!danger] ', caret: 12 },
   { key: 'code', label: 'Code block', hint: '```', snippet: '```\n\n```', caret: 4 },
   { key: 'divider', label: 'Divider', hint: '---', snippet: '---\n' },
   { key: 'time', label: 'Time stamp', hint: 'HH:mm', snippet: null },
@@ -209,6 +227,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [pendingSelect, setPendingSelect] = useState(null); // id of a just-created note to select
   const [uploading, setUploading] = useState(false);
   const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
+  const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -973,6 +992,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     { key: 'ul', label: '•', title: 'Bullet list (- )', run: () => prefixLine('- ') },
     { key: 'todo', label: '☑', title: 'Checklist (- [ ] )', run: () => prefixLine('- [ ] ') },
     { key: 'quote', label: '❝', title: 'Quote (> )', run: () => prefixLine('> ') },
+    { key: 'callout', label: '💡', title: 'Callout (> [!note] )', run: () => prefixLine('> [!note] ') },
+    { key: 'toggle', label: '▸', title: 'Toggle (> [>] )', run: () => prefixLine('> [>] ') },
     { key: 'link', label: '🔗', title: 'Link ([text](url))', run: insertLink },
   ];
 
@@ -1034,51 +1055,117 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // Render a note's markdown body into JSX rows: checklists, images, file
   // links, headings, quotes, bullets — plus inline formatting. `interactive`
   // enables the click-to-toggle checkboxes (only makes sense on the saved note).
+  // Render a single non-block line (checkbox, image, link, heading, quote,
+  // bullet, hr, plain). Used for both top-level lines and callout/toggle bodies.
+  const renderLine = (ln, li, interactive) => {
+    const chk = ln.match(CHECKBOX_RE);
+    if (chk) {
+      const checked = !!chk[2].trim();
+      return (
+        <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}
+             title={interactive ? 'Click to toggle' : undefined}
+             onClick={interactive ? (e) => {
+               e.stopPropagation();
+               const next = toggleChecklistLine(current.content, li);
+               if (next !== null) doUpdate(current.id, { content: next });
+             } : undefined}>
+          <span className="tui-check-box">{checked ? '[x]' : '[ ]'}</span>
+          <span className="tui-check-text">{renderInline(chk[4], li)}</span>
+        </div>
+      );
+    }
+    const img = ln.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
+    if (img) {
+      return (
+        <a key={li} href={img[2]} target="_blank" rel="noopener noreferrer"
+           className="tui-pv-img" onClick={(e) => e.stopPropagation()}>
+          <img src={img[2]} alt={img[1]} loading="lazy" />
+        </a>
+      );
+    }
+    const link = ln.match(/^\[([^\]]+)\]\(([^)]+)\)\s*$/);
+    if (link) {
+      return (
+        <a key={li} href={link[2]} target="_blank" rel="noopener noreferrer"
+           className="tui-pv-file" onClick={(e) => e.stopPropagation()}>{link[1]}</a>
+      );
+    }
+    const heading = ln.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
+      const lvl = heading[1].length;
+      return <div key={li} className={`tui-pv-h tui-pv-h${lvl}`}>{renderInline(heading[2], li)}</div>;
+    }
+    if (/^[-*]\s+/.test(ln)) return <div key={li} className="tui-pv-bullet">{renderInline(ln.replace(/^[-*]\s+/, ''), li)}</div>;
+    if (/^---+$/.test(ln.trim())) return <hr key={li} className="tui-pv-hr" />;
+    return <div key={li} className="tui-pv-line">{ln ? renderInline(ln, li) : ' '}</div>;
+  };
+
   const renderMarkdown = (text, interactive) => {
     if (!text) return <span className="tui-pv-empty">— empty —  (press i or click to edit)</span>;
-    return text.split('\n').map((ln, li) => {
-      const chk = ln.match(CHECKBOX_RE);
-      if (chk) {
-        const checked = !!chk[2].trim();
-        return (
-          <div key={li} className={`tui-check-line ${checked ? 'checked' : ''}`}
-               title={interactive ? 'Click to toggle' : undefined}
-               onClick={interactive ? (e) => {
-                 e.stopPropagation();
-                 const next = toggleChecklistLine(current.content, li);
-                 if (next !== null) doUpdate(current.id, { content: next });
-               } : undefined}>
-            <span className="tui-check-box">{checked ? '[x]' : '[ ]'}</span>
-            <span className="tui-check-text">{renderInline(chk[4], li)}</span>
-          </div>
+    const lines = text.split('\n');
+    const out = [];
+    for (let li = 0; li < lines.length; li++) {
+      const ln = lines[li];
+
+      // Toggle block: "> [>] title" + following indented (4-space) child lines.
+      const tog = ln.match(/^>\s?\[>\]\s?(.*)$/);
+      if (tog) {
+        const start = li;
+        const children = [];
+        while (li + 1 < lines.length && /^\s{2,}\S/.test(lines[li + 1])) {
+          li++;
+          children.push([lines[li].replace(/^\s{2,}/, ''), li]);
+        }
+        const tkey = `${current?.id}:${start}`;
+        const collapsed = !!collapsedToggles[tkey];
+        out.push(
+          <div key={start} className={`tui-pv-toggle ${collapsed ? 'collapsed' : ''}`}>
+            <div className="tui-pv-toggle-head"
+                 onClick={(e) => { e.stopPropagation(); setCollapsedToggles((m) => ({ ...m, [tkey]: !m[tkey] })); }}>
+              <span className="tui-pv-toggle-caret">▸</span>
+              <span className="tui-pv-toggle-title">{renderInline(tog[1] || 'Toggle', start)}</span>
+            </div>
+            {!collapsed && children.length > 0 && (
+              <div className="tui-pv-toggle-body">
+                {children.map(([c, ci]) => renderLine(c, ci, interactive))}
+              </div>
+            )}
+          </div>,
         );
+        continue;
       }
-      const img = ln.match(/^!\[([^\]]*)\]\(([^)]+)\)\s*$/);
-      if (img) {
-        return (
-          <a key={li} href={img[2]} target="_blank" rel="noopener noreferrer"
-             className="tui-pv-img" onClick={(e) => e.stopPropagation()}>
-            <img src={img[2]} alt={img[1]} loading="lazy" />
-          </a>
+
+      // Callout block: "> [!kind] text" + following "> " continuation lines.
+      const call = ln.match(/^>\s?\[!(\w+)\]\s?(.*)$/);
+      if (call) {
+        const kind = CALLOUT_KINDS[call[1].toLowerCase()] ? call[1].toLowerCase() : 'note';
+        const bodyLines = [[call[2], li]];
+        while (li + 1 < lines.length && /^>\s?(?!\[)/.test(lines[li + 1])) {
+          li++;
+          bodyLines.push([lines[li].replace(/^>\s?/, ''), li]);
+        }
+        out.push(
+          <div key={call.index ?? li} className={`tui-pv-callout kind-${kind}`}>
+            <span className="tui-pv-callout-icon">{CALLOUT_KINDS[kind].icon}</span>
+            <div className="tui-pv-callout-body">
+              {bodyLines.map(([c, ci]) => (
+                <div key={ci} className="tui-pv-callout-line">{c ? renderInline(c, ci) : ' '}</div>
+              ))}
+            </div>
+          </div>,
         );
+        continue;
       }
-      const link = ln.match(/^\[([^\]]+)\]\(([^)]+)\)\s*$/);
-      if (link) {
-        return (
-          <a key={li} href={link[2]} target="_blank" rel="noopener noreferrer"
-             className="tui-pv-file" onClick={(e) => e.stopPropagation()}>{link[1]}</a>
-        );
+
+      // Plain quote (no [!]/[>] marker).
+      if (/^>\s?/.test(ln)) {
+        out.push(<div key={li} className="tui-pv-quote">{renderInline(ln.replace(/^>\s?/, ''), li)}</div>);
+        continue;
       }
-      const heading = ln.match(/^(#{1,3})\s+(.*)$/);
-      if (heading) {
-        const lvl = heading[1].length;
-        return <div key={li} className={`tui-pv-h tui-pv-h${lvl}`}>{renderInline(heading[2], li)}</div>;
-      }
-      if (/^>\s?/.test(ln)) return <div key={li} className="tui-pv-quote">{renderInline(ln.replace(/^>\s?/, ''), li)}</div>;
-      if (/^[-*]\s+/.test(ln)) return <div key={li} className="tui-pv-bullet">{renderInline(ln.replace(/^[-*]\s+/, ''), li)}</div>;
-      if (/^---+$/.test(ln.trim())) return <hr key={li} className="tui-pv-hr" />;
-      return <div key={li} className="tui-pv-line">{ln ? renderInline(ln, li) : ' '}</div>;
-    });
+
+      out.push(renderLine(ln, li, interactive));
+    }
+    return out;
   };
 
   // Track the caret: "/" after start-of-line or whitespace opens the menu
@@ -1732,7 +1819,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       <div><code>&gt; trích</code> → trích dẫn</div>
                       <div><code>`mã`</code> → mã lệnh</div>
                       <div><code>[chữ](url)</code> → liên kết</div>
-                      <div className="tui-cheatsheet-tip">Không cần nhớ — cứ viết bình thường, hoặc bấm nút định dạng / gõ <kbd>/</kbd>.</div>
+                      <div><code>&gt; [!note] …</code> → 💡 callout (info · warning · success · danger)</div>
+                      <div><code>&gt; [&gt;] Tiêu đề</code> → ▸ toggle (dòng con thụt 4 dấu cách)</div>
+                      <div className="tui-cheatsheet-tip">Không cần nhớ — cứ viết bình thường, hoặc bấm nút định dạng / gõ <kbd>/</kbd> (kiểu Notion).</div>
                     </div>
                   )}
 
