@@ -225,6 +225,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
+  const [mdVimDbg, setMdVimDbg] = useState('no-key'); // TEMP debug
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
@@ -1517,6 +1518,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // consumed by vim (caller should stop). Only active when nvim is on and we're
   // editing the md body.
   const handleMdVim = (e) => {
+    setMdVimDbg(`key=${e.key} nvim=${nvim} fmt=${noteFormat} mode=${mode} vim=${mdVim}`);
     if (!nvim || noteFormat !== 'md' || mode !== 'body') return false;
     const el = inputRef.current;
     if (!el) return false;
@@ -1949,7 +1951,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         </div>
                       )}
                       {nvim && (
-                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
+                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --
+                          {' '}<span style={{ fontWeight: 400, opacity: 0.7 }}>[{mdVimDbg}]</span>
+                        </div>
                       )}
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in
