@@ -1612,6 +1612,20 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       ],
     },
   ];
+  if (nvim) {
+    helpSections.push({
+      title: 'NVIM (editor)',
+      rows: [
+        ['i / a / A', 'insert · after · line-end'],
+        ['o / O', 'open line below / above'],
+        ['Esc', 'back to NORMAL'],
+        ['h j k l', 'move left/down/up/right'],
+        ['w / b · 0 / $', 'word fwd/back · line start/end'],
+        ['gg / G', 'first / last block'],
+        ['x · dd', 'delete char · delete block'],
+      ],
+    });
+  }
   const hints = {
     normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  A:arch  c:calendar  W:week  ;/\':marks  :cmd  .:pomodoro  ?:help',
     category: '',
