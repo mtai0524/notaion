@@ -68,6 +68,8 @@ const Telescope = ({ sources, onClose }) => {
               <div className="tele-empty">no results</div>
             ) : results.map((it, i) => (
               <button key={source.getKey(it, i)} type="button"
+                      // Keep the arrow-selected row scrolled into view.
+                      ref={i === curSel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
                       className={`tele-item ${i === curSel ? 'sel' : ''}`}
                       onMouseEnter={() => setSel(i)}
                       onMouseDown={(e) => { e.preventDefault(); source.onPick?.(it); onClose?.(); }}>
