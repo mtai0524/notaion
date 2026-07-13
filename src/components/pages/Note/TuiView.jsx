@@ -233,6 +233,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
   const [showTele, setShowTele] = useState(false); // Telescope finder open
   const leaderRef = useRef(false);              // Space leader pending (list NORMAL)
+  const [kbDbg, setKbDbg] = useState('no-key'); // TEMP debug
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -1324,6 +1325,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   const handleKeyDown = (e) => {
     e.stopPropagation();
+    setKbDbg(`root key=${e.key} ctrl=${e.ctrlKey} mode=${mode} fmt=${noteFormat} nvim=${nvim} lead=${leaderRef.current}`);
     // Notion-mode body has no textarea to own Esc/Ctrl+Enter, so handle the
     // save/cancel keys here; block-internal keys (typing, Enter) are handled by
     // the contentEditable blocks and never reach this far.
@@ -2212,6 +2214,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             )}
             {count && <span className="tui-count-tag" title="Count prefix">{count}</span>}
             {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
+            <span className="tui-stat" style={{ color: '#e11d48' }}>[{kbDbg}]</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             {zen && <span className="tui-zen-tag" title="Zen mode (z)">◎ zen</span>}
             <button type="button" className="tui-theme-chip" title="Appearance — theme, font, zen (T)"
