@@ -6,11 +6,20 @@ import './NotionBlock.scss';
 // One block, rendered visually (never showing raw markdown syntax) and
 // inline-editable via contentEditable. The block chrome (icon, caret, checkbox)
 // stays put while editing; only the text region is editable.
+// Uncontrolled contentEditable: the browser owns the text and caret while
+// editing. React seeds the initial text exactly once (on mount) and never
+// writes textContent during typing — writing it is what collapses the caret to
+// the start. A genuine external change (note switch / block type change)
+// remounts this via its React key, so fresh text is picked up naturally.
 const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => {
   const ref = useRef(null);
-  // Keep DOM text in sync with the prop without clobbering the caret while typing.
+  const seeded = useRef(false);
+  // Runs once per mount; the guard means later re-renders never touch the DOM.
   useEffect(() => {
-    if (ref.current && ref.current.textContent !== value) ref.current.textContent = value ?? '';
+    if (!seeded.current && ref.current) {
+      ref.current.textContent = value ?? '';
+      seeded.current = true;
+    }
   }, [value]);
   return (
     <div

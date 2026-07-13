@@ -22,6 +22,23 @@ describe('NotionEditor', () => {
     expect(container.querySelectorAll('.nb-text').length).toBe(1);
   });
 
+  it('updates the correct block and keeps its node when typing among blank lines', () => {
+    // Mirrors the screenshot: content lines separated by blank paragraphs.
+    let content = 'a\n\nb\n\nc';
+    const onChange = (md) => { content = md; };
+    const { container, rerender } = render(<NotionEditor content={content} onChange={onChange} />);
+    const nodes = () => [...container.querySelectorAll('.nb-text')];
+    const before = nodes();
+    // type into the 3rd text block ("b")
+    const target = before[2];
+    fireEvent.input(target, { target: { textContent: 'bb' } });
+    rerender(<NotionEditor content={content} onChange={onChange} />);
+    const after = nodes();
+    expect(content).toBe('a\n\nbb\n\nc');       // only block "b" changed
+    expect(after[2]).toBe(target);              // same node → caret survives
+    expect(after.length).toBe(before.length);   // no phantom blocks added/removed
+  });
+
   it('keeps the same DOM node while typing (caret must survive edits)', () => {
     // Simulate the controlled loop: onChange feeds the new markdown back as the
     // content prop, exactly like TuiView's setDraft does. The editable node must
