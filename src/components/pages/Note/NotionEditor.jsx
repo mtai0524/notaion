@@ -100,38 +100,39 @@ const NotionEditor = ({ content, onChange }) => {
       <Droppable droppableId="notion-editor">
         {(dp) => (
           <div className="notion-editor" ref={dp.innerRef} {...dp.droppableProps}>
-            {/* TEMP DIAGNOSTIC — remove after debugging */}
-            <div style={{ position: 'fixed', top: 0, right: 0, zIndex: 9999, background: '#e11d48', color: '#fff', padding: '2px 8px', fontSize: 11 }}>
-              blocks:{view.length} · lastInput:{String(window.__neLastInput ?? '—')}
-            </div>
             {view.map((b, i) => (
-              <div key={b.id} className="ne-row">
-                <span className="ne-handle" title="Drag to reorder">⠿</span>
-                <button type="button" className="ne-add" title="Insert / turn into block"
-                        onClick={() => setSlashFor((cur) => (cur === i ? null : i))}>+</button>
-                <div className="ne-block">
-                  <NotionBlock
-                    block={b}
-                    collapsed={!!collapsed[b.id]}
-                    onChange={(t) => setText(i, t)}
-                    onEnter={() => addAfter(i)}
-                    onBackspaceEmpty={() => removeAt(i)}
-                    onToggleCheck={() => patch(i, { checked: !b.checked })}
-                    onToggleCollapse={() => setCollapsed((m) => ({ ...m, [b.id]: !m[b.id] }))}
-                  />
-                  {slashFor === i && (
-                    <div className="ne-slash">
-                      {SLASH_MENU.map((it) => (
-                        <button key={it.key} type="button" className="ne-slash-item"
-                                onClick={() => setType(i, it)}>
-                          <span className="ne-slash-icon">{it.icon}</span>
-                          <span>{it.label}</span>
-                        </button>
-                      ))}
+              <Draggable key={b.id} draggableId={String(b.id)} index={i}>
+                {(dr, snapshot) => (
+                  <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''}`}
+                       ref={dr.innerRef} {...dr.draggableProps}>
+                    <span className="ne-handle" title="Drag to reorder" {...dr.dragHandleProps}>⠿</span>
+                    <button type="button" className="ne-add" title="Insert / turn into block"
+                            onClick={() => setSlashFor((cur) => (cur === i ? null : i))}>+</button>
+                    <div className="ne-block">
+                      <NotionBlock
+                        block={b}
+                        collapsed={!!collapsed[b.id]}
+                        onChange={(t) => setText(i, t)}
+                        onEnter={() => addAfter(i)}
+                        onBackspaceEmpty={() => removeAt(i)}
+                        onToggleCheck={() => patch(i, { checked: !b.checked })}
+                        onToggleCollapse={() => setCollapsed((m) => ({ ...m, [b.id]: !m[b.id] }))}
+                      />
+                      {slashFor === i && (
+                        <div className="ne-slash">
+                          {SLASH_MENU.map((it) => (
+                            <button key={it.key} type="button" className="ne-slash-item"
+                                    onClick={() => setType(i, it)}>
+                              <span className="ne-slash-icon">{it.icon}</span>
+                              <span>{it.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              </div>
+                  </div>
+                )}
+              </Draggable>
             ))}
             {dp.placeholder}
           </div>

@@ -1628,7 +1628,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
          style={{ fontSize: `${tuiFont}rem`, '--tui-font': tuiFontFam.stack }}
          tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
-         onClick={(e) => { if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') rootRef.current?.focus({ preventScroll: true }); }}>
+         onClick={(e) => {
+           // Don't steal focus from an editable target — inputs, textareas, or a
+           // contentEditable block (Notion mode). Otherwise clicking a block
+           // yanks focus back to the root and the caret never lands.
+           const t = e.target;
+           const editable = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable || t.closest?.('[contenteditable="true"]');
+           if (!editable) rootRef.current?.focus({ preventScroll: true });
+         }}>
       {/* Mobile: one panel at a time — this switcher only renders under 768px (CSS) */}
       <div className="tui-mobile-nav">
         <button type="button" className={focus === 'folders' ? 'on' : ''}
