@@ -60,6 +60,7 @@ const Telescope = ({ sources, onClose }) => {
           <input autoFocus value={query} placeholder="Search…"
                  onChange={(e) => { setQuery(e.target.value); setSel(0); }}
                  onKeyDown={onKeyDown} />
+          <span className="tele-count">{results.length}</span>
         </div>
         <div className="tele-body">
           <div className="tele-list">

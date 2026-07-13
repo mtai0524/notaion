@@ -1774,7 +1774,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         getName: noteName,
         getMeta: (n) => n.date || '',
         getLabel: (n) => `${n.title || ''} ${n.content || ''}`,
-        getPreview: (n) => `${n.title || 'untitled'}\n${n.date || ''}\n\n${(n.content || '').slice(0, 800)}`,
+        getPreview: (n) => {
+          const body = (n.content || '')
+            .replace(/!\[([^\]]*)\]\([^)]*\)/g, '🖼 $1') // collapse images to a marker
+            .slice(0, 900);
+          return `${n.title || 'untitled'}\n${n.date || ''}\n${'─'.repeat(28)}\n${body}`;
+        },
         onPick: (n) => { if (n.date && n.date !== dateLabel) gotoDate(n.date); setPendingJump(n.id); setFocus('notes'); } },
       { key: 'commands', label: 'Commands', items: cmdItems, getKey: (c) => c.id,
         getName: (c) => c.label, getLabel: (c) => c.label, getPreview: (c) => `Run: ${c.label}`, onPick: (c) => c.run() },

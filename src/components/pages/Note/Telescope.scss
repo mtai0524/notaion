@@ -65,6 +65,12 @@
       font-size: 0.9rem;
       &::placeholder { color: var(--text-muted, #9ca3af); }
     }
+    .tele-count {
+      flex-shrink: 0;
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: var(--text-muted, #9ca3af);
+    }
   }
 
   .tele-body {
