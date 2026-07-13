@@ -1799,9 +1799,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
            // (button click) and the browser swallows Ctrl+p (print) before the
            // bubbling handler sees them. Only in list context (not editing).
            if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
-           if (e.key === 'p' && e.ctrlKey) { e.preventDefault(); setShowTele(true); return; }
-           if (nvim && e.key === ' ') { e.preventDefault(); leaderRef.current = true; return; }
-           if (nvim && leaderRef.current && e.key === 'f') { e.preventDefault(); leaderRef.current = false; setShowTele(true); return; }
+           // stopPropagation so these keys don't ALSO reach the bubbling
+           // handleKeyDown (where 'f' would cycle the folder → jumps to SYSTEM).
+           if (e.key === 'p' && e.ctrlKey) { e.preventDefault(); e.stopPropagation(); setShowTele(true); return; }
+           if (nvim && e.key === ' ') { e.preventDefault(); e.stopPropagation(); leaderRef.current = true; return; }
+           if (nvim && leaderRef.current && e.key === 'f') { e.preventDefault(); e.stopPropagation(); leaderRef.current = false; setShowTele(true); return; }
            if (nvim && leaderRef.current) leaderRef.current = false; // any other key clears the leader
          }}
          onClick={(e) => {
