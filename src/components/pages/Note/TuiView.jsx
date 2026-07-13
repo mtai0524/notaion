@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
+import { format, addDays, addMonths, subMonths, startOfMonth, startOfWeek, isSameDay, isSameMonth } from 'date-fns';
 import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadTextFile } from './noteUtils';
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
@@ -198,7 +199,7 @@ const PomoWave = ({ color }) => {
 PomoWave.propTypes = { color: PropTypes.string.isRequired };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, onRestore, onCarryOver, onRedate }) => {
+  allNotes, markedDates, streakStats, onRestore, onGoToDate }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -231,6 +232,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [count, setCount] = useState(''); // vim count prefix
   const [flash, setFlash] = useState(null); // transient status-bar message
   const [showWeek, setShowWeek] = useState(false); // weekly review overlay
+  const [showCal, setShowCal] = useState(false); // keyboard-driven calendar (c)
+  const [calCursor, setCalCursor] = useState(() => new Date()); // day highlighted in the calendar
   const rootRef = useRef(null);
   const inputRef = useRef(null);
   const previewRef = useRef(null);
@@ -504,13 +507,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         flashMsg(`undo: restored "${e.note.title || 'untitled'}"`);
       } else flashMsg('undo: cannot restore (no handler)');
     } else if (e.type === 'add') { onDelete(e.note.id, true); flashMsg('undo: create'); }
-    else if (e.type === 'carry') {
-      if (onRedate) {
-        Promise.resolve(onRedate(e.moves.map((m) => ({ id: m.id, date: m.from }))))
-          .then(() => flashMsg(`undo: ${e.moves.length} notes back to their original days`))
-          .catch(() => flashMsg('undo carry failed'));
-      } else flashMsg('undo: cannot revert carry (no handler)');
-    }
   };
 
   const redo = () => {
@@ -520,12 +516,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (e.type === 'update') { onUpdate(e.id, e.next); flashMsg('redo: edit'); }
     else if (e.type === 'delete') { onDelete(e.note.id, true); flashMsg('redo: delete'); }
     else if (e.type === 'add') { if (onRestore) onRestore(e.note); flashMsg('redo: create'); }
-    else if (e.type === 'carry') {
-      if (onRedate) {
-        Promise.resolve(onRedate(e.moves.map((m) => ({ id: m.id, date: m.to }))))
-          .then(() => flashMsg(`redo: carried ${e.moves.length} notes again`));
-      }
-    }
   };
 
   // New notes inherit the active folder's category, so "n" inside TASK
@@ -687,7 +677,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     flashMsg(`theme: ${t}`);
   };
 
-  const toggleArchive = () => {
+  const doArchive = () => {
     if (!current) return;
     const has = archivedSet.has(current.id);
     const next = has ? archivedIds.filter((id) => id !== current.id) : [...archivedIds, current.id];
@@ -695,38 +685,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     flashMsg(has ? `unarchived "${current.title || 'untitled'}"` : `archived "${current.title || 'untitled'}" — 📦 folder`);
   };
 
+  // Archiving asks first (like delete/carry); unarchiving is harmless → runs now.
+  const askArchive = () => {
+    if (!current) return;
+    if (archivedSet.has(current.id)) { doArchive(); return; }
+    setMode('archive');
+  };
+
   /* ── Jump to an absolute date via the day-delta prop ── */
   const gotoDate = (dStr) => {
     const delta = Math.round((new Date(`${dStr}T00:00:00`) - new Date(`${dateLabel}T00:00:00`)) / 86400000);
     if (Number.isFinite(delta) && delta !== 0) onChangeDate(delta);
-  };
-
-  /* ── Carry-over: bring unfinished notes from the past week to this day.
-     Destructive-ish (re-dates many notes at once), so it always asks first
-     and the whole batch is one undo step. ── */
-  const carryCandidates = useMemo(() => {
-    const cutoff = new Date(`${dateLabel}T00:00:00`);
-    const inWindow = (d) => {
-      if (!d) return false;
-      const delta = (cutoff - new Date(`${d}T00:00:00`)) / 86400000;
-      return delta >= 1 && delta <= 7;
-    };
-    return (allNotes || []).filter((n) => !n.isDeleted && !n.isCompleted && inWindow(n.date));
-  }, [allNotes, dateLabel]);
-
-  const askCarryOver = () => {
-    if (!onCarryOver) { flashMsg('carry-over unavailable'); return; }
-    if (!carryCandidates.length) { flashMsg('nothing to carry over (no unfinished notes in the last 7 days)'); return; }
-    setMode('carry');
-  };
-
-  const doCarryOver = () => {
-    flashMsg('carrying over unfinished notes…');
-    Promise.resolve(onCarryOver(dateLabel)).then((moves) => {
-      const n = Array.isArray(moves) ? moves.length : (moves || 0);
-      if (Array.isArray(moves) && moves.length) pushUndo({ type: 'carry', moves });
-      flashMsg(n > 0 ? `carried over ${n} note${n > 1 ? 's' : ''} — u to undo` : 'nothing to carry over');
-    }).catch(() => flashMsg('carry-over failed'));
   };
 
   /* ── Export: current day (or week) as Markdown ── */
@@ -844,7 +813,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     switch ((name || '').toLowerCase()) {
       case 'export': arg === 'week' ? exportWeek() : exportDay(arg === 'clip'); break;
       case 'week': setShowWeek(true); break;
-      case 'carry': askCarryOver(); break;
+      case 'cal':
+      case 'calendar': setShowCal(true); return; // keep mode; the overlay owns keys
       case 'due': setDue(arg, args[1]); break;
       case 'recur':
         if (arg === 'daily' || arg === 'weekly' || arg === 'off') setRecurring(arg);
@@ -871,7 +841,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else if (/^\d{4}-\d{2}-\d{2}$/.test(arg || '')) gotoDate(arg);
         else flashMsg('usage: :goto yyyy-mm-dd | today');
         break;
-      case 'archive': toggleArchive(); break;
+      case 'archive': askArchive(); break;
       case 'zen': toggleZen(); break;
       case 'help': setMode('help'); return; // keep mode change
       case '': break;
@@ -1198,6 +1168,23 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       return;
     }
 
+    // Calendar overlay owns the keyboard: arrows/hjkl move the cursor day,
+    // [ / ] page months, t jumps to today, Enter/Space picks, Esc/c/q close.
+    if (showCal) {
+      const move = (days) => setCalCursor((d) => addDays(d, days));
+      if (e.key === 'ArrowLeft' || e.key === 'h') move(-1);
+      else if (e.key === 'ArrowRight' || e.key === 'l') move(1);
+      else if (e.key === 'ArrowUp' || e.key === 'k') move(-7);
+      else if (e.key === 'ArrowDown' || e.key === 'j') move(7);
+      else if (e.key === '[') setCalCursor((d) => subMonths(d, 1));
+      else if (e.key === ']') setCalCursor((d) => addMonths(d, 1));
+      else if (e.key === 't') setCalCursor(new Date());
+      else if (e.key === 'Enter' || e.key === ' ') { onGoToDate?.(calCursor); setShowCal(false); }
+      else if (e.key === 'Escape' || e.key === 'c' || e.key === 'q') setShowCal(false);
+      e.preventDefault();
+      return;
+    }
+
     // Marks: ';<letter>' sets, '\'<letter>' jumps.
     if (mode === 'markset' || mode === 'markjump') {
       if (/^[a-z]$/.test(e.key)) (mode === 'markset' ? setMark : jumpMark)(e.key);
@@ -1217,9 +1204,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       return;
     }
 
-    if (mode === 'carry') {
-      // y/Enter runs the carry-over; anything else cancels.
-      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') doCarryOver();
+    if (mode === 'archive') {
+      // y/Enter archives; anything else cancels.
+      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') doArchive();
       setMode('normal');
       e.preventDefault();
       return;
@@ -1284,11 +1271,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case 'Y': yankNote(); e.preventDefault(); return;
       case 'P': pasteNote(); e.preventDefault(); return;
       case 'a': selectedIds.length === list.length ? clearSelection() : selectAllVisible(); e.preventDefault(); return;
-      case 'A': toggleArchive(); e.preventDefault(); return;
+      case 'A': askArchive(); e.preventDefault(); return;
       case 'z': toggleZen(); e.preventDefault(); return;
       case 'W': setShowWeek(true); e.preventDefault(); return;
       case 'T': setShowTheme(true); e.preventDefault(); return;
-      case 'B': askCarryOver(); e.preventDefault(); return;
+      case 'c': setCalCursor(new Date(`${dateLabel}T00:00:00`)); setShowCal(true); e.preventDefault(); return;
       case ';': setMode('markset'); e.preventDefault(); return;
       case "'": setMode('markjump'); e.preventDefault(); return;
       case 'u': if (!e.ctrlKey) { undo(); e.preventDefault(); return; } break;
@@ -1333,8 +1320,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           else toggleDone();
           break;
         case ' ': if (current) toggleSelect(current.id); break;
-        case 'c': cycleCategory(1); break;
-        case 'C': cycleCategory(-1); break;
+        case 'C': cycleCategory(1); break;
         case 'd': if (selectedIds.length) setMode('delete'); else if (current) setMode('delete'); break;
         default: return;
       }
@@ -1352,8 +1338,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         case 'g': previewRef.current?.scrollTo({ top: 0 }); break;
         case 'G': previewRef.current?.scrollTo({ top: previewRef.current.scrollHeight }); break;
         case 'x': case ' ': toggleDone(); break;
-        case 'c': cycleCategory(1); break;
-        case 'C': cycleCategory(-1); break;
+        case 'C': cycleCategory(1); break;
         case 'd':
           if (e.ctrlKey) scrollPreview((previewRef.current?.clientHeight || 400) / 2);
           else if (current) setMode('delete');
@@ -1867,11 +1852,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               No (n / Esc)
             </button>
           </span>
-        ) : mode === 'carry' ? (
+        ) : mode === 'archive' ? (
           <span className="tui-warn">
-            carry over {carryCandidates.length} unfinished note{carryCandidates.length > 1 ? 's' : ''} from the last 7 days to {dateLabel}?
+            archive &quot;{current?.title || 'untitled'}&quot; to the 📦 folder?
             <button type="button" className="tui-warn-btn yes"
-                    onClick={() => { doCarryOver(); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
+                    onClick={() => { doArchive(); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
               Yes (y)
             </button>
             <button type="button" className="tui-warn-btn no"

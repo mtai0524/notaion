@@ -1,6 +1,5 @@
 import { UserOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { useState, useEffect, useRef } from "react";
-import NotaionMark from "../../pixel/NotaionMark";
 import "./Header.scss";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Dropdown, Empty, Image, Menu, Popover, Tooltip, Tour } from "antd";
@@ -932,7 +931,6 @@ const Header = () => {
       <div className="container-nav">
         <nav className="navbar flex justify-between items-center">
           <Link to="/notion" className="ml-5 text-black font-bold nav-brand">
-            <NotaionMark size={22} />
             <span className="nav-brand-name">NOTAION</span>
           </Link>
           <div className="flex items-center">
