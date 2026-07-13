@@ -7,6 +7,7 @@ import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocal
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
+import NotionEditor from './NotionEditor';
 import './TuiView.scss';
 
 // Notion-style "/" block menu for the body editor.
@@ -54,6 +55,7 @@ const FOCUS_TIME_KEY = 'daily-note-focus-time';    // { noteId: seconds focused 
 const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
 const TUI_THEME_KEY = 'daily-note-tui-theme';
 const TUI_ZEN_KEY = 'daily-note-tui-zen';
+const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
 const YANK_KEY = 'daily-note-tui-yank';            // yanked note snapshot (cross-day paste)
 const RECUR_KEY = 'daily-note-recurring';          // [{key,title,content,category,freq,weekday,created}]
 const RECUR_DONE_KEY = 'daily-note-recurring-done';// { '<templateKey>|<date>': 1 }
@@ -218,6 +220,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [uploading, setUploading] = useState(false);
   const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
   const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
+  const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -422,7 +425,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   useEffect(() => () => stopAmbient(), []);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') {
-      requestAnimationFrame(() => inputRef.current?.focus());
+      // Notion body has no textarea input — keep focus on the TUI root so
+      // Esc / Ctrl+Enter (save/cancel) work; clicking a block takes over editing.
+      if (mode === 'body' && noteFormat === 'notion') {
+        requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
+      } else {
+        requestAnimationFrame(() => inputRef.current?.focus());
+      }
     } else {
       // Leaving an edit mode unmounts the focused input, which would drop DOM
       // focus (and all shortcuts) — hand it back to the TUI root.
@@ -673,12 +682,21 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     flashMsg(`theme: ${t}`);
   };
 
+  // Note editing format: 'notion' (visual block editor) vs 'md' (raw markdown).
+  const toggleNoteFormat = () => setNoteFormat((f) => {
+    const n = f === 'notion' ? 'md' : 'notion';
+    lsSet(NOTE_FORMAT_KEY, n);
+    flashMsg(`note format: ${n === 'notion' ? 'Notion (blocks)' : 'Markdown (raw)'}`);
+    return n;
+  });
+
   // Restore appearance + preferences to their out-of-the-box defaults.
   const resetAppearance = () => {
     setTuiTheme('default'); lsSet(TUI_THEME_KEY, 'default');
     setTuiFontFam(FONT_FAMILIES[0]); lsSet(TUI_FONTFAM_KEY, FONT_FAMILIES[0]);
     setTuiFont(0.9); lsSet(TUI_FONT_KEY, 0.9);
     if (zen) { setZen(false); lsSet(TUI_ZEN_KEY, false); }
+    setNoteFormat('notion'); lsSet(NOTE_FORMAT_KEY, 'notion');
     setSortBy('created');
     setLivePreview(false);
     setShowCheatsheet(false);
@@ -691,6 +709,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // row here automatically updates j/k nav, 1-9 quick-pick and the render.
   // Rebuilt every render (cheap) so each `run` closes over fresh state.
   const optionRows = [
+    { kbd: 'F', label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
+      run: toggleNoteFormat },
     { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
       run: toggleZen },
     { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
@@ -1236,6 +1256,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   const handleKeyDown = (e) => {
     e.stopPropagation();
+    // Notion-mode body has no textarea to own Esc/Ctrl+Enter, so handle the
+    // save/cancel keys here; block-internal keys (typing, Enter) are handled by
+    // the contentEditable blocks and never reach this far.
+    if (mode === 'body' && noteFormat === 'notion') {
+      if (e.key === 'Escape') { e.preventDefault(); commit(); return; }
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commit(); return; }
+      return;
+    }
     if (mode === 'title' || mode === 'body' || mode === 'search') return; // inputs handle their own keys
 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
@@ -1772,7 +1800,30 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 })()}
                 {archivedSet.has(current.id) && <span> · 📦 archived</span>}
               </div>
-              {mode === 'body' ? (
+              {mode === 'body' && noteFormat === 'notion' ? (
+                <div className="tui-editor-wrap notion">
+                  <NotionEditor content={draft} onChange={setDraft} />
+                  <div className="tui-editor-bar">
+                    <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
+                           onChange={(e) => {
+                             if (e.target.files?.length) uploadFiles(e.target.files);
+                             else suppressBlurRef.current = false;
+                             e.target.value = '';
+                           }} />
+                    <button type="button" className="tui-attach-btn" title="Attach image / file"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              suppressBlurRef.current = true;
+                              fileInputRef.current?.click();
+                            }}>
+                      📎 Attach
+                    </button>
+                    <span className="tui-editor-tip">
+                      {uploading ? '⏳ uploading…' : 'Ctrl+Enter to save · Esc to cancel · Options(T) → format'}
+                    </span>
+                  </div>
+                </div>
+              ) : mode === 'body' ? (
                 <div className="tui-editor-wrap">
                   {/* Formatting toolbar — click to insert markdown so users who
                       don't know the syntax can still format their notes. */}

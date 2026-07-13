@@ -1,0 +1,29 @@
+/* Block list for Notion mode. Each row reserves a hover-revealed drag handle
+   on the left; the block content fills the rest. */
+.notion-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 2px;
+
+  .ne-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+
+    .ne-handle {
+      flex-shrink: 0;
+      width: 16px;
+      text-align: center;
+      color: var(--text-muted, #9ca3af);
+      cursor: grab;
+      opacity: 0;
+      transition: opacity 0.12s ease;
+      user-select: none;
+      line-height: 1.6;
+    }
+    &:hover .ne-handle { opacity: 0.6; }
+
+    .ne-block { flex: 1; min-width: 0; }
+  }
+}
