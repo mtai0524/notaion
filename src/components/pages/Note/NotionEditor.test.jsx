@@ -76,6 +76,26 @@ describe('NotionEditor', () => {
     fireEvent.keyDown(block, { key: '/' });
     expect(screen.getByText('Heading 1')).toBeTruthy();
   });
+
+  it('deletes a single block via its per-block delete button', () => {
+    const onChange = vi.fn();
+    render(<NotionEditor content={'one\ntwo\nthree'} onChange={onChange} />);
+    const delButtons = screen.getAllByTitle('Xóa block này');
+    fireEvent.click(delButtons[1]); // delete "two"
+    expect(onChange).toHaveBeenCalledWith('one\nthree');
+  });
+
+  it('sweeps to multi-select blocks and deletes them together', () => {
+    const onChange = vi.fn();
+    const { container } = render(<NotionEditor content={'a\nb\nc\nd'} onChange={onChange} />);
+    const rows = container.querySelectorAll('.ne-row');
+    const gutters = container.querySelectorAll('.ne-gutter');
+    fireEvent.mouseDown(gutters[1]);     // anchor at "b"
+    fireEvent.mouseEnter(rows[2]);       // extend to "c"
+    expect(container.querySelectorAll('.ne-row.selected').length).toBe(2);
+    fireEvent.keyDown(window, { key: 'Delete' });
+    expect(onChange).toHaveBeenCalledWith('a\nd');
+  });
 });
 
 describe('reorder', () => {

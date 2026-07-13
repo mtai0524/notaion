@@ -10,6 +10,19 @@
     display: flex;
     align-items: flex-start;
     gap: 4px;
+    border-radius: var(--radius-sm, 4px);
+
+    /* thin gutter on the far left — mousedown + sweep selects blocks */
+    .ne-gutter {
+      flex-shrink: 0;
+      width: 6px;
+      align-self: stretch;
+      min-height: 1.4em;
+      border-radius: 3px;
+      cursor: cell;
+      transition: background 0.12s ease;
+    }
+    &:hover .ne-gutter { background: rgba(127, 127, 127, 0.15); }
 
     .ne-handle {
       flex-shrink: 0;
@@ -23,6 +36,30 @@
       line-height: 1.6;
     }
     &:hover .ne-handle { opacity: 0.6; }
+
+    .ne-del {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm, 4px);
+      font-size: 0.8rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.12s ease, background 0.12s ease;
+      &:hover { background: rgba(220, 38, 38, 0.15); }
+    }
+    &:hover .ne-del { opacity: 0.7; }
+
+    /* selected block (multi-select sweep) */
+    &.selected {
+      background: color-mix(in srgb, var(--tui-accent, #2563eb) 16%, transparent);
+    }
 
     .ne-add {
       flex-shrink: 0;

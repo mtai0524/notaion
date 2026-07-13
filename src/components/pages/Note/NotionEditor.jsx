@@ -36,6 +36,8 @@ const NotionEditor = ({ content, onChange }) => {
   const [slashFor, setSlashFor] = useState(null); // index of the block whose menu is open
   const [slashSel, setSlashSel] = useState(0);     // highlighted row in the slash menu
   const [focusIndex, setFocusIndex] = useState(null); // block to focus (arrow-key nav / after edit)
+  const [selected, setSelected] = useState(() => new Set()); // block ids in a multi-select
+  const dragSel = useRef(null); // { anchor } index while sweeping the mouse
 
   // Markdown we last emitted. When our own onChange feeds `content` right back,
   // it equals this — so we must NOT re-parse (re-parsing mints new block ids,
@@ -95,6 +97,25 @@ const NotionEditor = ({ content, onChange }) => {
     commit(blocks.filter((_, j) => j !== i));
   };
 
+  // Delete every selected block at once (multi-select sweep + Delete).
+  const removeSelected = () => {
+    if (!selected.size) return;
+    const kept = blocks.filter((b) => !selected.has(b.id));
+    setSelected(new Set());
+    commit(kept.length ? kept : [{ id: `n${Date.now()}`, type: 'paragraph', text: '' }]);
+  };
+
+  // Mouse sweep to multi-select blocks: mousedown on a row's gutter sets the
+  // anchor; moving over rows selects the inclusive range.
+  const startSweep = (i) => { dragSel.current = { anchor: i }; setSelected(new Set([blocks[i]?.id])); };
+  const extendSweep = (i) => {
+    if (!dragSel.current) return;
+    const a = dragSel.current.anchor;
+    const [lo, hi] = a <= i ? [a, i] : [i, a];
+    setSelected(new Set(blocks.slice(lo, hi + 1).map((b) => b.id)));
+  };
+  const endSweep = () => { dragSel.current = null; };
+
   // Arrow-key navigation between blocks. Clamps at the ends.
   const moveFocus = (i, dir) => {
     const n = (blocks.length ? blocks.length : 1);
@@ -113,6 +134,19 @@ const NotionEditor = ({ content, onChange }) => {
   // keep stealing the caret back to the same block.
   useEffect(() => { if (focusIndex !== null) setFocusIndex(null); }, [focusIndex]);
 
+  // While blocks are multi-selected, Delete/Backspace removes them and Esc
+  // clears the selection. A window listener avoids fighting rbd for the
+  // Droppable's ref/focus.
+  useEffect(() => {
+    if (!selected.size) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); removeSelected(); }
+      else if (e.key === 'Escape') setSelected(new Set());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Always render at least one editable paragraph so an empty note is writable.
   const view = blocks.length ? blocks : [{ id: 'empty', type: 'paragraph', text: '' }];
 
@@ -120,15 +154,21 @@ const NotionEditor = ({ content, onChange }) => {
     <DragDropContext onDragEnd={onDragEnd}>
       <Droppable droppableId="notion-editor">
         {(dp) => (
-          <div className="notion-editor" ref={dp.innerRef} {...dp.droppableProps}>
+          <div className="notion-editor" ref={dp.innerRef} {...dp.droppableProps}
+               onMouseUp={endSweep} onMouseLeave={endSweep}>
             {view.map((b, i) => (
               <Draggable key={b.id} draggableId={String(b.id)} index={i}>
                 {(dr, snapshot) => (
-                  <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''}`}
-                       ref={dr.innerRef} {...dr.draggableProps}>
-                    <span className="ne-handle" title="Drag to reorder" {...dr.dragHandleProps}>⠿</span>
+                  <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''} ${selected.has(b.id) ? 'selected' : ''}`}
+                       ref={dr.innerRef} {...dr.draggableProps}
+                       onMouseEnter={() => extendSweep(i)}>
+                    <span className="ne-gutter" title="Giữ & quét để chọn nhiều block rồi Delete"
+                          onMouseDown={(e) => { e.preventDefault(); startSweep(i); }} />
+                    <span className="ne-handle" title="Kéo để đổi thứ tự" {...dr.dragHandleProps}>⠿</span>
                     <button type="button" className="ne-add" title="Insert / turn into block"
                             onClick={() => openSlash(i)}>+</button>
+                    <button type="button" className="ne-del" title="Xóa block này"
+                            onClick={() => removeAt(i)}>🗑</button>
                     <div className="ne-block">
                       <NotionBlock
                         block={b}
