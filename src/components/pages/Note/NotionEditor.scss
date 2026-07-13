@@ -24,6 +24,70 @@
     }
     &:hover .ne-handle { opacity: 0.6; }
 
-    .ne-block { flex: 1; min-width: 0; }
+    .ne-add {
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-muted, #9ca3af);
+      font-size: 1rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.12s ease, background 0.12s ease;
+      &:hover { background: rgba(127, 127, 127, 0.15); color: var(--text-color, #111827); }
+    }
+    &:hover .ne-add { opacity: 0.7; }
+
+    .ne-block { position: relative; flex: 1; min-width: 0; }
+  }
+
+  /* slash / turn-into popup */
+  .ne-slash {
+    position: absolute;
+    z-index: 20;
+    top: 100%;
+    left: 0;
+    margin-top: 2px;
+    min-width: 190px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--container-bg, #fdfcf8);
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 6px);
+    box-shadow: var(--box-shadow-sm, -3px 3px 0 0 rgba(17, 24, 39, 0.15));
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+
+    .ne-slash-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 5px 9px;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.82rem;
+      text-align: left;
+      cursor: pointer;
+      &:hover { background: rgba(127, 127, 127, 0.12); }
+
+      .ne-slash-icon {
+        flex-shrink: 0;
+        width: 22px;
+        text-align: center;
+        font-size: 0.74rem;
+        font-weight: 700;
+        color: var(--text-muted, #6b7280);
+      }
+    }
   }
 }
