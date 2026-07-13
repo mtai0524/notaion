@@ -1951,8 +1951,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       {nvim && (
                         <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
                       )}
+                      {/* Not readOnly in NORMAL: a readonly textarea hides the
+                          caret. We block text mutation by intercepting keys in
+                          handleMdVim; the caret stays visible + movable. */}
                       <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
-                                readOnly={nvim && mdVim === 'normal'}
                                 onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                                 onFocus={() => { suppressBlurRef.current = false; }}
                                 onPaste={handleEditorPaste}

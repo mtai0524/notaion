@@ -578,8 +578,13 @@
 
     &:focus { box-shadow: -2px 2px 0 0 var(--shadow-color, #111827); }
 
-    /* nvim NORMAL: readonly + hidden thin caret (block-ish feel) */
-    &.vim-normal { caret-color: transparent; background: rgba(127, 127, 127, 0.04); }
+    /* nvim NORMAL: keep the caret visible + bold in an accent colour so you can
+       see where the cursor is; typing is blocked by key interception, not readonly
+       (a readonly textarea hides the caret entirely). */
+    &.vim-normal {
+      caret-color: var(--tui-accent, #2563eb);
+      background: rgba(127, 127, 127, 0.05);
+    }
 
     &.inline {
       background: transparent;
