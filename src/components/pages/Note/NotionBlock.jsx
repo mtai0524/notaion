@@ -27,7 +27,7 @@ const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => 
       className={className}
       contentEditable
       suppressContentEditableWarning
-      onInput={(e) => onChange?.(e.currentTarget.textContent)}
+      onInput={(e) => { window.__neLastInput = e.currentTarget.textContent; onChange?.(e.currentTarget.textContent); }}
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter?.(); }
         else if (e.key === 'Backspace' && !e.currentTarget.textContent) { e.preventDefault(); onBackspaceEmpty?.(); }
