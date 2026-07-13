@@ -22,6 +22,21 @@ describe('NotionEditor', () => {
     expect(container.querySelectorAll('.nb-text').length).toBe(1);
   });
 
+  it('keeps the same DOM node while typing (caret must survive edits)', () => {
+    // Simulate the controlled loop: onChange feeds the new markdown back as the
+    // content prop, exactly like TuiView's setDraft does. The editable node must
+    // NOT be remounted, or the caret is lost on every keystroke.
+    let content = 'ab';
+    const { container, rerender } = render(
+      <NotionEditor content={content} onChange={(md) => { content = md; }} />,
+    );
+    const before = container.querySelector('.nb-text');
+    fireEvent.input(before, { target: { textContent: 'abc' } });
+    rerender(<NotionEditor content={content} onChange={(md) => { content = md; }} />);
+    const after = container.querySelector('.nb-text');
+    expect(after).toBe(before); // same node → caret preserved
+  });
+
   it('turns a block into a heading via the slash menu', () => {
     const onChange = vi.fn();
     render(<NotionEditor content={'hi'} onChange={onChange} />);

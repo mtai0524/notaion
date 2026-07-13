@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { parseMarkdown, serializeBlocks, reorder } from './noteFormat';
@@ -35,10 +35,24 @@ const NotionEditor = ({ content, onChange }) => {
   const [collapsed, setCollapsed] = useState({});
   const [slashFor, setSlashFor] = useState(null); // index of the block whose menu is open
 
-  // Re-parse when the note switches (content prop changes from outside).
-  useEffect(() => { setBlocks(parseMarkdown(content)); }, [content]);
+  // Markdown we last emitted. When our own onChange feeds `content` right back,
+  // it equals this — so we must NOT re-parse (re-parsing mints new block ids,
+  // which remounts the contentEditable and destroys the caret on every keystroke).
+  // We only re-parse when `content` changes from the OUTSIDE (a note switch).
+  const lastEmitted = useRef(content);
+  useEffect(() => {
+    if (content !== lastEmitted.current) {
+      lastEmitted.current = content;
+      setBlocks(parseMarkdown(content));
+    }
+  }, [content]);
 
-  const commit = (next) => { setBlocks(next); onChange?.(serializeBlocks(next)); };
+  const commit = (next) => {
+    setBlocks(next);
+    const md = serializeBlocks(next);
+    lastEmitted.current = md;
+    onChange?.(md);
+  };
 
   const patch = (i, upd) => commit(blocks.map((b, j) => (j === i ? { ...b, ...upd } : b)));
 
