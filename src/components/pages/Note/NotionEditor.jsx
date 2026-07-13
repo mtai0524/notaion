@@ -197,6 +197,8 @@ const NotionEditor = ({ content, onChange }) => {
                              }}>
                           {SLASH_MENU.map((it, si) => (
                             <button key={it.key} type="button"
+                                    // Keep the arrow-selected row scrolled into view.
+                                    ref={si === slashSel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
                                     className={`ne-slash-item ${si === slashSel ? 'sel' : ''}`}
                                     onMouseEnter={() => setSlashSel(si)}
                                     onMouseDown={(e) => { e.preventDefault(); setType(i, it); }}>
