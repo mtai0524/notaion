@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import NotionEditor, { reorder } from './NotionEditor';
-import { parseMarkdown, serializeBlocks } from './noteFormat';
+import NotionEditor from './NotionEditor';
+import { parseMarkdown, serializeBlocks, reorder } from './noteFormat';
 
 describe('NotionEditor', () => {
   it('renders one block per markdown line', () => {

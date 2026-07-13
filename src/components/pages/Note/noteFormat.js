@@ -106,3 +106,12 @@ const one = (b) => {
 };
 
 export const serializeBlocks = (blocks) => (blocks || []).map(one).join('\n');
+
+// Pure array move — used by the block editor's drag-drop. Kept here (not in the
+// component file) so it's unit-testable and doesn't trip react-refresh.
+export const reorder = (list, from, to) => {
+  const next = [...list];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+};
