@@ -46,4 +46,20 @@ describe('NotionBlock', () => {
     fireEvent.input(editable, { target: { textContent: 'x=2' } });
     expect(onChange).toHaveBeenCalledWith('x=2');
   });
+
+  it('disables contentEditable in vim NORMAL mode', () => {
+    const { container } = render(
+      <NotionBlock block={{ id: 'b0', type: 'paragraph', text: 'hi' }} vimNormal onChange={() => {}} />,
+    );
+    const el = container.querySelector('.nb-text');
+    expect(el.getAttribute('contenteditable')).toBe('false');
+    expect(el.classList.contains('nb-vim-normal')).toBe(true);
+  });
+
+  it('keeps contentEditable when vimNormal is false', () => {
+    const { container } = render(
+      <NotionBlock block={{ id: 'b0', type: 'paragraph', text: 'hi' }} onChange={() => {}} />,
+    );
+    expect(container.querySelector('.nb-text').getAttribute('contenteditable')).toBe('true');
+  });
 });

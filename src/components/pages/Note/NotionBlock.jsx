@@ -11,7 +11,7 @@ import './NotionBlock.scss';
 // writes textContent during typing — writing it is what collapses the caret to
 // the start. A genuine external change (note switch / block type change)
 // remounts this via its React key, so fresh text is picked up naturally.
-const Editable = ({ value, className, focus, multiline, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
+const Editable = ({ value, className, focus, multiline, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
   const ref = useRef(null);
   const seeded = useRef(false);
   // Runs once per mount; the guard means later re-renders never touch the DOM.
@@ -47,11 +47,12 @@ const Editable = ({ value, className, focus, multiline, onChange, onEnter, onBac
   return (
     <div
       ref={ref}
-      className={className}
-      contentEditable
+      className={`${className}${vimNormal ? ' nb-vim-normal' : ''}`}
+      contentEditable={!vimNormal}
       suppressContentEditableWarning
       onInput={(e) => onChange?.(e.currentTarget.textContent)}
       onKeyDown={(e) => {
+        if (vimNormal) return; // NORMAL keys are handled by NotionEditor
         // In code/multiline blocks Enter adds a newline; Shift+Enter leaves.
         if (multiline) {
           if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); insertNewline(e.currentTarget); return; }
@@ -73,6 +74,7 @@ Editable.propTypes = {
   className: PropTypes.string,
   focus: PropTypes.bool,
   multiline: PropTypes.bool,
+  vimNormal: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
@@ -81,9 +83,9 @@ Editable.propTypes = {
   onArrowDown: PropTypes.func,
 };
 
-const NotionBlock = ({ block, focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown, onToggleCheck, onToggleCollapse, collapsed }) => {
+const NotionBlock = ({ block, focus, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown, onToggleCheck, onToggleCollapse, collapsed }) => {
   const b = block;
-  const common = { focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown };
+  const common = { focus, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown };
 
   if (b.type === 'divider') return <hr className="nb-hr" />;
 
@@ -144,6 +146,7 @@ const NotionBlock = ({ block, focus, onChange, onEnter, onBackspaceEmpty, onSlas
 NotionBlock.propTypes = {
   block: PropTypes.object.isRequired,
   focus: PropTypes.bool,
+  vimNormal: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
