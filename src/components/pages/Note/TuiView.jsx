@@ -233,7 +233,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
   const [showTele, setShowTele] = useState(false); // Telescope finder open
   const leaderRef = useRef(false);              // Space leader pending (list NORMAL)
-  const [kbDbg, setKbDbg] = useState('no-key'); // TEMP debug
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -970,6 +969,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const execEditorEx = (raw) => {
     const c = (raw || '').trim();
     setEdCmd(null);
+    suppressBlurRef.current = false;
     switch (c) {
       case 'w': case 'wa': saveBody(); flashMsg('written'); break;
       case 'wq': case 'x': case 'wqa': case 'xa': saveBody(); quitBody(); break;
@@ -1325,7 +1325,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   const handleKeyDown = (e) => {
     e.stopPropagation();
-    setKbDbg(`root key=${e.key} ctrl=${e.ctrlKey} mode=${mode} fmt=${noteFormat} nvim=${nvim} lead=${leaderRef.current}`);
     // Notion-mode body has no textarea to own Esc/Ctrl+Enter, so handle the
     // save/cancel keys here; block-internal keys (typing, Enter) are handled by
     // the contentEditable blocks and never reach this far.
@@ -1575,9 +1574,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (!el) return false;
     // In NORMAL, Escape/Ctrl+Enter fall through to the normal exit/save flow.
     if (mdVim === 'normal' && (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return false;
-    setKbDbg(`mdVim key=${e.key} vim=${mdVim} edCmd=${edCmd}`);
     // NORMAL ":" opens the Ex command-line.
-    if (mdVim === 'normal' && e.key === ':') { e.preventDefault(); setEdCmd(''); return true; }
+    if (mdVim === 'normal' && e.key === ':') { e.preventDefault(); suppressBlurRef.current = true; setEdCmd(''); return true; }
     const state = { text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current };
     const next = vimTextareaKey(state, e);
     if (next === null) return false;       // INSERT typing → let the textarea handle it
@@ -1975,8 +1973,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       onChange={(e) => setEdCmd(e.target.value)}
                       onKeyDown={(e) => { e.stopPropagation();
                         if (e.key === 'Enter') { e.preventDefault(); execEditorEx(edCmd); }
-                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); } }}
-                      onBlur={() => setEdCmd(null)}
+                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); suppressBlurRef.current = false; requestAnimationFrame(() => inputRef.current?.focus()); } }}
+                      onBlur={() => { setEdCmd(null); suppressBlurRef.current = false; }}
                       placeholder="w · wq · q · q! · x · e! · noh" /></div>
                   )}
                   <div className="tui-editor-bar">
@@ -2074,6 +2072,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         )}
                         <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                                  onBeforeInput={(e) => {
+                                    // Catch ":" even when an IME/keyboard layout swallows the
+                                    // keydown — opens the Ex command-line in NORMAL.
+                                    if (nvim && mdVim === 'normal') {
+                                      e.preventDefault();
+                                      if (e.data === ':') { suppressBlurRef.current = true; setEdCmd(''); }
+                                    }
+                                  }}
                                   onFocus={() => { suppressBlurRef.current = false; }}
                                   onScroll={(e) => { if (lineNoRef.current) lineNoRef.current.scrollTop = e.target.scrollTop; }}
                                   onPaste={handleEditorPaste}
@@ -2093,8 +2099,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       onChange={(e) => setEdCmd(e.target.value)}
                       onKeyDown={(e) => { e.stopPropagation();
                         if (e.key === 'Enter') { e.preventDefault(); execEditorEx(edCmd); }
-                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); } }}
-                      onBlur={() => setEdCmd(null)}
+                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); suppressBlurRef.current = false; requestAnimationFrame(() => inputRef.current?.focus()); } }}
+                      onBlur={() => { setEdCmd(null); suppressBlurRef.current = false; }}
                       placeholder="w · wq · q · q! · x · e! · noh" /></div>
                   )}
                   <div className="tui-editor-bar">
@@ -2216,7 +2222,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             )}
             {count && <span className="tui-count-tag" title="Count prefix">{count}</span>}
             {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
-            <span className="tui-stat" style={{ color: '#e11d48' }}>[{kbDbg}]</span>
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
             {zen && <span className="tui-zen-tag" title="Zen mode (z)">◎ zen</span>}
             <button type="button" className="tui-theme-chip" title="Appearance — theme, font, zen (T)"
