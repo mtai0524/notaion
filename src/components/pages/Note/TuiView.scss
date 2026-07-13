@@ -697,8 +697,8 @@
       border-radius: var(--radius-md, 12px);
       box-shadow: var(--box-shadow);
       padding: 14px 18px 12px;
-      width: min(720px, calc(100% - 40px));
-      max-height: calc(100% - 40px);
+      width: min(920px, calc(100% - 32px));
+      max-height: calc(100% - 24px);
       overflow-y: auto;
 
       .tui-help-head {
@@ -706,8 +706,8 @@
         align-items: center;
         justify-content: space-between;
         gap: 12px;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
         border-bottom: 1px dashed var(--border-color, #111827);
 
         .tui-help-h {
@@ -734,17 +734,17 @@
         }
       }
 
-      /* sections in a responsive 2-column grid */
+      /* dense 3-column grid so the whole keymap fits one screen, no scroll */
       .tui-help-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 10px 18px;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px 20px;
       }
 
       .tui-help-sec {
         h4 {
-          margin: 0 0 4px;
-          font-size: 0.64rem;
+          margin: 0 0 3px;
+          font-size: 0.6rem;
           font-weight: 800;
           letter-spacing: 1.2px;
           color: var(--container-bg, #fff);
@@ -755,30 +755,34 @@
         }
 
         table { border-collapse: collapse; width: 100%; }
-        td { padding: 2px 8px 2px 0; font-size: 0.8rem; vertical-align: top; }
+        td { padding: 1px 8px 1px 0; font-size: 0.74rem; line-height: 1.35; vertical-align: top; }
         td:first-child { white-space: nowrap; width: 1%; }
         td:last-child { color: var(--text-muted, #6b7280); }
       }
 
       kbd {
         font: inherit;
-        font-size: 0.72rem;
+        font-size: 0.66rem;
         font-weight: 700;
         color: var(--text-color, #111827);
         background: rgba(127, 127, 127, 0.1);
         border: 1px solid var(--border-color, #111827);
         border-radius: 3px;
-        padding: 0 5px;
+        padding: 0 4px;
         white-space: nowrap;
       }
 
       .tui-help-foot {
-        margin-top: 12px;
-        padding-top: 8px;
+        margin-top: 8px;
+        padding-top: 6px;
         border-top: 1px dashed var(--border-color, #111827);
-        font-size: 0.7rem;
+        font-size: 0.68rem;
         color: var(--text-muted, #9ca3af);
         text-align: center;
+      }
+
+      @media (max-width: 720px) {
+        .tui-help-grid { grid-template-columns: 1fr; }
       }
     }
   }
@@ -1535,13 +1539,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 14px;
-    background: var(--text-color, #111827);
-    color: var(--container-bg, #fdfcf8);
+    padding: 10px 14px;
+    /* light, ink-outlined header — matches every other Notaion dialog */
+    background: var(--container-bg, #fdfcf8);
+    color: var(--text-color, #111827);
+    border-bottom: 1.5px solid var(--border-color, #111827);
 
     .tui-opt-title {
       font-size: 0.8rem;
-      font-weight: 700;
+      font-weight: 800;
       letter-spacing: 1.5px;
     }
 
@@ -1551,15 +1557,15 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: var(--container-bg, #fdfcf8);
-      border: 1.5px solid var(--container-bg, #fdfcf8);
+      background: transparent;
+      border: 1.5px solid var(--border-color, #111827);
       border-radius: var(--radius-sm, 4px);
       color: var(--text-color, #111827);
       font-size: 0.95rem;
       font-weight: 700;
       line-height: 1;
       cursor: pointer;
-      &:hover { transform: translate(1px, -1px); }
+      &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fdfcf8); }
     }
   }
 
@@ -1655,6 +1661,11 @@
     }
 
     &.on .cur { color: #16a34a; }
+
+    &.danger {
+      kbd, .nm { color: #dc2626; }
+      &.sel { border-color: #dc2626; box-shadow: -2.5px 2.5px 0 0 #dc2626; }
+    }
 
     input {
       flex: 1;

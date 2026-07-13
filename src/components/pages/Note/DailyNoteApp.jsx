@@ -2908,6 +2908,8 @@ const DailyNoteApp = () => {
               allNotes={allNotesIndex}
               markedDates={markedDates}
               streakStats={streakStats}
+              gridOn={showGrid}
+              onToggleGrid={() => setShowGrid(v => !v)}
               onRestore={restoreNote}
               onGoToDate={(d) => setCurrentDate(d)}
             />

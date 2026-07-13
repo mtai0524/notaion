@@ -199,7 +199,7 @@ const PomoWave = ({ color }) => {
 PomoWave.propTypes = { color: PropTypes.string.isRequired };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, streakStats, onRestore, onGoToDate }) => {
+  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -655,19 +655,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (fontDraft === null && showTheme) requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
   }, [fontDraft, showTheme]);
 
-  // Rows per popup tab (for j/k navigation): font tab has the families + the
-  // custom row; options tab has zen · sound · pomodoro length.
-  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : 3;
-  const optActivate = (sel) => {
-    if (optTab === 'theme') setTheme(TUI_THEMES[sel]);
-    else if (optTab === 'font') {
-      if (sel < FONT_FAMILIES.length) applyFontFam(FONT_FAMILIES[sel]);
-      else setFontDraft(tuiFontFam.key === 'custom' ? tuiFontFam.label : '');
-    } else if (sel === 0) toggleZen();
-    else if (sel === 1) toggleSound();
-    else setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]);
-  };
-
   const setTheme = (name) => {
     const t = name === 'next'
       ? TUI_THEMES[(TUI_THEMES.indexOf(tuiTheme) + 1) % TUI_THEMES.length]
@@ -675,6 +662,55 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (!TUI_THEMES.includes(t)) { flashMsg(`theme: ${TUI_THEMES.join(' | ')}`); return; }
     setTuiTheme(t); lsSet(TUI_THEME_KEY, t);
     flashMsg(`theme: ${t}`);
+  };
+
+  // Restore appearance + preferences to their out-of-the-box defaults.
+  const resetAppearance = () => {
+    setTuiTheme('default'); lsSet(TUI_THEME_KEY, 'default');
+    setTuiFontFam(FONT_FAMILIES[0]); lsSet(TUI_FONTFAM_KEY, FONT_FAMILIES[0]);
+    setTuiFont(0.9); lsSet(TUI_FONT_KEY, 0.9);
+    if (zen) { setZen(false); lsSet(TUI_ZEN_KEY, false); }
+    setSortBy('created');
+    setLivePreview(false);
+    setShowCheatsheet(false);
+    const cfg = { ...pomoCfg, soundOn: false, ambient: 'off', focusMin: 25 };
+    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
+    flashMsg('reset — theme · font · sort · toggles back to defaults');
+  };
+
+  // Data-driven OPTIONS tab: each row is {kbd, label, value, on, run}. Adding a
+  // row here automatically updates j/k nav, 1-9 quick-pick and the render.
+  // Rebuilt every render (cheap) so each `run` closes over fresh state.
+  const optionRows = [
+    { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
+      run: toggleZen },
+    { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
+      run: () => onToggleGrid?.() },
+    { kbd: 'P', label: 'live preview — soạn + xem markdown song song', value: livePreview ? 'on' : 'off', on: livePreview,
+      run: () => setLivePreview((v) => !v) },
+    { kbd: '?', label: 'markdown cheatsheet — bảng cú pháp', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
+      run: () => setShowCheatsheet((v) => !v) },
+    { kbd: 'S', label: 'sort — thứ tự sắp xếp note', value: sortBy, on: true,
+      run: cycleSort },
+    { kbd: '♪', label: 'pomodoro sound — chuông + tick', value: pomoCfg.soundOn ? 'on' : 'off', on: pomoCfg.soundOn,
+      run: toggleSound },
+    { kbd: '~', label: 'ambient — rain / lofi / waves', value: pomoCfg.ambient || 'off', on: (pomoCfg.ambient || 'off') !== 'off',
+      run: cycleAmbient },
+    { kbd: '🍅', label: 'pomodoro length', value: `${pomoCfg.focusMin}m`, on: true,
+      run: () => setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]) },
+    { kbd: '⟲', label: 'reset to defaults', value: '', on: false, danger: true,
+      run: resetAppearance },
+  ];
+
+  // Rows per popup tab (for j/k navigation): font tab has the families + the
+  // custom row; options tab is the optionRows list.
+  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : optionRows.length;
+  const optActivate = (sel) => {
+    if (optTab === 'theme') setTheme(TUI_THEMES[sel]);
+    else if (optTab === 'font') {
+      if (sel < FONT_FAMILIES.length) applyFontFam(FONT_FAMILIES[sel]);
+      else setFontDraft(tuiFontFam.key === 'custom' ? tuiFontFam.label : '');
+    } else optionRows[sel]?.run();
   };
 
   const doArchive = () => {
@@ -1393,126 +1429,67 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const done = notes.filter((n) => n.isCompleted).length;
   const filtered = list.length !== notes.length;
 
+  // Condensed keymap — the essentials, grouped to fit one screen (no scroll).
   const helpSections = [
     {
-      title: 'PANELS',
+      title: 'MOVE',
       rows: [
-        ['1 / 2 / 3', 'jump to folders / notes / preview'],
-        ['Tab / Shift+Tab', 'cycle panel focus'],
-        ['h / l', 'panel left / right'],
-        ['Esc', 'clear search · back to notes'],
+        ['1 / 2 / 3', 'folders · notes · preview'],
+        ['Tab · h / l', 'cycle · panel left / right'],
+        ['j / k · g / G', 'move · first / last'],
+        ['f / F', 'folder filter next / prev'],
+        ['Esc', 'clear search / back to notes'],
       ],
     },
     {
-      title: 'NOTES',
+      title: 'EDIT',
       rows: [
-        ['j / k', 'move down / up'],
-        ['g / G', 'first / last note'],
+        ['n / N', 'new note / todo'],
         ['Enter / e', 'edit title'],
         ['i', 'edit body · Ctrl+Enter saves'],
-        ['x', 'toggle done'],
-        ['p', 'pin / unpin (pinned float to top)'],
-        ['S', 'cycle sort (created/title/status/updated)'],
-        ['y', 'duplicate note'],
-        ['d → y', 'delete note'],
-        ['n / N', 'new note / todo (active folder)'],
+        ['x · p', 'toggle done · pin'],
+        ['y · d→y', 'duplicate · delete'],
+        ['A → y', 'archive → 📦 (hỏi trước)'],
       ],
     },
     {
       title: 'SELECT & BULK',
       rows: [
-        ['space', 'select / deselect note'],
-        ['Ctrl+click', 'select with mouse'],
-        ['a', 'select all / clear'],
-        ['x', 'complete / reopen selected'],
-        ['d', 'delete selected'],
-        ['m → 1-N', 'set category for selected'],
-        ['M → 1/2/3/7', 'move selected to day'],
-        ['Esc', 'clear selection'],
+        ['space · a', 'select one · all / clear'],
+        ['x · d', 'complete · delete selected'],
+        [`m → 1-${catList.length}`, 'set category'],
+        ['M → 1/2/3/7', 'move to day'],
+        ['C', 'cycle category'],
       ],
     },
     {
-      title: 'CATEGORY & MOVE',
+      title: 'DATE',
       rows: [
-        ['c / C', 'cycle category fwd / back'],
-        [`m → 1-${catList.length}`, 'set category directly'],
-        ['M', 'move note → today/tomorrow/…'],
-        ['f / F', 'folder filter next / prev'],
-      ],
-    },
-    {
-      title: 'FOCUS TIMER',
-      rows: [
-        ['.', 'start / stop pomodoro'],
-        [',', 'pause / resume'],
-        ['click 🍅', 'fullscreen focus overlay'],
-        ['s (overlay)', 'sound on / off'],
-        ['m (overlay)', 'ambient — rain / lofi / waves'],
-        [':pomo 25|45|90', 'session length'],
-        ['auto', 'break 5m · long break 15m sau 4 🍅'],
-        ['auto', 'log "🍅 25m HH:mm" vào note khi xong'],
-      ],
-    },
-    {
-      title: 'DATE & SEARCH',
-      rows: [
-        ['[ / ]', 'previous / next day (5] = +5 days)'],
-        ['t', 'jump to today'],
-        ['c', 'calendar — ←↑↓→ chọn ngày · Enter chốt · Esc đóng'],
-        ['/', 'search · Esc clears'],
+        ['[ / ]', 'prev / next day (5] = +5)'],
+        ['t', 'today'],
+        ['c', 'calendar — arrows · Enter · Esc'],
+        ['/', 'search'],
         ['W', 'weekly review'],
-        ['click heatmap', 'jump to that day'],
       ],
     },
     {
-      title: 'VIM POWER',
+      title: 'FOCUS & VIM',
       rows: [
-        [':', 'command line — :help for list'],
-        ['5j · 02k', 'count prefix (0/4-9 starts)'],
+        ['. · ,', 'start-stop · pause pomodoro'],
         ['u / U', 'undo / redo'],
         ['Y / P', 'yank / paste (cross-day)'],
-        [';a → \'a', 'set mark a → jump to it'],
-        ['z', 'zen mode (notes only)'],
-        ['T', 'appearance popup — theme · font · zen'],
-        ['A', 'archive / unarchive → 📦'],
+        [';a → \'a', 'set mark → jump'],
+        ['z · T', 'zen · options popup'],
       ],
     },
     {
-      title: 'TAGS & LINKS',
+      title: 'TEXT & CMD',
       rows: [
-        ['#tag', 'in text → chip; click filters'],
-        ['[[title]]', 'wiki-link — click jumps to note'],
-        [':tag x / off', 'filter by tag / clear'],
-        [':due 14:30 10', 'deadline + remind 10m before'],
-        [':recur daily|weekly', 'note lặp tự tạo mỗi ngày/tuần'],
-        [':export | clip | week', 'markdown ra file / clipboard'],
-      ],
-    },
-    {
-      title: 'PREVIEW',
-      rows: [
-        ['e / click title', 'edit title'],
-        ['j / k', 'scroll'],
-        ['g / G', 'top / bottom'],
-        ['Ctrl+d / Ctrl+u', 'half page down / up'],
-        ['x · c · d', 'act on note from preview'],
-      ],
-    },
-    {
-      title: 'EDITOR',
-      rows: [
-        ['/', 'block menu: todo, heading, code…'],
-        ['paste file/image', 'upload & insert markdown link'],
-        ['click [ ] in preview', 'toggle checklist item'],
-        ['Ctrl+Enter', 'save body'],
-      ],
-    },
-    {
-      title: 'MOUSE',
-      rows: [
-        ['2×click title', 'edit title'],
-        ['click body', 'edit body'],
-        ['click chips', 'pick category'],
+        ['#tag · [[link]]', 'chip filter · wiki-link'],
+        ['/', 'block menu (in body)'],
+        [':due 14:30 10', 'deadline + remind'],
+        [':recur daily', 'repeating note'],
+        [':export | week', 'markdown out'],
       ],
     },
   ];
@@ -2096,25 +2073,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 </>
               )}
 
-              {optTab === 'options' && (
-                <>
-                  <button type="button" className={`tui-opt-row ${optSel === 0 ? 'sel' : ''} ${zen ? 'on' : ''}`}
-                          onMouseEnter={() => setOptSel(0)} onClick={() => optActivate(0)}>
-                    <kbd>z</kbd><span className="nm">zen mode — chỉ hiện panel NOTES</span>
-                    <span className="cur">{zen ? 'on' : 'off'}</span>
-                  </button>
-                  <button type="button" className={`tui-opt-row ${optSel === 1 ? 'sel' : ''} ${pomoCfg.soundOn ? 'on' : ''}`}
-                          onMouseEnter={() => setOptSel(1)} onClick={() => optActivate(1)}>
-                    <kbd>♪</kbd><span className="nm">pomodoro sound — chuông + tick</span>
-                    <span className="cur">{pomoCfg.soundOn ? 'on' : 'off'}</span>
-                  </button>
-                  <button type="button" className={`tui-opt-row ${optSel === 2 ? 'sel' : ''} on`}
-                          onMouseEnter={() => setOptSel(2)} onClick={() => optActivate(2)}>
-                    <kbd>🍅</kbd><span className="nm">pomodoro length — Enter để đổi</span>
-                    <span className="cur">{pomoCfg.focusMin}m</span>
-                  </button>
-                </>
-              )}
+              {optTab === 'options' && optionRows.map((row, i) => (
+                <button key={row.label} type="button"
+                        className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${row.on ? 'on' : ''} ${row.danger ? 'danger' : ''}`}
+                        onMouseEnter={() => setOptSel(i)} onClick={() => { setOptSel(i); optActivate(i); }}>
+                  <kbd>{row.kbd}</kbd>
+                  <span className="nm">{row.label}</span>
+                  {row.value && <span className="cur">{row.value}</span>}
+                </button>
+              ))}
             </div>
 
             <div className="tui-opt-foot">
@@ -2244,6 +2211,8 @@ TuiView.propTypes = {
   allNotes: PropTypes.array,
   markedDates: PropTypes.object,
   streakStats: PropTypes.object,
+  gridOn: PropTypes.bool,
+  onToggleGrid: PropTypes.func,
   onRestore: PropTypes.func,
   onGoToDate: PropTypes.func,
 };
