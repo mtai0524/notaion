@@ -50,7 +50,15 @@
   border-radius: var(--radius-sm, 5px);
   padding: 8px 10px;
   overflow-x: auto;
+  margin: 4px 0;
   code { font-family: inherit; }
+
+  .nb-code-text {
+    outline: none;
+    white-space: pre-wrap;
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    min-height: 1.4em;
+  }
 }
 
 /* ── Callout — icon + tinted box, semantic accent per kind ── */

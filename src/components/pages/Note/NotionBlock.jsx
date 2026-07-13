@@ -11,7 +11,7 @@ import './NotionBlock.scss';
 // writes textContent during typing — writing it is what collapses the caret to
 // the start. A genuine external change (note switch / block type change)
 // remounts this via its React key, so fresh text is picked up naturally.
-const Editable = ({ value, className, focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
+const Editable = ({ value, className, focus, multiline, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
   const ref = useRef(null);
   const seeded = useRef(false);
   // Runs once per mount; the guard means later re-renders never touch the DOM.
@@ -30,6 +30,20 @@ const Editable = ({ value, className, focus, onChange, onEnter, onBackspaceEmpty
     const sel = window.getSelection?.();
     if (sel) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
   }, [focus]);
+
+  // Insert a literal newline at the caret (for multiline / code blocks).
+  const insertNewline = (el) => {
+    const sel = window.getSelection?.();
+    if (!sel || !sel.rangeCount) { el.textContent += '\n'; onChange?.(el.textContent); return; }
+    const range = sel.getRangeAt(0);
+    range.deleteContents();
+    const node = document.createTextNode('\n');
+    range.insertNode(node);
+    range.setStartAfter(node); range.collapse(true);
+    sel.removeAllRanges(); sel.addRange(range);
+    onChange?.(el.textContent);
+  };
+
   return (
     <div
       ref={ref}
@@ -38,6 +52,13 @@ const Editable = ({ value, className, focus, onChange, onEnter, onBackspaceEmpty
       suppressContentEditableWarning
       onInput={(e) => onChange?.(e.currentTarget.textContent)}
       onKeyDown={(e) => {
+        // In code/multiline blocks Enter adds a newline; Shift+Enter leaves.
+        if (multiline) {
+          if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); insertNewline(e.currentTarget); return; }
+          if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); onEnter?.(); return; }
+          if (e.key === 'Backspace' && !e.currentTarget.textContent) { e.preventDefault(); onBackspaceEmpty?.(); }
+          return; // let arrows move the caret inside the code
+        }
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter?.(); }
         else if (e.key === 'Backspace' && !e.currentTarget.textContent) { e.preventDefault(); onBackspaceEmpty?.(); }
         else if (e.key === '/' && !e.currentTarget.textContent) { e.preventDefault(); onSlash?.(); }
@@ -51,6 +72,7 @@ Editable.propTypes = {
   value: PropTypes.string,
   className: PropTypes.string,
   focus: PropTypes.bool,
+  multiline: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
@@ -103,7 +125,11 @@ const NotionBlock = ({ block, focus, onChange, onEnter, onBackspaceEmpty, onSlas
     return <a className="nb-file" href={b.url} target="_blank" rel="noopener noreferrer">{b.label}</a>;
   }
   if (b.type === 'code') {
-    return <pre className="nb-code"><code>{b.text}</code></pre>;
+    return (
+      <pre className="nb-code">
+        <Editable value={b.text} className="nb-code-text" multiline {...common} />
+      </pre>
+    );
   }
 
   const cls = b.type === 'h1' ? 'nb-h1'

@@ -34,4 +34,16 @@ describe('NotionBlock', () => {
     fireEvent.click(screen.getByText('▸'));
     expect(onToggleCollapse).toHaveBeenCalled();
   });
+
+  it('renders a code block with an editable region (not read-only)', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <NotionBlock block={{ id: 'b0', type: 'code', lang: '', text: 'x=1' }} onChange={onChange} />,
+    );
+    const editable = container.querySelector('.nb-code .nb-code-text');
+    expect(editable).toBeTruthy();
+    expect(editable.getAttribute('contenteditable')).toBe('true');
+    fireEvent.input(editable, { target: { textContent: 'x=2' } });
+    expect(onChange).toHaveBeenCalledWith('x=2');
+  });
 });

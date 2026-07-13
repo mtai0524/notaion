@@ -144,9 +144,11 @@ const NotionEditor = ({ content, onChange }) => {
                         onToggleCollapse={() => setCollapsed((m) => ({ ...m, [b.id]: !m[b.id] }))}
                       />
                       {slashFor === i && (
-                        // eslint-disable-next-line jsx-a11y/no-autofocus
-                        <div className="ne-slash" tabIndex={0} autoFocus
-                             onBlur={() => setSlashFor(null)}
+                        // React's autoFocus only works on form controls, not a
+                        // <div> — focus the popup imperatively so it owns the
+                        // arrow keys instead of the block behind it.
+                        <div className="ne-slash" tabIndex={0}
+                             ref={(el) => el?.focus()}
                              onKeyDown={(e) => {
                                if (e.key === 'ArrowDown') { e.preventDefault(); setSlashSel((s) => (s + 1) % SLASH_MENU.length); }
                                else if (e.key === 'ArrowUp') { e.preventDefault(); setSlashSel((s) => (s - 1 + SLASH_MENU.length) % SLASH_MENU.length); }
