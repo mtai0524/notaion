@@ -42,6 +42,15 @@ describe('vimTextarea — normal motions', () => {
     expect(run(st(4), '0').pos).toBe(0);
     expect(run(st(0), '$').pos).toBe(5);   // end of "ab cd"
   });
+  it('arrow keys move like h/j/k/l in NORMAL', () => {
+    expect(run(st(2), 'ArrowLeft').pos).toBe(1);
+    expect(run(st(2), 'ArrowRight').pos).toBe(3);
+    expect(run(st(0), 'ArrowDown').pos).toBe(6);   // to line 2 "ef"
+    expect(run(st(6), 'ArrowUp').pos).toBe(0);     // back up to line 1
+  });
+  it('arrow keys fall through in INSERT (null → textarea handles them)', () => {
+    expect(vimTextareaKey({ text: 'ab', pos: 1, mode: 'insert' }, { key: 'ArrowLeft' })).toBeNull();
+  });
   it('gg / G go to text bounds', () => {
     const G = run(st(0), 'G');
     expect(G.pos).toBe(8);                 // end of text

@@ -58,6 +58,7 @@ const TUI_THEME_KEY = 'daily-note-tui-theme';
 const TUI_ZEN_KEY = 'daily-note-tui-zen';
 const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
 const NVIM_KEY = 'daily-note-nvim';                // 'on' | 'off'
+const VIM_LINENO_KEY = 'daily-note-vim-lineno';   // 'on' | 'off'
 const YANK_KEY = 'daily-note-tui-yank';            // yanked note snapshot (cross-day paste)
 const RECUR_KEY = 'daily-note-recurring';          // [{key,title,content,category,freq,weekday,created}]
 const RECUR_DONE_KEY = 'daily-note-recurring-done';// { '<templateKey>|<date>': 1 }
@@ -225,8 +226,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
-  const [mdVimDbg, setMdVimDbg] = useState('no-key'); // TEMP debug
+  const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
+  const lineNoRef = useRef(null);               // nvim line-number gutter (scroll-synced)
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -701,6 +703,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // Nvim modal editing (Notion editor only).
   const setNvimMode = (on) => { setNvim(on); lsSet(NVIM_KEY, on ? 'on' : 'off'); flashMsg(`nvim mode: ${on ? 'on' : 'off'}`); };
   const toggleNvim = () => setNvimMode(!nvim);
+  const setLineNo = (on) => { setVimLineNo(on); lsSet(VIM_LINENO_KEY, on ? 'on' : 'off'); flashMsg(`nvim line numbers: ${on ? 'on' : 'off'}`); };
+  const toggleLineNo = () => setLineNo(!vimLineNo);
 
   // Restore appearance + preferences to their out-of-the-box defaults.
   const resetAppearance = () => {
@@ -710,6 +714,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (zen) { setZen(false); lsSet(TUI_ZEN_KEY, false); }
     setNoteFormat('notion'); lsSet(NOTE_FORMAT_KEY, 'notion');
     setNvim(false); lsSet(NVIM_KEY, 'off');
+    setVimLineNo(false); lsSet(VIM_LINENO_KEY, 'off');
     setSortBy('created');
     setLivePreview(false);
     setShowCheatsheet(false);
@@ -726,6 +731,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       run: toggleNoteFormat },
     { kbd: 'V', label: 'nvim mode — modal editing trong editor', value: nvim ? 'on' : 'off', on: nvim,
       run: toggleNvim },
+    { kbd: 'N', label: 'nvim line numbers — số dòng bên trái', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
+      run: toggleLineNo },
     { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
       run: toggleZen },
     { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
@@ -927,6 +934,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else if (arg === 'on') setNvimMode(true);
         else toggleNvim();
         break;
+      case 'set':
+        // :set number / :set nonumber (vim-style)
+        if (arg === 'number' || arg === 'nu') setLineNo(true);
+        else if (arg === 'nonumber' || arg === 'nonu') setLineNo(false);
+        else flashMsg('usage: :set number | nonumber');
+        break;
+      case 'number': case 'nu': toggleLineNo(); break;
       case 'zen': toggleZen(); break;
       case 'help': setMode('help'); return; // keep mode change
       case '': break;
@@ -1202,6 +1216,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // (Notion-style — works mid-line too); typing filters it. A "/" glued to a
   // word or another "/" (URLs like https://…) does NOT trigger it.
   const handleBodyChange = (e) => {
+    // In nvim NORMAL, block all text mutation (IME/paste bypass keydown
+    // preventDefault) — snap the textarea back to the current draft.
+    if (nvim && noteFormat === 'md' && mode === 'body' && mdVim === 'normal') {
+      const el = e.target;
+      const p = el.selectionStart;
+      requestAnimationFrame(() => { if (el) { el.value = draft; el.setSelectionRange(p, p); } });
+      return;
+    }
     const val = e.target.value;
     setDraft(val);
     const m = val.slice(0, e.target.selectionStart).match(/(?:^|[\s\n])\/([a-zA-Z0-9-]*)$/);
@@ -1518,7 +1540,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // consumed by vim (caller should stop). Only active when nvim is on and we're
   // editing the md body.
   const handleMdVim = (e) => {
-    setMdVimDbg(`key=${e.key} nvim=${nvim} fmt=${noteFormat} mode=${mode} vim=${mdVim}`);
     if (!nvim || noteFormat !== 'md' || mode !== 'body') return false;
     const el = inputRef.current;
     if (!el) return false;
@@ -1650,10 +1671,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['i / a / A', 'insert · after · line-end'],
         ['o / O', 'open line below / above'],
         ['Esc', 'back to NORMAL'],
-        ['h j k l', 'move left/down/up/right'],
+        ['h j k l · ←↓↑→', 'move (arrows work too)'],
         ['w / b · 0 / $', 'word fwd/back · line start/end'],
-        ['gg / G', 'first / last block'],
-        ['x · dd', 'delete char · delete block'],
+        ['gg / G', 'first / last'],
+        ['x · dd', 'delete char · delete line/block'],
+        [':set number', 'toggle line numbers'],
       ],
     });
   }
@@ -1951,18 +1973,24 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         </div>
                       )}
                       {nvim && (
-                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --
-                          {' '}<span style={{ fontWeight: 400, opacity: 0.7 }}>[{mdVimDbg}]</span>
-                        </div>
+                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
                       )}
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in
                           handleMdVim; the caret stays visible + movable. */}
-                      <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
-                                onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
-                                onFocus={() => { suppressBlurRef.current = false; }}
-                                onPaste={handleEditorPaste}
-                                placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
+                      <div className={`tui-textarea-wrap ${nvim && vimLineNo ? 'with-lineno' : ''}`}>
+                        {nvim && vimLineNo && (
+                          <div className="tui-lineno" ref={lineNoRef} aria-hidden>
+                            {draft.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
+                          </div>
+                        )}
+                        <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
+                                  onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
+                                  onFocus={() => { suppressBlurRef.current = false; }}
+                                  onScroll={(e) => { if (lineNoRef.current) lineNoRef.current.scrollTop = e.target.scrollTop; }}
+                                  onPaste={handleEditorPaste}
+                                  placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
+                      </div>
                     </div>
                     {livePreview && (
                       <div className="tui-editor-preview" aria-label="Live preview">

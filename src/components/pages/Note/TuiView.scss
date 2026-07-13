@@ -594,6 +594,36 @@
     }
   }
 
+  /* nvim line-number gutter + textarea layout */
+  .tui-textarea-wrap {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+
+    &.with-lineno .tui-textarea {
+      border-top-left-radius: 0;
+      border-bottom-left-radius: 0;
+      border-left: none;
+    }
+
+    .tui-lineno {
+      flex-shrink: 0;
+      overflow: hidden;
+      padding: 1px 6px 1px 4px;      // match .tui-textarea vertical padding
+      text-align: right;
+      color: var(--text-muted, #6b7280);
+      background: rgba(127, 127, 127, 0.06);
+      border: 1.5px solid var(--border-color, #111827);
+      border-right: none;
+      border-top-left-radius: var(--radius-sm, 4px);
+      border-bottom-left-radius: var(--radius-sm, 4px);
+      font: inherit;
+      line-height: 1.5;              // must equal the textarea's line-height
+      user-select: none;
+    }
+    .tui-textarea { flex: 1; line-height: 1.5; padding-top: 1px; padding-bottom: 1px; }
+  }
+
   /* nvim status badge above the md textarea */
   .ne-vim-badge {
     align-self: flex-start;

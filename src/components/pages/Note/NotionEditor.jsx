@@ -223,8 +223,11 @@ const NotionEditor = ({ content, onChange, nvim = false }) => {
     // NORMAL
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Escape') { e.preventDefault(); pendingSeq.current = null; return; }
-    if (e.key.length === 1 || e.key === '$') {
-      if (handleNormalKey(e.key)) e.preventDefault();
+    // Arrow keys behave like h/j/k/l.
+    const arrow = { ArrowLeft: 'h', ArrowRight: 'l', ArrowDown: 'j', ArrowUp: 'k' }[e.key];
+    const key = arrow || e.key;
+    if (arrow || key.length === 1 || key === '$') {
+      if (handleNormalKey(key)) e.preventDefault();
     }
   };
 

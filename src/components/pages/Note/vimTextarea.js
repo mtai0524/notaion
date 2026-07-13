@@ -6,17 +6,23 @@ import { wordForward, wordBackward, lineStart, lineEnd, deleteCharAt } from './v
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
+const ARROW_TO_HJKL = { ArrowLeft: 'h', ArrowRight: 'l', ArrowDown: 'j', ArrowUp: 'k' };
+
 export const vimTextareaKey = (state, e) => {
   const { text, pos, mode } = state;
   const pending = state.pending || null;
 
-  // INSERT: only Esc / Ctrl+[ is ours; everything else falls through.
+  // INSERT: only Esc / Ctrl+[ is ours; everything else (incl. arrows) falls through.
   if (mode === 'insert') {
     if (e.key === 'Escape' || (e.key === '[' && e.ctrlKey)) {
       return { text, pos: clamp(pos - 1, 0, text.length), mode: 'normal', pending: null };
     }
     return null;
   }
+
+  // NORMAL: arrow keys behave like h/j/k/l.
+  const key = ARROW_TO_HJKL[e.key] || e.key;
+  e = { ...e, key };
 
   // NORMAL — two-key sequences first.
   if (pending === 'g') {
