@@ -578,12 +578,29 @@
 
     &:focus { box-shadow: -2px 2px 0 0 var(--shadow-color, #111827); }
 
+    /* nvim NORMAL: readonly + hidden thin caret (block-ish feel) */
+    &.vim-normal { caret-color: transparent; background: rgba(127, 127, 127, 0.04); }
+
     &.inline {
       background: transparent;
       border: none;
       padding: 0;
       &:focus { box-shadow: none; }
     }
+  }
+
+  /* nvim status badge above the md textarea */
+  .ne-vim-badge {
+    align-self: flex-start;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 2px 9px;
+    border-radius: var(--radius-sm, 4px);
+    margin-bottom: 4px;
+    background: var(--text-color, #111827);
+    color: var(--container-bg, #fdfcf8);
+    &.insert { background: #16a34a; }
   }
   .tui-input { flex: 1; min-width: 0; }
   /* inside .tui-editor-wrap (a flex column) the textarea grows to fill it */

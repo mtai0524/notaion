@@ -7,6 +7,7 @@ import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocal
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
+import { vimTextareaKey } from './vimTextarea';
 import NotionEditor from './NotionEditor';
 import './TuiView.scss';
 
@@ -223,6 +224,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
+  const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
+  const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -427,6 +430,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   useEffect(() => () => stopAmbient(), []);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') {
+      // Entering the md body with nvim on starts in NORMAL (like nvim opening a file).
+      if (mode === 'body' && noteFormat === 'md' && nvim) { setMdVim('normal'); mdVimPending.current = null; }
       // Notion body has no textarea input — keep focus on the TUI root so
       // Esc / Ctrl+Enter (save/cancel) work; clicking a block takes over editing.
       if (mode === 'body' && noteFormat === 'notion') {
@@ -1508,8 +1513,32 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }
   };
 
+  // Nvim modal editing over the markdown textarea. Returns true if the key was
+  // consumed by vim (caller should stop). Only active when nvim is on and we're
+  // editing the md body.
+  const handleMdVim = (e) => {
+    if (!nvim || noteFormat !== 'md' || mode !== 'body') return false;
+    const el = inputRef.current;
+    if (!el) return false;
+    // In NORMAL, Escape/Ctrl+Enter fall through to the normal exit/save flow.
+    if (mdVim === 'normal' && (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return false;
+    const state = { text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current };
+    const next = vimTextareaKey(state, e);
+    if (next === null) return false;       // INSERT typing → let the textarea handle it
+    if (next.noop) { mdVimPending.current = null; e.preventDefault(); return true; } // swallow unmapped NORMAL keys
+    e.preventDefault();
+    mdVimPending.current = next.pending || null;
+    if (next.mode !== mdVim) setMdVim(next.mode);
+    if (next.text !== draft) setDraft(next.text);
+    // apply caret after the value updates
+    const p = next.pos;
+    requestAnimationFrame(() => { const t = inputRef.current; if (t) { t.focus(); t.setSelectionRange(p, p); } });
+    return true;
+  };
+
   const onInputKeyDown = (e) => {
     e.stopPropagation();
+    if (handleMdVim(e)) return;
     // The "/" menu captures navigation keys while open. Compute matches from
     // the current filter so the closure always sees the live list; use a
     // functional setSlash so rapid presses don't stomp on each other.
@@ -1919,7 +1948,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                           })}
                         </div>
                       )}
-                      <textarea ref={inputRef} className="tui-textarea" value={draft}
+                      {nvim && (
+                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
+                      )}
+                      <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
+                                readOnly={nvim && mdVim === 'normal'}
                                 onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                                 onFocus={() => { suppressBlurRef.current = false; }}
                                 onPaste={handleEditorPaste}
