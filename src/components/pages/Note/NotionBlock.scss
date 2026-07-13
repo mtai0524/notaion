@@ -5,7 +5,9 @@
 .nb-text {
   min-height: 1.5em;
   outline: none;
-  &:empty::before {
+  /* Placeholder only on the block the caret is in — otherwise every empty line
+     in a note would repeat the hint. */
+  &:empty:focus::before {
     content: 'gõ / để chèn khối';
     color: var(--text-muted, #9ca3af);
     pointer-events: none;
