@@ -624,6 +624,30 @@
     .tui-textarea { flex: 1; line-height: 1.5; padding-top: 1px; padding-bottom: 1px; }
   }
 
+  /* nvim Ex command-line in the editor (:w :wq :q…) */
+  .ed-cmdline {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-top: 6px;
+    padding: 4px 8px;
+    background: var(--container-bg, #fdfcf8);
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    font-weight: 700;
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: inherit;
+      font: inherit;
+      font-weight: 400;
+      &::placeholder { color: var(--text-muted, #9ca3af); }
+    }
+  }
+
   /* nvim status badge above the md textarea */
   .ne-vim-badge {
     align-self: flex-start;

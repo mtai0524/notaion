@@ -1,0 +1,119 @@
+/* Telescope-style fuzzy finder popup — Notaion neo-brutalist skin. */
+.tele-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2200;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 8vh;
+  background: rgba(10, 13, 20, 0.55);
+  backdrop-filter: blur(3px);
+}
+
+.tele-box {
+  width: min(760px, 94vw);
+  max-height: 74vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--container-bg, #fdfcf8);
+  color: var(--text-color, #111827);
+  border: 2px solid var(--border-color, #111827);
+  border-radius: 8px;
+  box-shadow: var(--box-shadow, -4px 4px 0 0 rgba(17, 24, 39, 0.25));
+  overflow: hidden;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  .tele-tabs {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-bottom: 1.5px solid var(--border-color, #111827);
+
+    .tele-tab {
+      padding: 2px 12px;
+      background: transparent;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: pointer;
+      &.on { background: var(--text-color, #111827); color: var(--container-bg, #fdfcf8); }
+    }
+    .tele-tabhint { margin-left: auto; font-size: 0.62rem; color: var(--text-muted, #6b7280); }
+  }
+
+  .tele-prompt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1.5px dashed var(--border-color, #d1d5db);
+    .tele-caret { color: var(--tui-accent, #2563eb); font-weight: 800; }
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: inherit;
+      font: inherit;
+      font-size: 0.9rem;
+      &::placeholder { color: var(--text-muted, #9ca3af); }
+    }
+  }
+
+  .tele-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+
+    .tele-list {
+      width: 45%;
+      overflow-y: auto;
+      border-right: 1.5px dashed var(--border-color, #d1d5db);
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+
+      .tele-item {
+        text-align: left;
+        padding: 5px 9px;
+        background: transparent;
+        border: none;
+        border-radius: var(--radius-sm, 4px);
+        color: var(--text-color, #111827);
+        font: inherit;
+        font-size: 0.8rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        cursor: pointer;
+        &:hover, &.sel { background: rgba(127, 127, 127, 0.14); }
+        &.sel { box-shadow: inset 2px 0 0 0 var(--tui-accent, #2563eb); font-weight: 700; }
+      }
+      .tele-empty { padding: 10px; color: var(--text-muted, #9ca3af); font-size: 0.8rem; }
+    }
+
+    .tele-preview {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: var(--text-color, #111827);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+  }
+
+  .tele-hint {
+    padding: 7px 12px;
+    border-top: 1.5px dashed var(--border-color, #d1d5db);
+    font-size: 0.64rem;
+    color: var(--text-muted, #6b7280);
+    text-align: center;
+  }
+}

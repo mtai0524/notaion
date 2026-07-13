@@ -8,6 +8,7 @@ import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey } from './vimTextarea';
+import Telescope from './Telescope';
 import NotionEditor from './NotionEditor';
 import './TuiView.scss';
 
@@ -229,6 +230,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
   const lineNoRef = useRef(null);               // nvim line-number gutter (scroll-synced)
+  const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
+  const [showTele, setShowTele] = useState(false); // Telescope finder open
+  const leaderRef = useRef(false);              // Space leader pending (list NORMAL)
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -958,6 +962,28 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     setSlash(null);
   };
 
+  /* ── Vim Ex commands in the editor (nvim NORMAL ":") ── */
+  const saveBody = () => { if (current) doUpdate(current.id, { content: draft }); };
+  const quitBody = () => { setMode('normal'); setDraft(''); setSlash(null); };
+  const bodyDirty = () => !!current && draft !== (current.content || '');
+  const execEditorEx = (raw) => {
+    const c = (raw || '').trim();
+    setEdCmd(null);
+    switch (c) {
+      case 'w': case 'wa': saveBody(); flashMsg('written'); break;
+      case 'wq': case 'x': case 'wqa': case 'xa': saveBody(); quitBody(); break;
+      case 'q': case 'qa':
+        if (bodyDirty()) flashMsg('E37: no write since last change (add ! to override)');
+        else quitBody();
+        break;
+      case 'q!': case 'qa!': quitBody(); break;
+      case 'e!': if (current) setDraft(current.content || ''); flashMsg('reloaded'); break;
+      case 'noh': case 'nohlsearch': setQuery(''); flashMsg('search cleared'); break;
+      case '': break;
+      default: flashMsg(`not an editor command: :${c}`);
+    }
+  };
+
   /* ── "/" block menu (Notion-style) ── */
   const slashMatches = slash
     ? SLASH_ITEMS.filter((it) => it.key.startsWith(slash.filter) || it.label.toLowerCase().includes(slash.filter))
@@ -1431,6 +1457,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const consumeCount = () => { if (count) setCount(''); };
 
     // Global keys regardless of focused panel.
+    // Telescope: Ctrl+p always; <leader>ff (Space then f) only when nvim is on
+    // (Space otherwise keeps its select/toggle role in the notes panel).
+    if (k === 'p' && e.ctrlKey) { setShowTele(true); e.preventDefault(); return; }
+    if (nvim) {
+      if (leaderRef.current) {
+        leaderRef.current = false;
+        if (k === 'f') { setShowTele(true); e.preventDefault(); return; }
+        // other keys fall through to normal handling
+      }
+      if (k === ' ') { leaderRef.current = true; e.preventDefault(); return; }
+    }
+
     switch (k) {
       case 'Tab': moveFocus(e.shiftKey ? -1 : 1); e.preventDefault(); return;
       case '1': setFocus('folders'); e.preventDefault(); return;
@@ -1545,6 +1583,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (!el) return false;
     // In NORMAL, Escape/Ctrl+Enter fall through to the normal exit/save flow.
     if (mdVim === 'normal' && (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return false;
+    // NORMAL ":" opens the Ex command-line.
+    if (mdVim === 'normal' && e.key === ':') { e.preventDefault(); setEdCmd(''); return true; }
     const state = { text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current };
     const next = vimTextareaKey(state, e);
     if (next === null) return false;       // INSERT typing → let the textarea handle it
@@ -1640,6 +1680,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['t', 'today'],
         ['c', 'calendar — arrows · Enter · Esc'],
         ['/', 'search'],
+        ['Ctrl+p', 'Telescope finder (Space f in nvim)'],
         ['W', 'weekly review'],
       ],
     },
@@ -1675,7 +1716,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['w / b · 0 / $', 'word fwd/back · line start/end'],
         ['gg / G', 'first / last'],
         ['x · dd', 'delete char · delete line/block'],
+        [': → :w :wq', 'save · save + quit'],
+        [':q · :q!', 'quit (blocked if dirty) · force'],
         [':set number', 'toggle line numbers'],
+        ['Space f · Ctrl+p', 'Telescope finder'],
       ],
     });
   }
@@ -1704,6 +1748,36 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       return { day, n: i + 1, level: c === 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 6 ? 3 : 4 };
     });
   }, [dateLabel, markedDates]);
+
+  // Telescope finder sources (built here so every action helper is in scope).
+  const teleSources = (() => {
+    const noteItems = (allNotes || []).filter((n) => !n.isDeleted);
+    const cmdItems = [
+      { id: 'export', label: 'export markdown', run: () => exportDay(false) },
+      { id: 'week', label: 'weekly review', run: () => setShowWeek(true) },
+      { id: 'calendar', label: 'calendar', run: () => setShowCal(true) },
+      { id: 'theme', label: 'cycle theme', run: () => setTheme('next') },
+      { id: 'options', label: 'options popup', run: () => setShowTheme(true) },
+      { id: 'nvim', label: 'toggle nvim mode', run: toggleNvim },
+      { id: 'number', label: 'toggle line numbers', run: toggleLineNo },
+      { id: 'zen', label: 'toggle zen', run: toggleZen },
+      { id: 'today', label: 'go to today', run: goToday },
+    ];
+    const dateItems = Object.entries(markedDates || {})
+      .sort((a, b) => (a[0] < b[0] ? 1 : -1))
+      .map(([d, n]) => ({ id: d, label: `${d} · ${n} note${n > 1 ? 's' : ''}`, date: d }));
+    return [
+      { key: 'notes', label: 'Notes', items: noteItems, getKey: (n) => n.id,
+        getName: (n) => n.title || 'untitled',
+        getLabel: (n) => `${n.title || 'untitled'} ${n.content || ''}`,
+        getPreview: (n) => `${n.title || 'untitled'}\n${n.date || ''}\n\n${(n.content || '').slice(0, 800)}`,
+        onPick: (n) => { if (n.date && n.date !== dateLabel) gotoDate(n.date); setPendingJump(n.id); setFocus('notes'); } },
+      { key: 'commands', label: 'Commands', items: cmdItems, getKey: (c) => c.id,
+        getName: (c) => c.label, getLabel: (c) => c.label, getPreview: (c) => `Run: ${c.label}`, onPick: (c) => c.run() },
+      { key: 'dates', label: 'Dates', items: dateItems, getKey: (d) => d.id,
+        getName: (d) => d.label, getLabel: (d) => d.label, getPreview: (d) => d.label, onPick: (d) => gotoDate(d.date) },
+    ];
+  })();
 
   return (
     <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
@@ -1890,7 +1964,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               </div>
               {mode === 'body' && noteFormat === 'notion' ? (
                 <div className="tui-editor-wrap notion">
-                  <NotionEditor content={draft} onChange={setDraft} nvim={nvim} />
+                  <NotionEditor content={draft} onChange={setDraft} nvim={nvim} onEx={() => setEdCmd('')} />
+                  {edCmd !== null && (
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    <div className="ed-cmdline">:<input autoFocus value={edCmd}
+                      onChange={(e) => setEdCmd(e.target.value)}
+                      onKeyDown={(e) => { e.stopPropagation();
+                        if (e.key === 'Enter') { e.preventDefault(); execEditorEx(edCmd); }
+                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); } }}
+                      onBlur={() => setEdCmd(null)}
+                      placeholder="w · wq · q · q! · x · e! · noh" /></div>
+                  )}
                   <div className="tui-editor-bar">
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
                            onChange={(e) => {
@@ -1999,6 +2083,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     )}
                   </div>
 
+                  {edCmd !== null && (
+                    // eslint-disable-next-line jsx-a11y/no-autofocus
+                    <div className="ed-cmdline">:<input autoFocus value={edCmd}
+                      onChange={(e) => setEdCmd(e.target.value)}
+                      onKeyDown={(e) => { e.stopPropagation();
+                        if (e.key === 'Enter') { e.preventDefault(); execEditorEx(edCmd); }
+                        else if (e.key === 'Escape') { e.preventDefault(); setEdCmd(null); } }}
+                      onBlur={() => setEdCmd(null)}
+                      placeholder="w · wq · q · q! · x · e! · noh" /></div>
+                  )}
                   <div className="tui-editor-bar">
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
                            onChange={(e) => {
@@ -2370,6 +2464,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             </div>
           </div>
         </div>
+      )}
+
+      {showTele && (
+        <Telescope sources={teleSources}
+                   onClose={() => { setShowTele(false); requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true })); }} />
       )}
 
       {showCal && (

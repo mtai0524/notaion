@@ -31,7 +31,7 @@ const blockText = (b) => (b.type === 'toggle' ? (b.title || '') : (b.text || '')
 // Block-based Notion-mode editor. The source of truth stays the markdown
 // `content` string: we parse it into blocks, edit blocks, then re-serialize
 // and hand the markdown back via onChange. Never surfaces raw syntax.
-const NotionEditor = ({ content, onChange, nvim = false }) => {
+const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
   const [blocks, setBlocks] = useState(() => parseMarkdown(content));
   const [collapsed, setCollapsed] = useState({});
   const [slashFor, setSlashFor] = useState(null); // index of the block whose menu is open
@@ -223,6 +223,7 @@ const NotionEditor = ({ content, onChange, nvim = false }) => {
     // NORMAL
     if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Escape') { e.preventDefault(); pendingSeq.current = null; return; }
+    if (e.key === ':') { e.preventDefault(); onEx?.(); return; } // Ex command-line
     // Arrow keys behave like h/j/k/l.
     const arrow = { ArrowLeft: 'h', ArrowRight: 'l', ArrowDown: 'j', ArrowUp: 'k' }[e.key];
     const key = arrow || e.key;
@@ -342,6 +343,6 @@ const NotionEditor = ({ content, onChange, nvim = false }) => {
   );
 };
 
-NotionEditor.propTypes = { content: PropTypes.string, onChange: PropTypes.func, nvim: PropTypes.bool };
+NotionEditor.propTypes = { content: PropTypes.string, onChange: PropTypes.func, nvim: PropTypes.bool, onEx: PropTypes.func };
 
 export default NotionEditor;
