@@ -9,6 +9,7 @@ import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './
 import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey } from './vimTextarea';
 import Telescope from './Telescope';
+import LineGutter from './LineGutter';
 import NotionEditor from './NotionEditor';
 import './TuiView.scss';
 
@@ -2084,9 +2085,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                           handleMdVim; the caret stays visible + movable. */}
                       <div className={`tui-textarea-wrap ${nvim && vimLineNo ? 'with-lineno' : ''}`}>
                         {nvim && vimLineNo && (
-                          <div className="tui-lineno" ref={lineNoRef} aria-hidden>
-                            {draft.split('\n').map((_, i) => <div key={i}>{i + 1}</div>)}
-                          </div>
+                          <LineGutter text={draft} textareaRef={inputRef} gutterRef={lineNoRef} />
                         )}
                         <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}

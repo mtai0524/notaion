@@ -604,13 +604,6 @@
       border-top-left-radius: 0;
       border-bottom-left-radius: 0;
       border-left: none;
-      /* No word-wrap so one logical line = one display line and the number
-         gutter stays aligned (nvim/code-editor behaviour). Scroll horizontally
-         for long lines instead. */
-      white-space: pre;
-      overflow-x: auto;
-      overflow-wrap: normal;
-      word-break: normal;
     }
 
     .tui-lineno {
@@ -629,6 +622,19 @@
       user-select: none;
       min-width: 2ch;
       div { white-space: nowrap; }
+
+      /* hidden mirror used only to measure wrapped-line heights */
+      .tui-lineno-mirror {
+        position: absolute;
+        visibility: hidden;
+        height: auto;
+        pointer-events: none;
+        left: -99999px;
+        top: 0;
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
+        word-break: break-word;
+      }
     }
     .tui-textarea { flex: 1; min-width: 0; line-height: 1.5; padding-top: 1px; padding-bottom: 1px; }
   }
