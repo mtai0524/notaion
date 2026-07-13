@@ -56,6 +56,7 @@ const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
 const TUI_THEME_KEY = 'daily-note-tui-theme';
 const TUI_ZEN_KEY = 'daily-note-tui-zen';
 const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
+const NVIM_KEY = 'daily-note-nvim';                // 'on' | 'off'
 const YANK_KEY = 'daily-note-tui-yank';            // yanked note snapshot (cross-day paste)
 const RECUR_KEY = 'daily-note-recurring';          // [{key,title,content,category,freq,weekday,created}]
 const RECUR_DONE_KEY = 'daily-note-recurring-done';// { '<templateKey>|<date>': 1 }
@@ -221,6 +222,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [slash, setSlash] = useState(null); // { start, filter, sel } — "/" menu in body editor
   const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
+  const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -690,6 +692,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return n;
   });
 
+  // Nvim modal editing (Notion editor only).
+  const setNvimMode = (on) => { setNvim(on); lsSet(NVIM_KEY, on ? 'on' : 'off'); flashMsg(`nvim mode: ${on ? 'on' : 'off'}`); };
+  const toggleNvim = () => setNvimMode(!nvim);
+
   // Restore appearance + preferences to their out-of-the-box defaults.
   const resetAppearance = () => {
     setTuiTheme('default'); lsSet(TUI_THEME_KEY, 'default');
@@ -697,6 +703,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     setTuiFont(0.9); lsSet(TUI_FONT_KEY, 0.9);
     if (zen) { setZen(false); lsSet(TUI_ZEN_KEY, false); }
     setNoteFormat('notion'); lsSet(NOTE_FORMAT_KEY, 'notion');
+    setNvim(false); lsSet(NVIM_KEY, 'off');
     setSortBy('created');
     setLivePreview(false);
     setShowCheatsheet(false);
@@ -711,6 +718,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const optionRows = [
     { kbd: 'F', label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
       run: toggleNoteFormat },
+    { kbd: 'V', label: 'nvim mode — modal editing trong editor', value: nvim ? 'on' : 'off', on: nvim,
+      run: toggleNvim },
     { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
       run: toggleZen },
     { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
@@ -907,6 +916,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else flashMsg('usage: :goto yyyy-mm-dd | today');
         break;
       case 'archive': askArchive(); break;
+      case 'nvim':
+        if (arg === 'off') setNvimMode(false);
+        else if (arg === 'on') setNvimMode(true);
+        else toggleNvim();
+        break;
       case 'zen': toggleZen(); break;
       case 'help': setMode('help'); return; // keep mode change
       case '': break;
@@ -1809,7 +1823,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               </div>
               {mode === 'body' && noteFormat === 'notion' ? (
                 <div className="tui-editor-wrap notion">
-                  <NotionEditor content={draft} onChange={setDraft} />
+                  <NotionEditor content={draft} onChange={setDraft} nvim={nvim} />
                   <div className="tui-editor-bar">
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
                            onChange={(e) => {

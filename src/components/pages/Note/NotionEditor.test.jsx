@@ -98,6 +98,36 @@ describe('NotionEditor', () => {
   });
 });
 
+describe('NotionEditor nvim mode', () => {
+  it('shows a NORMAL badge and non-editable blocks when nvim is on', () => {
+    const { container } = render(<NotionEditor content={'hi'} nvim onChange={() => {}} />);
+    expect(container.querySelector('.ne-vim-badge')?.textContent).toMatch(/NORMAL/);
+    expect(container.querySelector('.nb-text').getAttribute('contenteditable')).toBe('false');
+  });
+
+  it('enters INSERT on "i" and shows the INSERT badge (blocks editable)', () => {
+    const { container } = render(<NotionEditor content={'hi'} nvim onChange={() => {}} />);
+    fireEvent.keyDown(container.querySelector('.notion-editor'), { key: 'i' });
+    expect(container.querySelector('.ne-vim-badge')?.textContent).toMatch(/INSERT/);
+    expect(container.querySelector('.nb-text').getAttribute('contenteditable')).toBe('true');
+  });
+
+  it('deletes the current block on "dd" in NORMAL', () => {
+    const onChange = vi.fn();
+    const { container } = render(<NotionEditor content={'one\ntwo'} nvim onChange={onChange} />);
+    const root = container.querySelector('.notion-editor');
+    fireEvent.keyDown(root, { key: 'd' });
+    fireEvent.keyDown(root, { key: 'd' });
+    expect(onChange).toHaveBeenCalledWith('two');
+  });
+
+  it('has no badge and editable blocks when nvim is off', () => {
+    const { container } = render(<NotionEditor content={'hi'} onChange={() => {}} />);
+    expect(container.querySelector('.ne-vim-badge')).toBeNull();
+    expect(container.querySelector('.nb-text').getAttribute('contenteditable')).toBe('true');
+  });
+});
+
 describe('reorder', () => {
   it('moves a block and preserves the rest, round-tripping to markdown', () => {
     const blocks = parseMarkdown('one\ntwo\nthree');

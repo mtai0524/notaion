@@ -5,6 +5,27 @@
   flex-direction: column;
   gap: 2px;
   padding: 4px 2px;
+  outline: none;
+
+  /* nvim status badge */
+  .ne-vim-badge {
+    align-self: flex-start;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    padding: 2px 9px;
+    border-radius: var(--radius-sm, 4px);
+    margin-bottom: 4px;
+    background: var(--text-color, #111827);
+    color: var(--container-bg, #fdfcf8);
+    &.insert { background: #16a34a; }
+  }
+
+  /* the block the vim cursor is on */
+  &.vim-normal .ne-block.vim-cur {
+    box-shadow: -2px 0 0 0 var(--tui-accent, #2563eb);
+    border-radius: var(--radius-sm, 4px);
+  }
 
   .ne-row {
     display: flex;

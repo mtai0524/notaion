@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { parseMarkdown, serializeBlocks, reorder } from './noteFormat';
+import { wordForward, wordBackward, lineStart, lineEnd, deleteCharAt } from './vimEditor';
 import NotionBlock from './NotionBlock';
 import './NotionEditor.scss';
 
@@ -30,7 +31,7 @@ const blockText = (b) => (b.type === 'toggle' ? (b.title || '') : (b.text || '')
 // Block-based Notion-mode editor. The source of truth stays the markdown
 // `content` string: we parse it into blocks, edit blocks, then re-serialize
 // and hand the markdown back via onChange. Never surfaces raw syntax.
-const NotionEditor = ({ content, onChange }) => {
+const NotionEditor = ({ content, onChange, nvim = false }) => {
   const [blocks, setBlocks] = useState(() => parseMarkdown(content));
   const [collapsed, setCollapsed] = useState({});
   const [slashFor, setSlashFor] = useState(null); // index of the block whose menu is open
@@ -38,6 +39,9 @@ const NotionEditor = ({ content, onChange }) => {
   const [focusIndex, setFocusIndex] = useState(null); // block to focus (arrow-key nav / after edit)
   const [selected, setSelected] = useState(() => new Set()); // block ids in a multi-select
   const dragSel = useRef(null); // { anchor } index while sweeping the mouse
+  const [vimMode, setVimMode] = useState('normal'); // nvim: 'normal' | 'insert'
+  const [vimIndex, setVimIndex] = useState(0);       // block the vim cursor is on
+  const pendingSeq = useRef(null);                   // 'g' or 'd' waiting for the 2nd key
 
   // Markdown we last emitted. When our own onChange feeds `content` right back,
   // it equals this — so we must NOT re-parse (re-parsing mints new block ids,
@@ -91,6 +95,13 @@ const NotionEditor = ({ content, onChange }) => {
     commit(next);
   };
 
+  const addBefore = (i) => {
+    const next = [...blocks];
+    next.splice(i, 0, { id: `n${next.length}-${Date.now()}`, type: 'paragraph', text: '' });
+    setFocusIndex(i);
+    commit(next);
+  };
+
   const removeAt = (i) => {
     if (blocks.length <= 1) return;
     setFocusIndex(Math.max(0, i - 1));
@@ -121,6 +132,107 @@ const NotionEditor = ({ content, onChange }) => {
     const n = (blocks.length ? blocks.length : 1);
     setFocusIndex(Math.max(0, Math.min(n - 1, i + dir)));
   };
+
+  /* ─────────────── Nvim modal editing ─────────────── */
+
+  // The editable DOM node of the vim-current block (tagged with data-vi).
+  const vimEl = () => document.querySelector(`.notion-editor [data-vi="${vimIndex}"] [contenteditable]`);
+  // Current caret offset within that node (0 if unfocused).
+  const vimCaret = () => {
+    const sel = window.getSelection?.();
+    if (!sel || !sel.rangeCount) return 0;
+    return sel.getRangeAt(0).startOffset;
+  };
+  // Put a collapsed caret at `offset` inside the vim-current block.
+  const setVimCaret = (offset) => {
+    const el = vimEl();
+    if (!el) return;
+    el.focus();
+    const node = el.firstChild || el;
+    const max = (el.textContent || '').length;
+    const off = Math.max(0, Math.min(offset, max));
+    const sel = window.getSelection?.();
+    if (!sel) return;
+    const r = document.createRange();
+    try { r.setStart(node.nodeType === 3 ? node : el, node.nodeType === 3 ? off : 0); }
+    catch { r.selectNodeContents(el); r.collapse(true); }
+    r.collapse(true);
+    sel.removeAllRanges(); sel.addRange(r);
+  };
+
+  const enterInsert = (caretAtEnd) => {
+    setVimMode('insert');
+    setFocusIndex(vimIndex);
+    if (caretAtEnd) requestAnimationFrame(() => { const el = vimEl(); if (el) setVimCaret((el.textContent || '').length); });
+  };
+
+  // Handle one NORMAL-mode key. Returns true if it consumed the event.
+  const handleNormalKey = (key) => {
+    const cur = blocks[vimIndex];
+    const text = cur ? (cur.type === 'toggle' ? (cur.title || '') : (cur.text || '')) : '';
+
+    // two-key sequences: gg, dd
+    if (pendingSeq.current === 'g') {
+      pendingSeq.current = null;
+      if (key === 'g') { setVimIndex(0); setFocusIndex(0); return true; }
+      return true; // swallow the 2nd key of an aborted gg
+    }
+    if (pendingSeq.current === 'd') {
+      pendingSeq.current = null;
+      if (key === 'd') { const at = vimIndex; setVimIndex(Math.max(0, at - 1)); removeAt(at); return true; }
+      return true;
+    }
+
+    switch (key) {
+      case 'i': enterInsert(false); return true;
+      case 'a': enterInsert(false); return true;
+      case 'A': enterInsert(true); return true;
+      case 'o': addAfter(vimIndex); setVimIndex(vimIndex + 1); setVimMode('insert'); return true;
+      case 'O': addBefore(vimIndex); setVimMode('insert'); return true;
+      case 'j': { const ni = Math.min(blocks.length - 1, vimIndex + 1); setVimIndex(ni); return true; }
+      case 'k': { const ni = Math.max(0, vimIndex - 1); setVimIndex(ni); return true; }
+      case 'h': setVimCaret(Math.max(0, vimCaret() - 1)); return true;
+      case 'l': setVimCaret(vimCaret() + 1); return true;
+      case 'w': setVimCaret(wordForward(text, vimCaret())); return true;
+      case 'b': setVimCaret(wordBackward(text, vimCaret())); return true;
+      case '0': setVimCaret(lineStart(text, vimCaret())); return true;
+      case '$': setVimCaret(lineEnd(text, vimCaret())); return true;
+      case 'g': pendingSeq.current = 'g'; return true;
+      case 'G': { const last = Math.max(0, blocks.length - 1); setVimIndex(last); setFocusIndex(last); return true; }
+      case 'd': pendingSeq.current = 'd'; return true;
+      case 'x': {
+        const { text: nt, pos } = deleteCharAt(text, vimCaret());
+        if (nt !== text) { patch(vimIndex, cur.type === 'toggle' ? { title: nt } : { text: nt }); requestAnimationFrame(() => setVimCaret(pos)); }
+        return true;
+      }
+      default: return false;
+    }
+  };
+
+  // Container keydown for nvim. Guarded so nothing runs when nvim is off.
+  const onVimKeyDown = (e) => {
+    if (!nvim) return;
+    if (vimMode === 'insert') {
+      if (e.key === 'Escape' || (e.key === '[' && e.ctrlKey)) {
+        e.preventDefault();
+        setVimMode('normal');
+        vimEl()?.blur();
+      }
+      return; // typing handled by the editable
+    }
+    // NORMAL
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { e.preventDefault(); pendingSeq.current = null; return; }
+    if (e.key.length === 1 || e.key === '$') {
+      if (handleNormalKey(e.key)) e.preventDefault();
+    }
+  };
+
+  // Keep vimIndex in range as blocks come and go; reset to normal when nvim off.
+  useEffect(() => {
+    if (!nvim) { setVimMode('normal'); return; }
+    setVimIndex((i) => Math.max(0, Math.min(i, Math.max(0, blocks.length - 1))));
+  }, [nvim, blocks.length]);
 
   // Open the slash menu for a block (typed "/" or clicked "+").
   const openSlash = (i) => { setSlashSel(0); setSlashFor((cur) => (cur === i ? null : i)); };
@@ -154,8 +266,13 @@ const NotionEditor = ({ content, onChange }) => {
     <DragDropContext onDragEnd={onDragEnd}>
       <Droppable droppableId="notion-editor">
         {(dp) => (
-          <div className="notion-editor" ref={dp.innerRef} {...dp.droppableProps}
-               onMouseUp={endSweep} onMouseLeave={endSweep}>
+          <div className={`notion-editor ${nvim ? `vim vim-${vimMode}` : ''}`} ref={dp.innerRef} {...dp.droppableProps}
+               tabIndex={nvim ? 0 : undefined}
+               onMouseUp={endSweep} onMouseLeave={endSweep}
+               onKeyDownCapture={onVimKeyDown}>
+            {nvim && (
+              <div className={`ne-vim-badge ${vimMode}`}>-- {vimMode.toUpperCase()} --</div>
+            )}
             {view.map((b, i) => (
               <Draggable key={b.id} draggableId={String(b.id)} index={i}>
                 {(dr, snapshot) => (
@@ -169,10 +286,11 @@ const NotionEditor = ({ content, onChange }) => {
                             onClick={() => openSlash(i)}>+</button>
                     <button type="button" className="ne-del" title="Xóa block này"
                             onClick={() => removeAt(i)}>🗑</button>
-                    <div className="ne-block">
+                    <div className={`ne-block ${nvim && vimIndex === i ? 'vim-cur' : ''}`} data-vi={i}>
                       <NotionBlock
                         block={b}
                         focus={focusIndex === i}
+                        vimNormal={nvim && vimMode === 'normal'}
                         collapsed={!!collapsed[b.id]}
                         onChange={(t) => setText(i, t)}
                         onEnter={() => addAfter(i)}
@@ -221,6 +339,6 @@ const NotionEditor = ({ content, onChange }) => {
   );
 };
 
-NotionEditor.propTypes = { content: PropTypes.string, onChange: PropTypes.func };
+NotionEditor.propTypes = { content: PropTypes.string, onChange: PropTypes.func, nvim: PropTypes.bool };
 
 export default NotionEditor;
