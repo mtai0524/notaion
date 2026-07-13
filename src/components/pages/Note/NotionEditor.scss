@@ -64,6 +64,7 @@
     padding: 4px;
     display: flex;
     flex-direction: column;
+    outline: none;
 
     .ne-slash-item {
       display: flex;
@@ -78,7 +79,8 @@
       font-size: 0.82rem;
       text-align: left;
       cursor: pointer;
-      &:hover { background: rgba(127, 127, 127, 0.12); }
+      &:hover, &.sel { background: rgba(127, 127, 127, 0.12); }
+      &.sel { box-shadow: inset 2px 0 0 0 var(--tui-accent, #2563eb); }
 
       .ne-slash-icon {
         flex-shrink: 0;

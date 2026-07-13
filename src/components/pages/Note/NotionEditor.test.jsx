@@ -58,7 +58,7 @@ describe('NotionEditor', () => {
     const onChange = vi.fn();
     render(<NotionEditor content={'hi'} onChange={onChange} />);
     fireEvent.click(screen.getByTitle('Insert / turn into block'));
-    fireEvent.click(screen.getByText('Heading 1'));
+    fireEvent.mouseDown(screen.getByText('Heading 1'));
     expect(onChange).toHaveBeenCalledWith('# hi');
   });
 
@@ -66,8 +66,15 @@ describe('NotionEditor', () => {
     const onChange = vi.fn();
     render(<NotionEditor content={'careful'} onChange={onChange} />);
     fireEvent.click(screen.getByTitle('Insert / turn into block'));
-    fireEvent.click(screen.getByText('Callout · warning'));
+    fireEvent.mouseDown(screen.getByText('Callout · warning'));
     expect(onChange).toHaveBeenCalledWith('> [!warning] careful');
+  });
+
+  it('opens the slash menu by typing "/" in an empty block', () => {
+    render(<NotionEditor content={''} onChange={() => {}} />);
+    const block = document.querySelector('.nb-text');
+    fireEvent.keyDown(block, { key: '/' });
+    expect(screen.getByText('Heading 1')).toBeTruthy();
   });
 });
 

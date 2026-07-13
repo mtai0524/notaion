@@ -11,7 +11,7 @@ import './NotionBlock.scss';
 // writes textContent during typing — writing it is what collapses the caret to
 // the start. A genuine external change (note switch / block type change)
 // remounts this via its React key, so fresh text is picked up naturally.
-const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => {
+const Editable = ({ value, className, focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
   const ref = useRef(null);
   const seeded = useRef(false);
   // Runs once per mount; the guard means later re-renders never touch the DOM.
@@ -21,6 +21,15 @@ const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => 
       seeded.current = true;
     }
   }, [value]);
+  // Focus this block when the parent asks (arrow-key navigation), placing the
+  // caret at the end of its text.
+  useEffect(() => {
+    if (!focus || !ref.current) return;
+    const el = ref.current;
+    el.focus();
+    const sel = window.getSelection?.();
+    if (sel) { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); sel.removeAllRanges(); sel.addRange(r); }
+  }, [focus]);
   return (
     <div
       ref={ref}
@@ -31,6 +40,9 @@ const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => 
       onKeyDown={(e) => {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); onEnter?.(); }
         else if (e.key === 'Backspace' && !e.currentTarget.textContent) { e.preventDefault(); onBackspaceEmpty?.(); }
+        else if (e.key === '/' && !e.currentTarget.textContent) { e.preventDefault(); onSlash?.(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); onArrowUp?.(); }
+        else if (e.key === 'ArrowDown') { e.preventDefault(); onArrowDown?.(); }
       }}
     />
   );
@@ -38,14 +50,18 @@ const Editable = ({ value, className, onChange, onEnter, onBackspaceEmpty }) => 
 Editable.propTypes = {
   value: PropTypes.string,
   className: PropTypes.string,
+  focus: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
+  onSlash: PropTypes.func,
+  onArrowUp: PropTypes.func,
+  onArrowDown: PropTypes.func,
 };
 
-const NotionBlock = ({ block, onChange, onEnter, onBackspaceEmpty, onToggleCheck, onToggleCollapse, collapsed }) => {
+const NotionBlock = ({ block, focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown, onToggleCheck, onToggleCollapse, collapsed }) => {
   const b = block;
-  const common = { onChange, onEnter, onBackspaceEmpty };
+  const common = { focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown };
 
   if (b.type === 'divider') return <hr className="nb-hr" />;
 
@@ -101,9 +117,13 @@ const NotionBlock = ({ block, onChange, onEnter, onBackspaceEmpty, onToggleCheck
 
 NotionBlock.propTypes = {
   block: PropTypes.object.isRequired,
+  focus: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
+  onSlash: PropTypes.func,
+  onArrowUp: PropTypes.func,
+  onArrowDown: PropTypes.func,
   onToggleCheck: PropTypes.func,
   onToggleCollapse: PropTypes.func,
   collapsed: PropTypes.bool,
