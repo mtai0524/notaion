@@ -22,7 +22,9 @@
   border-radius: 8px;
   box-shadow: var(--box-shadow, -4px 4px 0 0 rgba(17, 24, 39, 0.25));
   overflow: hidden;
-  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+  /* proportional UI font for chrome/list so note titles read cleanly;
+     the prompt + preview opt back into monospace explicitly. */
+  font-family: var(--font-main, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif);
 
   .tele-tabs {
     display: flex;
@@ -71,38 +73,58 @@
     display: flex;
 
     .tele-list {
-      width: 45%;
+      width: 42%;
       overflow-y: auto;
-      border-right: 1.5px dashed var(--border-color, #d1d5db);
-      padding: 4px;
+      border-right: 1.5px solid var(--border-color, #d1d5db);
+      padding: 5px;
       display: flex;
       flex-direction: column;
+      gap: 1px;
 
       .tele-item {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
         text-align: left;
-        padding: 5px 9px;
+        padding: 6px 9px;
         background: transparent;
         border: none;
         border-radius: var(--radius-sm, 4px);
         color: var(--text-color, #111827);
         font: inherit;
-        font-size: 0.8rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
         cursor: pointer;
-        &:hover, &.sel { background: rgba(127, 127, 127, 0.14); }
-        &.sel { box-shadow: inset 2px 0 0 0 var(--tui-accent, #2563eb); font-weight: 700; }
+
+        .tele-item-name {
+          flex: 1;
+          min-width: 0;
+          font-size: 0.82rem;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tele-item-meta {
+          flex-shrink: 0;
+          font-size: 0.66rem;
+          color: var(--text-muted, #9ca3af);
+        }
+
+        &:hover { background: rgba(127, 127, 127, 0.10); }
+        &.sel {
+          background: var(--tui-accent, #2563eb);
+          color: #fff;
+          .tele-item-meta { color: rgba(255, 255, 255, 0.75); }
+        }
       }
-      .tele-empty { padding: 10px; color: var(--text-muted, #9ca3af); font-size: 0.8rem; }
+      .tele-empty { padding: 12px; color: var(--text-muted, #9ca3af); font-size: 0.82rem; }
     }
 
     .tele-preview {
       flex: 1;
       overflow-y: auto;
-      padding: 10px 12px;
+      padding: 14px 16px;
+      font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
       font-size: 0.78rem;
-      line-height: 1.5;
+      line-height: 1.6;
       color: var(--text-color, #111827);
       white-space: pre-wrap;
       word-break: break-word;

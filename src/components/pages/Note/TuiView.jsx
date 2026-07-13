@@ -1757,10 +1757,23 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const dateItems = Object.entries(markedDates || {})
       .sort((a, b) => (a[0] < b[0] ? 1 : -1))
       .map(([d, n]) => ({ id: d, label: `${d} · ${n} note${n > 1 ? 's' : ''}`, date: d }));
+    // Clean, single-line label for a note: title, else a stripped content
+    // snippet (markdown noise removed, whitespace collapsed).
+    const noteName = (n) => {
+      const raw = (n.title && n.title.trim())
+        || (n.content || '')
+          .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+          .replace(/[#>*_`~-]/g, ' ')           // md punctuation
+          .replace(/\s+/g, ' ')
+          .trim();
+      const s = (raw || 'untitled').slice(0, 70);
+      return s;
+    };
     return [
       { key: 'notes', label: 'Notes', items: noteItems, getKey: (n) => n.id,
-        getName: (n) => n.title || 'untitled',
-        getLabel: (n) => `${n.title || 'untitled'} ${n.content || ''}`,
+        getName: noteName,
+        getMeta: (n) => n.date || '',
+        getLabel: (n) => `${n.title || ''} ${n.content || ''}`,
         getPreview: (n) => `${n.title || 'untitled'}\n${n.date || ''}\n\n${(n.content || '').slice(0, 800)}`,
         onPick: (n) => { if (n.date && n.date !== dateLabel) gotoDate(n.date); setPendingJump(n.id); setFocus('notes'); } },
       { key: 'commands', label: 'Commands', items: cmdItems, getKey: (c) => c.id,

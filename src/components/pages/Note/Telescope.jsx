@@ -70,7 +70,10 @@ const Telescope = ({ sources, onClose }) => {
                       className={`tele-item ${i === curSel ? 'sel' : ''}`}
                       onMouseEnter={() => setSel(i)}
                       onMouseDown={(e) => { e.preventDefault(); source.onPick?.(it); onClose?.(); }}>
-                {nameOf(it)}
+                <span className="tele-item-name">{nameOf(it)}</span>
+                {source.getMeta && source.getMeta(it) && (
+                  <span className="tele-item-meta">{source.getMeta(it)}</span>
+                )}
               </button>
             ))}
           </div>
@@ -91,6 +94,7 @@ Telescope.propTypes = {
     items: PropTypes.array,
     getKey: PropTypes.func,
     getLabel: PropTypes.func,
+    getMeta: PropTypes.func,
     getName: PropTypes.func,
     getPreview: PropTypes.func,
     onPick: PropTypes.func,
