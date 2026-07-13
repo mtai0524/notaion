@@ -3,6 +3,16 @@
 
 export const CALLOUT_KIND_KEYS = ['note', 'info', 'warning', 'success', 'danger'];
 
+// Icon + label per callout kind — shared by the renderer, the "/" menu and the
+// block editor so the visual identity of a callout lives in one place.
+export const CALLOUT_KINDS = {
+  note:    { icon: '💡', label: 'Note' },
+  info:    { icon: 'ℹ️', label: 'Info' },
+  warning: { icon: '⚠️', label: 'Warning' },
+  success: { icon: '✅', label: 'Success' },
+  danger:  { icon: '🔥', label: 'Danger' },
+};
+
 let _idc = 0;
 const nid = () => `b${_idc++}`;
 

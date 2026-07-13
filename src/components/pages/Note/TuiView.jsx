@@ -6,18 +6,8 @@ import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
+import { CALLOUT_KINDS } from './noteFormat';
 import './TuiView.scss';
-
-// Callout kinds — shared by the "/" menu, the toolbar and the renderer so the
-// icon/colour of `> [!kind]` stays in one place. Markdown-friendly syntax
-// (GitHub/Obsidian admonition) so notes still export as readable markdown.
-const CALLOUT_KINDS = {
-  note:    { icon: '💡', label: 'Note' },
-  info:    { icon: 'ℹ️', label: 'Info' },
-  warning: { icon: '⚠️', label: 'Warning' },
-  success: { icon: '✅', label: 'Success' },
-  danger:  { icon: '🔥', label: 'Danger' },
-};
 
 // Notion-style "/" block menu for the body editor.
 const SLASH_ITEMS = [

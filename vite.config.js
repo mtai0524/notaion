@@ -12,6 +12,14 @@ export default defineConfig({
     port: 2405,
   },
   assetsInclude: ['**/*.md'],
+  // Tests transform JSX via esbuild; use React's automatic runtime so component
+  // files don't need an explicit `import React`.
+  esbuild: { jsx: 'automatic', jsxImportSource: 'react' },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./src/test/setup.js'],
+  },
   build: {
     rollupOptions: {
       output: {

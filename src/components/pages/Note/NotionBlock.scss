@@ -1,0 +1,104 @@
+/* Visual block styling for Notion mode. Mirrors the .tui-pv-* preview look so
+   editing and reading feel identical. Editable regions never show markdown
+   syntax — they render the text directly. */
+
+.nb-text {
+  min-height: 1.5em;
+  outline: none;
+  &:empty::before {
+    content: 'gõ / để chèn khối';
+    color: var(--text-muted, #9ca3af);
+    pointer-events: none;
+  }
+}
+
+.nb-h1 { font-size: 1.35rem; font-weight: 800; margin: 8px 0 2px; }
+.nb-h2 { font-size: 1.15rem; font-weight: 800; margin: 6px 0 2px; }
+.nb-h3 { font-size: 1.0rem;  font-weight: 800; margin: 4px 0 2px; }
+
+.nb-quote {
+  border-left: 3px solid var(--border-color, #111827);
+  padding-left: 10px;
+  color: var(--text-muted, #6b7280);
+  font-style: italic;
+}
+
+.nb-bullet {
+  padding-left: 16px;
+  position: relative;
+  &::before { content: '•'; position: absolute; left: 4px; }
+}
+
+.nb-hr { border: none; border-top: 1px dashed var(--border-color, #111827); margin: 8px 0; }
+
+.nb-todo {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  input[type='checkbox'] { flex-shrink: 0; }
+  &.checked .nb-text { text-decoration: line-through; color: var(--text-muted, #9ca3af); }
+}
+
+.nb-img { max-width: 100%; border-radius: var(--radius-sm, 5px); }
+.nb-file { color: var(--tui-accent, #2563eb); text-decoration: underline; }
+
+.nb-code {
+  background: rgba(127, 127, 127, 0.12);
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: var(--radius-sm, 5px);
+  padding: 8px 10px;
+  overflow-x: auto;
+  code { font-family: inherit; }
+}
+
+/* ── Callout — icon + tinted box, semantic accent per kind ── */
+.nb-callout {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  margin: 6px 0;
+  padding: 8px 10px;
+  border: 1.5px solid var(--callout-accent, #6b7280);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm, 5px);
+  background: color-mix(in srgb, var(--callout-accent, #6b7280) 10%, transparent);
+
+  .nb-callout-icon { flex-shrink: 0; line-height: 1.5; }
+  .nb-callout-body { min-width: 0; flex: 1; outline: none; }
+
+  &.kind-note    { --callout-accent: #8b5cf6; }
+  &.kind-info    { --callout-accent: #2563eb; }
+  &.kind-warning { --callout-accent: #d97706; }
+  &.kind-success { --callout-accent: #16a34a; }
+  &.kind-danger  { --callout-accent: #dc2626; }
+}
+
+/* ── Toggle — click the caret to fold/unfold children ── */
+.nb-toggle {
+  margin: 3px 0;
+
+  .nb-toggle-head {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-weight: 700;
+  }
+  .nb-toggle-caret {
+    flex-shrink: 0;
+    cursor: pointer;
+    color: var(--text-muted, #6b7280);
+    transition: transform 0.12s ease;
+    transform: rotate(90deg);
+    &:hover { color: var(--text-color, #111827); }
+  }
+  &.collapsed .nb-toggle-caret { transform: rotate(0deg); }
+
+  .nb-toggle-title { outline: none; flex: 1; }
+
+  .nb-toggle-body {
+    margin: 2px 0 2px 16px;
+    padding-left: 10px;
+    border-left: 1.5px solid var(--border-color, #d1d5db);
+    white-space: pre-wrap;
+  }
+}
