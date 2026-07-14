@@ -2912,6 +2912,8 @@ const DailyNoteApp = () => {
               onToggleGrid={() => setShowGrid(v => !v)}
               onRestore={restoreNote}
               onGoToDate={(d) => setCurrentDate(d)}
+              loading={loading}
+              syncStatus={syncStatus}
             />
           ) : viewMode === 'canvas' ? (
             <div className="notes-canvas">

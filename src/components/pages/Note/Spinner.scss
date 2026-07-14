@@ -1,0 +1,38 @@
+/* Tiny braille spinner for the TUI. CSS-only frame cycling via a steps() keyframe
+   that swaps the ::before content through the 10 classic braille frames. */
+.tui-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  .tui-spinner-glyph {
+    display: inline-block;
+    width: 1ch;
+    text-align: center;
+    color: var(--tui-accent, #2563eb);
+    &::before {
+      content: '⠋';
+      animation: tui-braille 0.8s steps(1) infinite;
+    }
+  }
+
+  .tui-spinner-label {
+    font-size: 0.9em;
+    color: var(--text-muted, #6b7280);
+    letter-spacing: 0.5px;
+  }
+}
+
+@keyframes tui-braille {
+  0%   { content: '⠋'; }
+  10%  { content: '⠙'; }
+  20%  { content: '⠹'; }
+  30%  { content: '⠸'; }
+  40%  { content: '⠼'; }
+  50%  { content: '⠴'; }
+  60%  { content: '⠦'; }
+  70%  { content: '⠧'; }
+  80%  { content: '⠇'; }
+  90%  { content: '⠏'; }
+}

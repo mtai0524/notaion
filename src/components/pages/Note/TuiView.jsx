@@ -10,6 +10,7 @@ import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey } from './vimTextarea';
 import Telescope from './Telescope';
 import LineGutter from './LineGutter';
+import Spinner from './Spinner';
 import NotionEditor from './NotionEditor';
 import './TuiView.scss';
 
@@ -214,7 +215,7 @@ const PomoWave = ({ color }) => {
 PomoWave.propTypes = { color: PropTypes.string.isRequired };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate }) => {
+  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate, loading, syncStatus }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -1870,6 +1871,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`}>
           <span className="tui-panel-title">
             <kbd>2</kbd>{`NOTES · ${dateLabel}`}
+            {loading && <Spinner label="loading" className="tui-title-spinner" />}
             <button type="button" className="tui-sort-chip" title="Sort order (S)"
                     onMouseDown={(e) => { e.preventDefault(); cycleSort(); }}>
               ⇅ {sortBy}
@@ -2016,7 +2018,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       📎 Attach
                     </button>
                     <span className="tui-editor-tip">
-                      {uploading ? '⏳ uploading…' : 'Ctrl+Enter to save · Esc to cancel · Options(T) → format'}
+                      {uploading ? <Spinner label="uploading" /> : 'Ctrl+Enter to save · Esc to cancel · Options(T) → format'}
                     </span>
                   </div>
                 </div>
@@ -2140,7 +2142,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       📎 Attach
                     </button>
                     <span className="tui-editor-tip">
-                      {uploading ? '⏳ uploading…' : 'Ctrl+Enter to save · Esc to cancel'}
+                      {uploading ? <Spinner label="uploading" /> : 'Ctrl+Enter to save · Esc to cancel'}
                     </span>
                   </div>
                 </div>
@@ -2244,6 +2246,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             {count && <span className="tui-count-tag" title="Count prefix">{count}</span>}
             {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
             <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
+            {syncStatus === 'saving' && <Spinner label="saving" className="tui-sync-spinner" />}
             {zen && <span className="tui-zen-tag" title="Zen mode (z)">◎ zen</span>}
             <button type="button" className="tui-theme-chip" title="Appearance — theme, font, zen (T)"
                     onClick={(e) => { e.stopPropagation(); setShowTheme(true); }}>
@@ -2573,6 +2576,8 @@ TuiView.propTypes = {
   allNotes: PropTypes.array,
   markedDates: PropTypes.object,
   streakStats: PropTypes.object,
+  loading: PropTypes.bool,
+  syncStatus: PropTypes.string,
   gridOn: PropTypes.bool,
   onToggleGrid: PropTypes.func,
   onRestore: PropTypes.func,
