@@ -447,7 +447,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       if (mode === 'body' && noteFormat === 'notion') {
         requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
       } else {
-        requestAnimationFrame(() => inputRef.current?.focus());
+        // preventScroll: the command/search input lives in the bottom status bar;
+        // a plain focus() would scroll the page down to it and clip the top.
+        requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
       }
     } else {
       // Leaving an edit mode unmounts the focused input, which would drop DOM
@@ -2193,8 +2195,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       {/* STATUS BAR */}
       <div className="tui-status">
         {mode === 'command' ? (
-          // eslint-disable-next-line jsx-a11y/no-autofocus
-          <span className="tui-search tui-cmdline">:<input ref={inputRef} autoFocus className="tui-input inline" value={cmd}
+          <span className="tui-search tui-cmdline">:<input ref={inputRef} className="tui-input inline" value={cmd}
             onChange={(e) => setCmd(e.target.value)}
             onKeyDown={(e) => {
               e.stopPropagation();
@@ -2204,7 +2205,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             onBlur={() => { setCmd(''); setMode('normal'); }}
             placeholder="export · week · cal · due HH:mm · recur daily · theme · pomo 45 · tag x · goto…" /></span>
         ) : mode === 'search' ? (
-          <span className="tui-search">/<input ref={inputRef} autoFocus className="tui-input inline" value={query}
+          <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">
