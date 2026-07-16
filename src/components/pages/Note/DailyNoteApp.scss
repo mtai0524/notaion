@@ -3,7 +3,7 @@
   /* --dn-avail-h = viewport bottom minus this element's real top edge (measured
      in DailyNoteApp.jsx). Robust to any header height/margins; the 100px-offset
      fallback covers the very first paint before the effect runs. */
-  height: var(--dn-avail-h, calc(100vh - 100px));
+  height: var(--dn-avail-h, calc(100vh - 116px));
   display: flex;
   flex-direction: column;
   overflow: hidden;

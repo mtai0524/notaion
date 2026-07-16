@@ -2241,7 +2241,8 @@ const DailyNoteApp = () => {
       const el = appRootRef.current;
       if (!el) return;
       const top = el.getBoundingClientRect().top; // distance from viewport top
-      el.style.setProperty('--dn-avail-h', `${Math.max(0, Math.round(window.innerHeight - top))}px`);
+      const BOTTOM_GAP = 16; // small gap so bottom popups / status line have room
+      el.style.setProperty('--dn-avail-h', `${Math.max(0, Math.round(window.innerHeight - top - BOTTOM_GAP))}px`);
     };
     apply();
     window.addEventListener('resize', apply);
