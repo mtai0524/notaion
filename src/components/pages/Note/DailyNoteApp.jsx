@@ -1336,6 +1336,7 @@ const DailyNoteApp = () => {
   const [userId, setUserId] = useState(null);
 
   const [viewMode, setViewMode] = useState(() => localStorage.getItem('daily-note-view-mode') || 'tui'); // 'tui' | 'canvas' | 'kanban'
+  const [appFullscreen, setAppFullscreen] = useState(() => localStorage.getItem('daily-note-fullscreen') === 'on'); // hide app header + toolbar
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectionRect, setSelectionRect] = useState(null);
   const canvasRef = React.useRef(null);
@@ -1386,6 +1387,26 @@ const DailyNoteApp = () => {
   // Persist view-preference options so they survive a reload.
   useEffect(() => { localStorage.setItem('daily-note-view-mode', viewMode); }, [viewMode]);
   useEffect(() => { localStorage.setItem('daily-note-grid', String(showGrid)); }, [showGrid]);
+  useEffect(() => {
+    localStorage.setItem('daily-note-fullscreen', appFullscreen ? 'on' : 'off');
+    // The site header lives outside this component (App.jsx); toggle a body class
+    // so CSS can hide it too. Cleaned up on unmount so other routes are unaffected.
+    document.body.classList.toggle('dn-fullscreen', appFullscreen);
+    return () => document.body.classList.remove('dn-fullscreen');
+  }, [appFullscreen]);
+
+  // Ctrl+Shift+F toggles app fullscreen (hides the site header + date toolbar so
+  // the TUI panels fill the screen). Works everywhere, even while editing.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+        e.preventDefault();
+        setAppFullscreen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
   useEffect(() => { localStorage.setItem('daily-note-color', selectedColor); }, [selectedColor]);
 
   const filteredSidebarNotes = allCurrentNotes.filter(n => {
@@ -2257,12 +2278,12 @@ const DailyNoteApp = () => {
       window.removeEventListener('scroll', apply, true);
       clearTimeout(t1); clearTimeout(t2);
     };
-  }, []);
+  }, [appFullscreen]); // re-measure when the header/toolbar show/hide
 
   return (
     <div
       ref={appRootRef}
-      className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''}`}
+      className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''} ${appFullscreen ? 'app-fullscreen' : ''}`}
     >
       <header className="app-toolbar-cyber">
         <div className="date-navigator">

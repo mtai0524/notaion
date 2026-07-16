@@ -1,3 +1,7 @@
+/* App fullscreen hides the site header (rendered in App.jsx, outside this
+   component) via a body class toggled from DailyNoteApp. */
+body.dn-fullscreen .container-nav { display: none; }
+
 .daily-note-app-container-cyber {
   width: 100%;
   /* --dn-avail-h = viewport bottom minus this element's real top edge (measured
@@ -8,6 +12,12 @@
   flex-direction: column;
   overflow: hidden;
   font-family: var(--font-main), 'Inter', sans-serif;
+
+  /* App fullscreen (Ctrl+Shift+F): hide the date toolbar so the TUI fills the
+     screen; the site header is hidden via body.dn-fullscreen below. */
+  &.app-fullscreen {
+    .app-toolbar-cyber { display: none; }
+  }
   transition: background-color 0.3s, color 0.3s;
 
   // Theme Dark — local palette that overrides global vars so the page toggle
