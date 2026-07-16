@@ -2244,10 +2244,6 @@ const DailyNoteApp = () => {
       const BOTTOM_GAP = 16; // small gap so bottom popups / status line have room
       const h = Math.max(0, Math.round(window.innerHeight - top - BOTTOM_GAP));
       el.style.setProperty('--dn-avail-h', `${h}px`);
-      // TEMP debug — remove after fixing
-      window.__dnDbg = `innerH=${window.innerHeight} top=${Math.round(top)} => h=${h} scrollY=${Math.round(window.scrollY)}`;
-      const dbg = document.getElementById('__dn-dbg') || (() => { const d = document.createElement('div'); d.id = '__dn-dbg'; d.style.cssText = 'position:fixed;top:2px;right:2px;z-index:99999;background:#e11d48;color:#fff;font:11px monospace;padding:2px 6px'; document.body.appendChild(d); return d; })();
-      dbg.textContent = window.__dnDbg;
     };
     apply();
     window.addEventListener('resize', apply);

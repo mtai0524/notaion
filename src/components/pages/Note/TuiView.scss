@@ -4,12 +4,11 @@
    `.tui *` rule wins over the global `* { font-family: var(--font-main) }`. */
 .tui {
   position: relative;
-  flex: 1;
-  /* Fill the available height and let the inner panels scroll — the page itself
-     must never scroll. min-height:0 is required so flex children can shrink. */
-  height: 100%;
+  /* Flex child of .note-canvas-cyber (a flex column in TUI view). flex:1 fills
+     the height, min-height:0 lets the inner panels scroll and keeps the bottom
+     status bar visible; the page itself never scrolls. */
+  flex: 1 1 auto;
   min-height: 0;
-  max-height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-color, #fdfcf8);

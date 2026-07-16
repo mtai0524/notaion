@@ -934,11 +934,14 @@
     background-image: none;
 
     /* TUI view fits the viewport: the three panels scroll internally, the page
-       never does. Drop the forced min-height + padding + page scroll. */
+       never does. A flex column here makes .tui a proper flex child so its
+       bottom status bar can never overflow/clip. */
     .daily-note-app-container-cyber.view-tui & {
       min-height: 0;
       padding: 0;
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
     }
 
     .daily-note-app-container-cyber.show-grid & {
