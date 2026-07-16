@@ -2250,10 +2250,16 @@ const DailyNoteApp = () => {
     window.addEventListener('scroll', apply, true);
     const t1 = setTimeout(apply, 60);
     const t2 = setTimeout(apply, 300);
+    // TEMP debug — continuously show what has DOM focus (survives idle, no React re-render needed)
+    const dbgId = setInterval(() => {
+      const a = document.activeElement;
+      const d = document.getElementById('__focus-dbg') || (() => { const x = document.createElement('div'); x.id = '__focus-dbg'; x.style.cssText = 'position:fixed;bottom:2px;right:2px;z-index:99999;background:#e11d48;color:#fff;font:10px monospace;padding:2px 6px'; document.body.appendChild(x); return x; })();
+      d.textContent = `focus=${a?.tagName || '?'}${a?.className ? '.' + String(a.className).split(' ')[0].slice(0, 16) : ''}`;
+    }, 500);
     return () => {
       window.removeEventListener('resize', apply);
       window.removeEventListener('scroll', apply, true);
-      clearTimeout(t1); clearTimeout(t2);
+      clearTimeout(t1); clearTimeout(t2); clearInterval(dbgId);
     };
   }, []);
 

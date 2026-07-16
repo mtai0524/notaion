@@ -1630,8 +1630,25 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       } else {
         t.setSelectionRange(p, p);
       }
+      scrollCaretIntoView(t, p);
     });
     return true;
+  };
+
+  // setSelectionRange moves the caret but never scrolls the textarea, so vim
+  // motions (G, gg, j/k off-screen) leave the caret out of view. Scroll so the
+  // caret's line is visible.
+  const scrollCaretIntoView = (t, pos) => {
+    const cs = window.getComputedStyle(t);
+    let lineH = parseFloat(cs.lineHeight);
+    if (!Number.isFinite(lineH) || lineH <= 0) lineH = (parseFloat(cs.fontSize) || 14) * 1.5;
+    const padTop = parseFloat(cs.paddingTop) || 0;
+    const line = t.value.slice(0, pos).split('\n').length - 1;   // 0-based caret line
+    const caretTop = padTop + line * lineH;
+    const viewTop = t.scrollTop;
+    const viewBottom = viewTop + t.clientHeight;
+    if (caretTop < viewTop) t.scrollTop = caretTop - lineH;                 // above view → scroll up
+    else if (caretTop + lineH > viewBottom) t.scrollTop = caretTop - t.clientHeight + lineH * 2; // below → scroll down
   };
 
   const onInputKeyDown = (e) => {
