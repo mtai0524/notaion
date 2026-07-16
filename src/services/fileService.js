@@ -78,22 +78,37 @@ export const getAllFiles = async () => {
  * @param {string} originalName
  * @param {string} [cloudUrl]
  */
-export const downloadFile = async (savedName, originalName, cloudUrl) => {
-  let blob;
+// Force a Cloudinary URL to download with the original filename by inserting the
+// `fl_attachment` delivery flag after `/upload/`. Works for image/video/raw and
+// avoids CORS (raw PDFs/zips aren't served with CORS headers, so a fetch() would
+// fail — a direct attachment link does not).
+const withAttachment = (cloudUrl, originalName) => {
+  const base = (originalName || 'file').replace(/\.[^./]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'file';
+  const flag = `fl_attachment:${base}`;
+  // insert after the first "/upload/" (or "/fetch/") segment
+  if (/\/upload\//.test(cloudUrl)) return cloudUrl.replace('/upload/', `/upload/${flag}/`);
+  return cloudUrl; // unknown shape — return as-is (anchor download still tries)
+};
 
+export const downloadFile = async (savedName, originalName, cloudUrl) => {
   if (cloudUrl) {
-    const response = await fetch(cloudUrl, { mode: 'cors' });
-    if (!response.ok) {
-      throw new Error(`Tải file từ Cloudinary thất bại (${response.status})`);
-    }
-    blob = await response.blob();
-  } else {
-    const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
-      responseType: 'blob'
-    });
-    blob = new Blob([response.data]);
+    // Cloudinary: navigate to an attachment URL — no CORS fetch, so raw files
+    // (PDF, zip…) download reliably just like images.
+    const link = document.createElement('a');
+    link.href = withAttachment(cloudUrl, originalName);
+    link.setAttribute('download', originalName || '');
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    return;
   }
 
+  // Local/backend file — stream through the API as a blob.
+  const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
+    responseType: 'blob',
+  });
+  const blob = new Blob([response.data]);
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
