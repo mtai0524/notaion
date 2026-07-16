@@ -685,27 +685,28 @@
     &.insert { background: #16a34a; }
     &.visual, &.vline { background: #d97706; } /* orange for visual, like vim */
   }
-  /* unsaved-changes indicator in the editor bar, pushed to the right */
+  /* unsaved-changes indicator — subtle, matches the other muted hints */
   .tui-dirty {
     margin-left: auto;
     flex-shrink: 0;
     font-size: 0.68rem;
-    font-weight: 800;
-    color: #d97706;
+    font-weight: 600;
+    color: var(--text-muted, #9ca3af);
     white-space: nowrap;
   }
-  /* "save changes?" confirm shown on exit-with-unsaved */
+  /* "save changes?" confirm — plain muted text, not a loud red alert */
   .tui-unsaved-prompt {
     font-size: 0.72rem;
-    font-weight: 700;
-    color: #d97706;
+    color: var(--text-muted, #6b7280);
     white-space: nowrap;
     kbd {
       font: inherit;
       font-size: 0.66rem;
+      font-weight: 700;
       padding: 0 4px;
       margin: 0 1px;
-      border: 1px solid currentColor;
+      color: var(--text-color, #111827);
+      border: 1px solid var(--border-color, #d1d5db);
       border-radius: 3px;
     }
   }

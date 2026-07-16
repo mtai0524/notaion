@@ -2204,7 +2204,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     </button>
                     {unsavedPrompt ? (
                       <span className="tui-unsaved-prompt">
-                        Lưu thay đổi? <kbd>y</kbd> lưu · <kbd>n</kbd> bỏ · <kbd>Esc</kbd> tiếp tục
+                        Save changes? <kbd>y</kbd> save · <kbd>n</kbd> discard · <kbd>Esc</kbd> keep editing
                       </span>
                     ) : (
                       <span className="tui-editor-tip">
@@ -2212,7 +2212,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       </span>
                     )}
                     {bodyDirty() && !unsavedPrompt && (
-                      <span className="tui-dirty" title="Có thay đổi chưa lưu (Ctrl+Enter để lưu)">● chưa lưu</span>
+                      <span className="tui-dirty" title="Unsaved changes (Ctrl+Enter to save)">● unsaved</span>
                     )}
                   </div>
                 </div>
