@@ -666,9 +666,11 @@
     }
   }
 
-  /* nvim status badge above the md textarea */
+  /* nvim status badge — sits below the editor (vim-style status line) so it
+     doesn't eat editing space. */
   .ne-vim-badge {
     align-self: flex-start;
+    flex-shrink: 0;
     font-size: 0.62rem;
     font-weight: 800;
     letter-spacing: 1.5px;
@@ -677,6 +679,7 @@
     margin-bottom: 4px;
     background: var(--text-color, #111827);
     color: var(--container-bg, #fdfcf8);
+    &.below { margin-bottom: 0; margin-top: 4px; }
     &.insert { background: #16a34a; }
     &.visual, &.vline { background: #d97706; } /* orange for visual, like vim */
   }

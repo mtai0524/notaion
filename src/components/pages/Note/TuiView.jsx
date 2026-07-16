@@ -488,7 +488,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   };
 
   const editTitle = () => { if (current) { setDraft(current.title || ''); setMode('title'); } };
-  const editBody = () => { if (current) { setDraft(current.content || ''); setMode('body'); } };
+  const editBody = () => { if (current) { setFocus('preview'); setDraft(current.content || ''); setMode('body'); } };
 
   const goToday = () => {
     const [y, m, d] = dateLabel.split('-').map(Number);
@@ -2117,9 +2117,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                           })}
                         </div>
                       )}
-                      {nvim && (
-                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</div>
-                      )}
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in
                           handleMdVim; the caret stays visible + movable. */}
@@ -2149,6 +2146,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                                   onPaste={handleEditorPaste}
                                   placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
                       </div>
+                      {nvim && (
+                        <div className={`ne-vim-badge below ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</div>
+                      )}
                     </div>
                     {livePreview && (
                       <div className="tui-editor-preview" aria-label="Live preview">
