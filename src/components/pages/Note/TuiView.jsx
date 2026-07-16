@@ -235,14 +235,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
   const [showTele, setShowTele] = useState(false); // Telescope finder open
   const leaderRef = useRef(false);              // Space leader pending (list NORMAL)
-  const [focusDbg, setFocusDbg] = useState(''); // TEMP: show what has DOM focus
-  useEffect(() => {
-    const id = setInterval(() => {
-      const el = inputRef.current;
-      setFocusDbg(`act=${document.activeElement?.tagName || '?'}${document.activeElement?.className ? '.' + String(document.activeElement.className).slice(0, 20) : ''} taFocused=${document.activeElement === el} mode=${mode} vim=${mdVim}`);
-    }, 1000);
-    return () => clearInterval(id);
-  }, [mode, mdVim]);
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
@@ -1579,12 +1571,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // consumed by vim (caller should stop). Only active when nvim is on and we're
   // editing the md body.
   const handleMdVim = (e) => {
-    if (typeof document !== 'undefined') {
-      const el0 = inputRef.current;
-      window.__vimDbg = `key=${e.key} nvim=${nvim} fmt=${noteFormat} mode=${mode} vim=${mdVim} focused=${document.activeElement === el0} act=${document.activeElement?.tagName}`;
-      // eslint-disable-next-line no-console
-      console.log('[VIMDBG]', window.__vimDbg);
-    }
     if (!nvim || noteFormat !== 'md' || mode !== 'body') return false;
     const el = inputRef.current;
     if (!el) return false;
@@ -2098,9 +2084,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         </div>
                       )}
                       {nvim && (
-                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --
-                          <span style={{ fontWeight: 400, fontSize: '0.55rem', marginLeft: 8, color: '#e11d48' }}>[{focusDbg}]</span>
-                        </div>
+                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
                       )}
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in

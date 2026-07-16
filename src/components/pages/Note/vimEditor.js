@@ -17,6 +17,18 @@ export const wordBackward = (text, pos) => {
   return Math.max(0, i);
 };
 
+// Offset of the last char of the current/next word (vim `e`). Returns an index
+// ONE PAST that char (exclusive end) so `de` can slice [pos, wordEnd).
+export const wordEnd = (text, pos) => {
+  const n = text.length;
+  let i = Math.min(pos, n);
+  if (i < n && isSpace(text[i])) { while (i < n && isSpace(text[i])) i++; } // skip leading spaces
+  else i++; // move off the current char so `e` advances
+  while (i < n && isSpace(text[i])) i++; // skip spaces between words
+  while (i < n && !isSpace(text[i])) i++; // to end of the word
+  return i;
+};
+
 export const lineStart = (text, pos) => {
   const nl = text.lastIndexOf('\n', Math.max(0, pos - 1));
   return nl === -1 ? 0 : nl + 1;
