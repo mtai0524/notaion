@@ -2232,21 +2232,27 @@ const DailyNoteApp = () => {
     );
   };
 
-  // Measure the site Header (rendered as a sibling above this route) so the app
-  // fills exactly the space below it — no hardcoded header height, no page
-  // scroll. Re-measures on resize.
+  // Fill exactly from this container's own top edge down to the viewport bottom,
+  // so nothing below the header can push the page into scrolling. Using the
+  // element's real top offset is robust to any header height / margins.
   const appRootRef = useRef(null);
   useEffect(() => {
     const apply = () => {
-      const header = document.querySelector('.container-nav');
-      const h = header ? header.getBoundingClientRect().height : 0;
-      appRootRef.current?.style.setProperty('--dn-header-h', `${Math.round(h)}px`);
+      const el = appRootRef.current;
+      if (!el) return;
+      const top = el.getBoundingClientRect().top; // distance from viewport top
+      el.style.setProperty('--dn-avail-h', `${Math.max(0, Math.round(window.innerHeight - top))}px`);
     };
     apply();
     window.addEventListener('resize', apply);
-    // header may mount/layout slightly after us
-    const t = setTimeout(apply, 100);
-    return () => { window.removeEventListener('resize', apply); clearTimeout(t); };
+    window.addEventListener('scroll', apply, true);
+    const t1 = setTimeout(apply, 60);
+    const t2 = setTimeout(apply, 300);
+    return () => {
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('scroll', apply, true);
+      clearTimeout(t1); clearTimeout(t2);
+    };
   }, []);
 
   return (
