@@ -2127,7 +2127,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         {nvim && vimLineNo && (
                           <LineGutter text={draft} textareaRef={inputRef} gutterRef={lineNoRef} />
                         )}
-                        <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
+                        <textarea
+                                  ref={(el) => {
+                                    inputRef.current = el;
+                                    // Focus the editor the moment it mounts (entering body edit),
+                                    // so nvim keys work without first clicking the panel.
+                                    if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+                                  }}
+                                  className={`tui-textarea ${nvim && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                                   onBeforeInput={(e) => {
                                     // Catch ":" even when an IME/keyboard layout swallows the

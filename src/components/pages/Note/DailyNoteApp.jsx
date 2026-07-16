@@ -2244,11 +2244,6 @@ const DailyNoteApp = () => {
       const BOTTOM_GAP = 16; // small gap so bottom popups / status line have room
       const h = Math.max(0, Math.round(window.innerHeight - top - BOTTOM_GAP));
       el.style.setProperty('--dn-avail-h', `${h}px`);
-      // TEMP debug — measure each layer's rendered height
-      const oh = (sel) => { const n = el.querySelector(sel); return n ? Math.round(n.getBoundingClientRect().height) : '∅'; };
-      const msg = `cont=${Math.round(el.getBoundingClientRect().height)} toolbar=${oh('.app-toolbar-cyber')} canvas=${oh('.note-canvas-cyber')} tui=${oh('.tui')} body=${oh('.tui-body')} status=${oh('.tui-status')}`;
-      const dbg = document.getElementById('__dn-dbg') || (() => { const d = document.createElement('div'); d.id = '__dn-dbg'; d.style.cssText = 'position:fixed;top:2px;right:2px;z-index:99999;background:#e11d48;color:#fff;font:10px monospace;padding:2px 6px;max-width:60vw'; document.body.appendChild(d); return d; })();
-      dbg.textContent = msg;
     };
     apply();
     window.addEventListener('resize', apply);
