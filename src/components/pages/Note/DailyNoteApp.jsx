@@ -2237,6 +2237,8 @@ const DailyNoteApp = () => {
   // element's real top offset is robust to any header height / margins.
   const appRootRef = useRef(null);
   useEffect(() => {
+    // Clean up any leftover debug overlays from a previous dev session.
+    ['__focus-dbg', '__dn-dbg'].forEach((id) => document.getElementById(id)?.remove());
     const apply = () => {
       const el = appRootRef.current;
       if (!el) return;
