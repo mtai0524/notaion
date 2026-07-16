@@ -933,17 +933,6 @@
 
     background-image: none;
 
-    /* TUI view fits the viewport: the three panels scroll internally, the page
-       never does. A flex column here makes .tui a proper flex child so its
-       bottom status bar can never overflow/clip. */
-    .daily-note-app-container-cyber.view-tui & {
-      min-height: 0;
-      padding: 0;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
     .daily-note-app-container-cyber.show-grid & {
       background-image:
         linear-gradient(var(--grid-color) 1px, transparent 1px),
@@ -1437,6 +1426,18 @@
       }
     }
   }
+}
+
+/* TUI view: the canvas fills the container as a flex column so the three panels
+   scroll internally and the bottom status bar never clips. (Top-level selector —
+   nesting this inside the container block double-prefixed it and never matched.) */
+.daily-note-app-container-cyber.view-tui .note-canvas-cyber {
+  min-height: 0;
+  flex: 1 1 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── DELETE_SELECTED toolbar button (canvas selection action) ── */
