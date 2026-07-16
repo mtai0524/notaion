@@ -1,6 +1,9 @@
 .daily-note-app-container-cyber {
   width: 100%;
-  height: 100vh;
+  /* App.jsx renders <Header> as a sibling above this route, so 100vh would
+     overflow by the header's height (.navbar 60px + 20px×2 margin ≈ 100px).
+     Fill only the space left below the header so the page never scrolls. */
+  height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
