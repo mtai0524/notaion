@@ -232,6 +232,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
   const vimStateRef = useRef({ register: null, undo: [], redo: [], anchor: null, count: '' }); // persistent vim state
+  const [unsavedPrompt, setUnsavedPrompt] = useState(false); // "save changes?" confirm on exit
   const lineNoRef = useRef(null);               // nvim line-number gutter (scroll-synced)
   const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
   const [showTele, setShowTele] = useState(false); // Telescope finder open
@@ -971,6 +972,20 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const saveBody = () => { if (current) doUpdate(current.id, { content: draft }); };
   const quitBody = () => { setMode('normal'); setDraft(''); setSlash(null); };
   const bodyDirty = () => !!current && draft !== (current.content || '');
+
+  // "Save changes?" confirm shown when exiting the editor with unsaved changes.
+  // y = save & exit · n = discard & exit · Esc/c = keep editing.
+  useEffect(() => {
+    if (!unsavedPrompt) return undefined;
+    const onKey = (e) => {
+      const k = e.key.toLowerCase();
+      if (k === 'y' || k === 'enter') { e.preventDefault(); e.stopPropagation(); saveBody(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }
+      else if (k === 'n') { e.preventDefault(); e.stopPropagation(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }
+      else if (k === 'escape' || k === 'c') { e.preventDefault(); e.stopPropagation(); setUnsavedPrompt(false); requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true })); }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [unsavedPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
   const execEditorEx = (raw) => {
     const c = (raw || '').trim();
     setEdCmd(null);
@@ -1653,6 +1668,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     } else if (e.key === 'Escape') {
       e.preventDefault();
       if (mode === 'search') { setQuery(''); setMode('normal'); }
+      else if (mode === 'body' && bodyDirty()) { setUnsavedPrompt(true); } // ask before discarding
       else { setMode('normal'); setDraft(''); }
     }
   };
@@ -2186,10 +2202,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                             }}>
                       📎 Attach
                     </button>
-                    <span className="tui-editor-tip">
-                      {uploading ? <Spinner label="uploading" /> : 'Ctrl+Enter to save · Esc to cancel'}
-                    </span>
-                    {bodyDirty() && <span className="tui-dirty" title="Có thay đổi chưa lưu (Ctrl+Enter để lưu)">● chưa lưu</span>}
+                    {unsavedPrompt ? (
+                      <span className="tui-unsaved-prompt">
+                        Lưu thay đổi? <kbd>y</kbd> lưu · <kbd>n</kbd> bỏ · <kbd>Esc</kbd> tiếp tục
+                      </span>
+                    ) : (
+                      <span className="tui-editor-tip">
+                        {uploading ? <Spinner label="uploading" /> : 'Ctrl+Enter to save · Esc to cancel'}
+                      </span>
+                    )}
+                    {bodyDirty() && !unsavedPrompt && (
+                      <span className="tui-dirty" title="Có thay đổi chưa lưu (Ctrl+Enter để lưu)">● chưa lưu</span>
+                    )}
                   </div>
                 </div>
               ) : (

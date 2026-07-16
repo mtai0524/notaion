@@ -689,10 +689,25 @@
   .tui-dirty {
     margin-left: auto;
     flex-shrink: 0;
-    font-size: 0.66rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    color: #d97706;
+    white-space: nowrap;
+  }
+  /* "save changes?" confirm shown on exit-with-unsaved */
+  .tui-unsaved-prompt {
+    font-size: 0.72rem;
     font-weight: 700;
     color: #d97706;
     white-space: nowrap;
+    kbd {
+      font: inherit;
+      font-size: 0.66rem;
+      padding: 0 4px;
+      margin: 0 1px;
+      border: 1px solid currentColor;
+      border-radius: 3px;
+    }
   }
   .tui-input { flex: 1; min-width: 0; }
   /* inside .tui-editor-wrap (a flex column) the textarea grows to fill it */
