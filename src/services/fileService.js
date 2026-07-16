@@ -72,16 +72,17 @@ export const getAllFiles = async () => {
 };
 
 /**
- * Download a file. Nếu là file Cloudinary (có cloudUrl) thì mở trực tiếp,
- * còn không thì gọi backend như cũ.
+ * Download a file.
+ * - Cloudinary files (có cloudUrl): tải trực tiếp từ Cloudinary bằng cờ
+ *   `fl_attachment` để giữ tên file gốc. Yêu cầu account Cloudinary đã bỏ chặn
+ *   "PDF and ZIP files" (Settings → Security), nếu không sẽ trả 401.
+ * - File cục bộ: tải qua backend như cũ.
  * @param {string} savedName
  * @param {string} originalName
  * @param {string} [cloudUrl]
  */
 // Force a Cloudinary URL to download with the original filename by inserting the
-// `fl_attachment` delivery flag after `/upload/`. Works for image/video/raw and
-// avoids CORS (raw PDFs/zips aren't served with CORS headers, so a fetch() would
-// fail — a direct attachment link does not).
+// `fl_attachment` delivery flag after `/upload/`. Works for image/video/raw.
 const withAttachment = (cloudUrl, originalName) => {
   const base = (originalName || 'file').replace(/\.[^./]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_') || 'file';
   const flag = `fl_attachment:${base}`;
@@ -91,38 +92,32 @@ const withAttachment = (cloudUrl, originalName) => {
 };
 
 export const downloadFile = async (savedName, originalName, cloudUrl) => {
-  // Cloudinary files: stream through the backend proxy. Fetching the Cloudinary
-  // URL directly in the browser 401s for restricted media (PDF/ZIP), so the
-  // server fetches it for us and streams it back.
-  const endpoint = cloudUrl
-    ? `/api/files/download/cloud?savedName=${encodeURIComponent(savedName)}`
-    : `/api/files/download/${encodeURIComponent(savedName)}`;
-
-  try {
-    const response = await axiosInstance.get(endpoint, { responseType: 'blob' });
-    const blob = new Blob([response.data]);
-    const url = window.URL.createObjectURL(blob);
+  // Cloudinary files: tải thẳng từ Cloudinary (không qua backend).
+  if (cloudUrl) {
     const link = document.createElement('a');
-    link.href = url;
+    link.href = withAttachment(cloudUrl, originalName);
     link.setAttribute('download', originalName || '');
+    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
     link.parentNode.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  } catch (err) {
-    // Fallback: if the proxy isn't deployed yet, try the direct attachment URL.
-    if (cloudUrl) {
-      const link = document.createElement('a');
-      link.href = withAttachment(cloudUrl, originalName);
-      link.setAttribute('download', originalName || '');
-      link.rel = 'noopener';
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      return;
-    }
-    throw err;
+    return;
   }
+
+  // File cục bộ: tải qua backend, trả blob để đặt đúng tên file.
+  const response = await axiosInstance.get(
+    `/api/files/download/${encodeURIComponent(savedName)}`,
+    { responseType: 'blob' }
+  );
+  const blob = new Blob([response.data]);
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', originalName || '');
+  document.body.appendChild(link);
+  link.click();
+  link.parentNode.removeChild(link);
+  window.URL.revokeObjectURL(url);
 };
 
 /**
