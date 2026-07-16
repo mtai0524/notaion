@@ -91,32 +91,38 @@ const withAttachment = (cloudUrl, originalName) => {
 };
 
 export const downloadFile = async (savedName, originalName, cloudUrl) => {
-  if (cloudUrl) {
-    // Cloudinary: navigate to an attachment URL — no CORS fetch, so raw files
-    // (PDF, zip…) download reliably just like images.
+  // Cloudinary files: stream through the backend proxy. Fetching the Cloudinary
+  // URL directly in the browser 401s for restricted media (PDF/ZIP), so the
+  // server fetches it for us and streams it back.
+  const endpoint = cloudUrl
+    ? `/api/files/download/cloud/${savedName}`
+    : `/api/files/download/${savedName}`;
+
+  try {
+    const response = await axiosInstance.get(endpoint, { responseType: 'blob' });
+    const blob = new Blob([response.data]);
+    const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = withAttachment(cloudUrl, originalName);
+    link.href = url;
     link.setAttribute('download', originalName || '');
-    link.rel = 'noopener';
     document.body.appendChild(link);
     link.click();
     link.parentNode.removeChild(link);
-    return;
+    window.URL.revokeObjectURL(url);
+  } catch (err) {
+    // Fallback: if the proxy isn't deployed yet, try the direct attachment URL.
+    if (cloudUrl) {
+      const link = document.createElement('a');
+      link.href = withAttachment(cloudUrl, originalName);
+      link.setAttribute('download', originalName || '');
+      link.rel = 'noopener';
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      return;
+    }
+    throw err;
   }
-
-  // Local/backend file — stream through the API as a blob.
-  const response = await axiosInstance.get(`/api/files/download/${savedName}`, {
-    responseType: 'blob',
-  });
-  const blob = new Blob([response.data]);
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', originalName);
-  document.body.appendChild(link);
-  link.click();
-  link.parentNode.removeChild(link);
-  window.URL.revokeObjectURL(url);
 };
 
 /**
