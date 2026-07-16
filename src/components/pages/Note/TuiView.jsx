@@ -2150,9 +2150,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                                   onPaste={handleEditorPaste}
                                   placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
                       </div>
-                      {nvim && (
-                        <div className={`ne-vim-badge below ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</div>
-                      )}
                     </div>
                     {livePreview && (
                       <div className="tui-editor-preview" aria-label="Live preview">
@@ -2172,6 +2169,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       placeholder="w · wq · q · q! · x · e! · noh" /></div>
                   )}
                   <div className="tui-editor-bar">
+                    {nvim && (
+                      <span className={`ne-vim-badge inline ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</span>
+                    )}
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
                            onChange={(e) => {
                              if (e.target.files?.length) uploadFiles(e.target.files);
@@ -2189,6 +2189,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     <span className="tui-editor-tip">
                       {uploading ? <Spinner label="uploading" /> : 'Ctrl+Enter to save · Esc to cancel'}
                     </span>
+                    {bodyDirty() && <span className="tui-dirty" title="Có thay đổi chưa lưu (Ctrl+Enter để lưu)">● chưa lưu</span>}
                   </div>
                 </div>
               ) : (
