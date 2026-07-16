@@ -680,8 +680,19 @@
     background: var(--text-color, #111827);
     color: var(--container-bg, #fdfcf8);
     &.below { margin-bottom: 0; margin-top: 4px; }
+    /* inline: sits in the editor bar next to Attach (same row) */
+    &.inline { align-self: center; margin: 0; }
     &.insert { background: #16a34a; }
     &.visual, &.vline { background: #d97706; } /* orange for visual, like vim */
+  }
+  /* unsaved-changes indicator in the editor bar, pushed to the right */
+  .tui-dirty {
+    margin-left: auto;
+    flex-shrink: 0;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: #d97706;
+    white-space: nowrap;
   }
   .tui-input { flex: 1; min-width: 0; }
   /* inside .tui-editor-wrap (a flex column) the textarea grows to fill it */
