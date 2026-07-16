@@ -676,6 +676,7 @@
     background: var(--text-color, #111827);
     color: var(--container-bg, #fdfcf8);
     &.insert { background: #16a34a; }
+    &.visual, &.vline { background: #d97706; } /* orange for visual, like vim */
   }
   .tui-input { flex: 1; min-width: 0; }
   /* inside .tui-editor-wrap (a flex column) the textarea grows to fill it */

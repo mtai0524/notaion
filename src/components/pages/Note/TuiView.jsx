@@ -231,6 +231,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
+  const vimStateRef = useRef({ register: null, undo: [], redo: [], anchor: null, count: '' }); // persistent vim state
   const lineNoRef = useRef(null);               // nvim line-number gutter (scroll-synced)
   const [edCmd, setEdCmd] = useState(null);     // nvim Ex command-line in the editor (null = closed)
   const [showTele, setShowTele] = useState(false); // Telescope finder open
@@ -1245,9 +1246,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // (Notion-style — works mid-line too); typing filters it. A "/" glued to a
   // word or another "/" (URLs like https://…) does NOT trigger it.
   const handleBodyChange = (e) => {
-    // In nvim NORMAL, block all text mutation (IME/paste bypass keydown
+    // In nvim NORMAL/VISUAL, block all text mutation (IME/paste bypass keydown
     // preventDefault) — snap the textarea back to the current draft.
-    if (nvim && noteFormat === 'md' && mode === 'body' && mdVim === 'normal') {
+    if (nvim && noteFormat === 'md' && mode === 'body' && mdVim !== 'insert') {
       const el = e.target;
       const p = el.selectionStart;
       requestAnimationFrame(() => { if (el) { el.value = draft; el.setSelectionRange(p, p); } });
@@ -1578,17 +1579,41 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (mdVim === 'normal' && (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey)))) return false;
     // NORMAL ":" opens the Ex command-line.
     if (mdVim === 'normal' && e.key === ':') { e.preventDefault(); suppressBlurRef.current = true; setEdCmd(''); return true; }
-    const state = { text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current };
+    // Seed text/pos live from the DOM (mouse may have moved the caret); carry the
+    // persistent bits (register/undo/redo/anchor/count) from the ref.
+    const vs = vimStateRef.current;
+    const state = {
+      text: draft, pos: el.selectionStart ?? draft.length, mode: mdVim, pending: mdVimPending.current,
+      register: vs.register, undo: vs.undo, redo: vs.redo, anchor: vs.anchor, count: vs.count,
+    };
     const next = vimTextareaKey(state, e);
     if (next === null) return false;       // INSERT typing → let the textarea handle it
-    if (next.noop) { mdVimPending.current = null; e.preventDefault(); return true; } // swallow unmapped NORMAL keys
+    if (next.noop) { mdVimPending.current = null; vs.count = ''; e.preventDefault(); return true; } // swallow unmapped NORMAL keys
     e.preventDefault();
     mdVimPending.current = next.pending || null;
+    // persist the vim buffers
+    vs.register = next.register ?? vs.register;
+    vs.undo = next.undo ?? vs.undo;
+    vs.redo = next.redo ?? vs.redo;
+    vs.anchor = next.anchor ?? null;
+    vs.count = next.count || '';
     if (next.mode !== mdVim) setMdVim(next.mode);
     if (next.text !== draft) setDraft(next.text);
-    // apply caret after the value updates
+    // apply caret (or selection, in visual) after the value updates
     const p = next.pos;
-    requestAnimationFrame(() => { const t = inputRef.current; if (t) { t.focus(); t.setSelectionRange(p, p); } });
+    const isVisual = next.mode === 'visual' || next.mode === 'vline';
+    const a = next.anchor;
+    requestAnimationFrame(() => {
+      const t = inputRef.current;
+      if (!t) return;
+      t.focus();
+      if (isVisual && a != null) {
+        const lo = Math.min(a, p); const hi = Math.max(a, p) + 1; // inclusive
+        t.setSelectionRange(lo, Math.min(hi, t.value.length));
+      } else {
+        t.setSelectionRange(p, p);
+      }
+    });
     return true;
   };
 
@@ -1700,19 +1725,26 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   ];
   if (nvim) {
     helpSections.push({
-      title: 'NVIM (editor)',
+      title: 'NVIM · modes & motion',
       rows: [
-        ['i / a / A', 'insert · after · line-end'],
-        ['o / O', 'open line below / above'],
+        ['i a A · o O', 'insert · open line below/above'],
+        ['h j k l · ←↓↑→', 'move · e / w / b words · 0 / $ line'],
+        ['gg / G', 'first / last · 3j 5w count prefix'],
+        ['v / V', 'visual char / line → d y c'],
         ['Esc', 'back to NORMAL'],
-        ['h j k l · ←↓↑→', 'move (arrows work too)'],
-        ['w / b · 0 / $', 'word fwd/back · line start/end'],
-        ['gg / G', 'first / last'],
-        ['x · dd', 'delete char · delete line/block'],
-        [': → :w :wq', 'save · save + quit'],
-        [':q · :q!', 'quit (blocked if dirty) · force'],
-        [':set number', 'toggle line numbers'],
-        ['Space f · Ctrl+p', 'Telescope finder'],
+      ],
+    });
+    helpSections.push({
+      title: 'NVIM · edit',
+      rows: [
+        ['x · r{c} · ~', 'del char · replace · flip case'],
+        ['dd cc yy', 'delete / change / yank line'],
+        ['dw de d$ D', 'delete word / to word-end / to EOL'],
+        ['cw C', 'change word / to EOL (→ insert)'],
+        ['yy yw · p / P', 'yank · paste after / before'],
+        ['u · Ctrl+r', 'undo · redo'],
+        [': :w :wq :q!', 'save · save-quit · force-quit'],
+        [':set number · Ctrl+p', 'line numbers · Telescope'],
       ],
     });
   }
@@ -2084,7 +2116,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         </div>
                       )}
                       {nvim && (
-                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim.toUpperCase()} --</div>
+                        <div className={`ne-vim-badge ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</div>
                       )}
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in
@@ -2093,14 +2125,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         {nvim && vimLineNo && (
                           <LineGutter text={draft} textareaRef={inputRef} gutterRef={lineNoRef} />
                         )}
-                        <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim === 'normal' ? 'vim-normal' : ''}`} value={draft}
+                        <textarea ref={inputRef} className={`tui-textarea ${nvim && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                                   onBeforeInput={(e) => {
                                     // Catch ":" even when an IME/keyboard layout swallows the
                                     // keydown — opens the Ex command-line in NORMAL.
-                                    if (nvim && mdVim === 'normal') {
+                                    if (nvim && mdVim !== 'insert') {
                                       e.preventDefault();
-                                      if (e.data === ':') { suppressBlurRef.current = true; setEdCmd(''); }
+                                      if (mdVim === 'normal' && e.data === ':') { suppressBlurRef.current = true; setEdCmd(''); }
                                     }
                                   }}
                                   onFocus={() => { suppressBlurRef.current = false; }}

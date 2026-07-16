@@ -129,3 +129,60 @@ describe('vimTextarea — count prefix', () => {
     expect(r.count).toBeFalsy();
   });
 });
+
+describe('vimTextarea — yank / paste', () => {
+  it('yy then p pastes the line below', () => {
+    const r = seq({ text: 'aaa\nbbb', pos: 0, mode: 'normal' }, ['y', 'y', 'p']);
+    expect(r.text).toBe('aaa\naaa\nbbb');
+  });
+  it('dd stores the line; p pastes it back below', () => {
+    // dd removes "b" (yanking it), p pastes it below the current line "c".
+    const r = seq({ text: 'a\nb\nc', pos: 2, mode: 'normal' }, ['d', 'd', 'p']);
+    expect(r.text).toBe('a\nc\nb');
+  });
+  it('yw then P pastes before the caret (charwise)', () => {
+    const r = seq({ text: 'foo bar', pos: 0, mode: 'normal' }, ['y', 'w', 'P']);
+    expect(r.text).toBe('foo foo bar');
+  });
+});
+
+describe('vimTextarea — undo / redo', () => {
+  it('u undoes an x, Ctrl+r redoes it', () => {
+    const afterX = seq({ text: 'abc', pos: 1, mode: 'normal' }, ['x']);
+    expect(afterX.text).toBe('ac');
+    const afterU = seq(afterX, ['u']);
+    expect(afterU.text).toBe('abc');
+    const afterRedo = seq(afterU, [['r', { ctrlKey: true }]]);
+    expect(afterRedo.text).toBe('ac');
+  });
+});
+
+describe('vimTextarea — visual mode', () => {
+  it('v + l + d deletes the charwise selection', () => {
+    const r = seq({ text: 'hello', pos: 0, mode: 'normal' }, ['v', 'l', 'd']);
+    expect(r.text).toBe('llo');   // "he" removed (inclusive)
+    expect(r.mode).toBe('normal');
+  });
+  it('V + d deletes the whole line', () => {
+    const r = seq({ text: 'aaa\nbbb', pos: 1, mode: 'normal' }, ['V', 'd']);
+    expect(r.text).toBe('bbb');
+  });
+  it('v + w + y yanks then p pastes', () => {
+    const y = seq({ text: 'foo bar', pos: 0, mode: 'normal' }, ['v', 'w', 'y']);
+    expect(y.mode).toBe('normal');
+    const p = seq(y, ['p']);
+    expect(p.text).toContain('foo ');
+  });
+});
+
+describe('vimTextarea — r / ~', () => {
+  it('r{char} replaces one character', () => {
+    const r = seq({ text: 'cat', pos: 0, mode: 'normal' }, ['r', 'b']);
+    expect(r.text).toBe('bat');
+  });
+  it('~ flips case and advances', () => {
+    const r = seq({ text: 'abc', pos: 0, mode: 'normal' }, ['~']);
+    expect(r.text).toBe('Abc');
+    expect(r.pos).toBe(1);
+  });
+});
