@@ -1,9 +1,9 @@
 .daily-note-app-container-cyber {
   width: 100%;
   /* App.jsx renders <Header> as a sibling above this route, so 100vh would
-     overflow by the header's height (.navbar 60px + 20px×2 margin ≈ 100px).
-     Fill only the space left below the header so the page never scrolls. */
-  height: calc(100vh - 100px);
+     overflow by the header's height. --dn-header-h is measured at runtime
+     (see DailyNoteApp.jsx); the 100px fallback covers the first paint. */
+  height: calc(100vh - var(--dn-header-h, 100px));
   display: flex;
   flex-direction: column;
   overflow: hidden;

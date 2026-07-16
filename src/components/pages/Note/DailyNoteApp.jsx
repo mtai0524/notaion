@@ -2232,8 +2232,26 @@ const DailyNoteApp = () => {
     );
   };
 
+  // Measure the site Header (rendered as a sibling above this route) so the app
+  // fills exactly the space below it — no hardcoded header height, no page
+  // scroll. Re-measures on resize.
+  const appRootRef = useRef(null);
+  useEffect(() => {
+    const apply = () => {
+      const header = document.querySelector('.container-nav');
+      const h = header ? header.getBoundingClientRect().height : 0;
+      appRootRef.current?.style.setProperty('--dn-header-h', `${Math.round(h)}px`);
+    };
+    apply();
+    window.addEventListener('resize', apply);
+    // header may mount/layout slightly after us
+    const t = setTimeout(apply, 100);
+    return () => { window.removeEventListener('resize', apply); clearTimeout(t); };
+  }, []);
+
   return (
     <div
+      ref={appRootRef}
       className={`daily-note-app-container-cyber theme-${theme} view-${viewMode} ${showGrid ? 'show-grid' : ''}`}
     >
       <header className="app-toolbar-cyber">
