@@ -2127,9 +2127,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         <textarea
                                   ref={(el) => {
                                     inputRef.current = el;
-                                    // Focus the editor the moment it mounts (entering body edit),
-                                    // so nvim keys work without first clicking the panel.
-                                    if (el && document.activeElement !== el) el.focus({ preventScroll: true });
+                                    // Focus the editor when it mounts (entering body edit) so nvim
+                                    // keys work without clicking. But NOT while the ":" command line
+                                    // is open — it owns focus, and stealing it would close it.
+                                    if (el && edCmd === null && document.activeElement !== el
+                                        && !document.activeElement?.closest?.('.ed-cmdline')) {
+                                      el.focus({ preventScroll: true });
+                                    }
                                   }}
                                   className={`tui-textarea ${nvim && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
