@@ -95,8 +95,8 @@ export const downloadFile = async (savedName, originalName, cloudUrl) => {
   // URL directly in the browser 401s for restricted media (PDF/ZIP), so the
   // server fetches it for us and streams it back.
   const endpoint = cloudUrl
-    ? `/api/files/download/cloud/${savedName}`
-    : `/api/files/download/${savedName}`;
+    ? `/api/files/download/cloud?savedName=${encodeURIComponent(savedName)}`
+    : `/api/files/download/${encodeURIComponent(savedName)}`;
 
   try {
     const response = await axiosInstance.get(endpoint, { responseType: 'blob' });
