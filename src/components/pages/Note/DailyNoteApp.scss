@@ -930,6 +930,14 @@
 
     background-image: none;
 
+    /* TUI view fits the viewport: the three panels scroll internally, the page
+       never does. Drop the forced min-height + padding + page scroll. */
+    .daily-note-app-container-cyber.view-tui & {
+      min-height: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
     .daily-note-app-container-cyber.show-grid & {
       background-image:
         linear-gradient(var(--grid-color) 1px, transparent 1px),

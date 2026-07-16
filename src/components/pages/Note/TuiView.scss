@@ -5,9 +5,11 @@
 .tui {
   position: relative;
   flex: 1;
-  /* parent .note-canvas-cyber is not a flex container, so fill the viewport
-     explicitly (canvas is 100vh-100px tall with 2rem padding) */
-  min-height: calc(100vh - 170px);
+  /* Fill the available height and let the inner panels scroll — the page itself
+     must never scroll. min-height:0 is required so flex children can shrink. */
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-color, #fdfcf8);
