@@ -9,6 +9,7 @@ import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
+import Cookies from 'js-cookie';
 import Telescope from './Telescope';
 import LineGutter from './LineGutter';
 import Spinner from './Spinner';
@@ -88,7 +89,8 @@ const FONT_FAMILIES = [
   { key: 'consolas', label: 'Consolas / Menlo', stack: "Consolas, Menlo, monospace" },
   { key: 'system', label: 'System mono', stack: 'ui-monospace, SFMono-Regular, monospace' },
 ];
-const OPT_TABS = ['theme', 'font', 'options'];
+const OPT_TABS = ['theme', 'font', 'editor', 'view', 'pomo'];
+const AUTOLIST_KEY = 'daily-note-autolist';        // Enter tự nối bullet/checkbox
 // swatches for the appearance popup: [background, accent]
 const THEME_SWATCH = {
   default: ['#fdfcf8', '#111827'],
@@ -246,6 +248,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const nvimOn = nvim && !touchUi;
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
+  const [autoList, setAutoList] = useState(() => lsGet(AUTOLIST_KEY, 'on') === 'on'); // Enter continues lists
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
   const vimStateRef = useRef({ register: null, undo: [], redo: [], anchor: null, count: '' }); // persistent vim state
   const [unsavedPrompt, setUnsavedPrompt] = useState(false); // "save changes?" confirm on exit
@@ -812,42 +815,65 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // Data-driven OPTIONS tab: each row is {kbd, label, value, on, run}. Adding a
   // row here automatically updates j/k nav, 1-9 quick-pick and the render.
   // Rebuilt every render (cheap) so each `run` closes over fresh state.
-  const optionRows = [
+  const toggleAutoList = () => setAutoList((v) => {
+    lsSet(AUTOLIST_KEY, !v ? 'on' : 'off');
+    flashMsg(`auto-continue lists: ${!v ? 'on' : 'off'}`);
+    return !v;
+  });
+
+  // Đăng nhập/đăng xuất ngay trong TUI — fullscreen ẩn header (nơi có avatar)
+  // nên cần lối vào ở đây. Điều hướng full-page: /login tự lo phần còn lại.
+  const authed = !!Cookies.get('token');
+  const gotoLogin = () => { window.location.assign('/login'); };
+  const doLogout = () => { Cookies.remove('token'); window.location.assign('/login'); };
+
+  // Settings rows, grouped per tab: EDITOR (soạn thảo) · VIEW (hiển thị) ·
+  // POMO (pomodoro). Cùng shape { kbd, label, value, on, run, danger? }.
+  const editorRows = [
     { kbd: 'F', label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
       run: toggleNoteFormat },
     { kbd: 'V', label: 'nvim mode — modal editing trong editor', value: nvim ? 'on' : 'off', on: nvim,
       run: toggleNvim },
     { kbd: 'N', label: 'nvim line numbers — số dòng bên trái', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
       run: toggleLineNo },
-    { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
-      run: toggleZen },
-    { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
-      run: () => onToggleGrid?.() },
+    { kbd: '↵', label: 'auto-continue lists — Enter tự nối bullet/checkbox', value: autoList ? 'on' : 'off', on: autoList,
+      run: toggleAutoList },
     { kbd: 'P', label: 'live preview — soạn + xem markdown song song', value: livePreview ? 'on' : 'off', on: livePreview,
       run: () => setLivePreview((v) => !v) },
     { kbd: '?', label: 'markdown cheatsheet — bảng cú pháp', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
       run: () => setShowCheatsheet((v) => !v) },
+  ];
+  const viewRows = [
+    { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
+      run: toggleZen },
+    { kbd: '⛶', label: 'fullscreen — ẩn header + toolbar', value: fullscreenOn ? 'on' : 'off', on: !!fullscreenOn,
+      run: () => onToggleFullscreen?.() },
+    { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
+      run: () => onToggleGrid?.() },
     { kbd: 'S', label: 'sort — thứ tự sắp xếp note', value: sortBy, on: true,
       run: cycleSort },
+    { kbd: '⟲', label: 'reset to defaults', value: '', on: false, danger: true,
+      run: resetAppearance },
+  ];
+  const pomoRows = [
+    { kbd: '🍅', label: 'pomodoro length', value: `${pomoCfg.focusMin}m`, on: true,
+      run: () => setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]) },
     { kbd: '♪', label: 'pomodoro sound — chuông + tick', value: pomoCfg.soundOn ? 'on' : 'off', on: pomoCfg.soundOn,
       run: toggleSound },
     { kbd: '~', label: 'ambient — rain / lofi / waves', value: pomoCfg.ambient || 'off', on: (pomoCfg.ambient || 'off') !== 'off',
       run: cycleAmbient },
-    { kbd: '🍅', label: 'pomodoro length', value: `${pomoCfg.focusMin}m`, on: true,
-      run: () => setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]) },
-    { kbd: '⟲', label: 'reset to defaults', value: '', on: false, danger: true,
-      run: resetAppearance },
   ];
+  const TAB_ROWS = { editor: editorRows, view: viewRows, pomo: pomoRows };
 
   // Rows per popup tab (for j/k navigation): font tab has the families + the
-  // custom row; options tab is the optionRows list.
-  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : optionRows.length;
+  // custom row; the settings tabs use their row lists.
+  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : (TAB_ROWS[optTab] || []).length;
   const optActivate = (sel) => {
     if (optTab === 'theme') setTheme(TUI_THEMES[sel]);
     else if (optTab === 'font') {
       if (sel < FONT_FAMILIES.length) applyFontFam(FONT_FAMILIES[sel]);
       else setFontDraft(tuiFontFam.key === 'custom' ? tuiFontFam.label : '');
-    } else optionRows[sel]?.run();
+    } else (TAB_ROWS[optTab] || [])[sel]?.run();
   };
 
   const doArchive = () => {
@@ -1756,7 +1782,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     // Enter khi đang gõ trên dòng danh sách → tự nối bullet/checkbox/số thứ tự
     // (Enter trên mục rỗng thì kết thúc danh sách). Chỉ khi thật sự đang gõ:
     // nvim tắt hoặc đang INSERT — NORMAL không sửa text.
-    if (e.key === 'Enter' && mode === 'body' && !slash && !(e.ctrlKey || e.metaKey)
+    if (e.key === 'Enter' && mode === 'body' && !slash && autoList && !(e.ctrlKey || e.metaKey)
         && (!nvimOn || mdVim === 'insert')) {
       const el = e.target;
       if (el.selectionStart === el.selectionEnd) {
@@ -2500,6 +2526,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     onClick={(e) => { e.stopPropagation(); setShowTheme(true); }}>
               ◐ {tuiTheme}
             </button>
+            {authed ? (
+              <button type="button" className="tui-auth-chip" title="Log out"
+                      onClick={(e) => { e.stopPropagation(); doLogout(); }}>⏻</button>
+            ) : (
+              <button type="button" className="tui-auth-chip login" title="Log in"
+                      onClick={(e) => { e.stopPropagation(); gotoLogin(); }}>⎆ login</button>
+            )}
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
                     onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus({ preventScroll: true }); }}>?</button>
           </>
@@ -2600,7 +2633,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         );
       })()}
 
-      {/* ── Options popup (T / click ◐) — tabbed: THEME · FONT · OPTIONS ── */}
+      {/* ── Options popup (T / click ◐) — tabbed: THEME · FONT · EDITOR · VIEW · POMO ── */}
       {showTheme && (
         <div className="tui-week-overlay" onClick={() => setShowTheme(false)}>
           <div className="tui-opt-box" onClick={(e) => e.stopPropagation()}>
@@ -2681,7 +2714,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 </>
               )}
 
-              {optTab === 'options' && optionRows.map((row, i) => (
+              {(TAB_ROWS[optTab] || []).map((row, i) => (
                 <button key={row.label} type="button"
                         className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${row.on ? 'on' : ''} ${row.danger ? 'danger' : ''}`}
                         onMouseEnter={() => setOptSel(i)} onClick={() => { setOptSel(i); optActivate(i); }}>
@@ -2847,6 +2880,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <button type="button" onClick={() => { setSheetOpen(null); if (pomodoro) stopPomodoro(); else startPomodoro(); }}>
                 🍅 {pomodoro ? 'Stop pomodoro' : 'Pomodoro'}</button>
               <button type="button" onClick={() => { setSheetOpen(null); setMode('help'); }}>? Help</button>
+              {authed ? (
+                <button type="button" className="danger" onClick={doLogout}>⏻ Log out</button>
+              ) : (
+                <button type="button" onClick={gotoLogin}>⎆ Log in</button>
+              )}
             </>)}
           </div>
         </div>

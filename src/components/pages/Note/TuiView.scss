@@ -1715,8 +1715,11 @@
    --radius-sm, --box-shadow (-4px 4px hard offset), ink borders ── */
 .tui-opt-box {
   width: min(480px, 94vw);
-  max-height: 86vh;
-  overflow: auto;
+  /* kích thước CỐ ĐỊNH — đổi tab không làm hộp co giãn; body tự cuộn */
+  height: min(560px, 86vh);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: var(--container-bg, #fdfcf8);
   color: var(--text-color, #111827);
   border: var(--global-border-width, 2px) var(--global-border-style, solid) var(--border-color, #111827);
@@ -1732,6 +1735,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
     padding: 10px 14px;
     /* light, ink-outlined header — matches every other Notaion dialog */
     background: var(--container-bg, #fdfcf8);
@@ -1765,8 +1769,10 @@
   .tui-opt-tabs {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     padding: 12px 14px 0;
+    flex-shrink: 0;
 
     button {
       padding: 3px 14px;
@@ -1799,7 +1805,12 @@
     }
   }
 
-  .tui-opt-body { padding: 12px 14px 14px; }
+  .tui-opt-body {
+    padding: 12px 14px 14px;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+  }
 
   .tui-opt-row {
     display: flex;
@@ -1905,6 +1916,7 @@
   }
 
   .tui-opt-foot {
+    flex-shrink: 0;
     padding: 8px 14px;
     border-top: 1.5px dashed var(--border-color, #d1d5db);
     font-size: 0.66rem;
@@ -2195,5 +2207,27 @@
      (sticky bottom) không bị đẩy xuống dưới bàn phím. */
   .tui {
     max-height: var(--tui-vvh, 100dvh);
+  }
+}
+
+/* ── auth chip trong status bar — login/logout không cần header ── */
+.tui .tui-auth-chip {
+  flex-shrink: 0;
+  padding: 0 7px;
+  background: transparent;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 999px;
+  color: var(--text-muted, #6b7280);
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover { color: #dc2626; border-color: #dc2626; }
+
+  &.login {
+    color: var(--text-color, #111827);
+    border-color: var(--text-color, #111827);
+    &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
   }
 }
