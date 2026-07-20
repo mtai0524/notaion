@@ -2336,3 +2336,59 @@
     &:hover { color: var(--text-color, #111827); text-decoration: underline; }
   }
 }
+
+/* OAuth nhanh trong panel SIGN IN */
+.tui .tui-login .tui-login-oauth {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+
+  button {
+    flex: 1;
+    min-width: 0;
+    min-height: 30px;
+    padding: 4px 6px;
+    background: var(--container-bg, #fff);
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-color, #111827);
+    font: inherit;
+    font-size: 0.66rem;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+
+    &:hover { color: var(--container-bg, #fff); }
+    &.gh:hover { background: #24292f; border-color: #24292f; }
+    &.dc:hover { background: #5865f2; border-color: #5865f2; }
+  }
+}
+
+/* auth chip khi đã đăng nhập: tên + nút tắt tách rời (không bấm nhầm) */
+.tui .tui-auth-chip.authed {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 3px 0 8px;
+  border: 1px solid var(--border-color, #d1d5db);
+  border-radius: 999px;
+  color: var(--text-muted, #6b7280);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: default;
+
+  .out {
+    padding: 0 5px;
+    background: transparent;
+    border: none;
+    border-left: 1px solid var(--border-color, #d1d5db);
+    color: inherit;
+    font: inherit;
+    line-height: 1.6;
+    cursor: pointer;
+    &:hover { color: #dc2626; }
+  }
+}

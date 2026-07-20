@@ -838,7 +838,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   }, []);
   const authed = !!authUser;
   const gotoLogin = () => { window.location.assign('/login'); };
-  const doLogout = () => { Cookies.remove('token'); window.location.assign('/login'); };
+  // Đăng xuất nhanh: xóa token rồi ở lại Daily Note (reload để SignalR/Header
+  // khởi động lại sạch) — không đá người dùng sang trang login.
+  const doLogout = () => { Cookies.remove('token'); window.location.reload(); };
+  const oauthLogin = (provider) => {
+    window.location.href = `${axiosInstance.defaults.baseURL}/api/account/${provider}-login`;
+  };
 
   /* ── Đăng nhập nhanh ngay trong TUI (không rời trang) ──
      Gọi cùng endpoint như trang /login; thành công thì reload để mọi thứ
@@ -2090,9 +2095,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <div className="tui-login">
                 <div className="tui-side-h">SIGN IN</div>
                 {quickLogin === null ? (
-                  <button type="button" className="tui-login-open" onClick={() => { setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
-                    ⎆ đăng nhập nhanh
-                  </button>
+                  <>
+                    <button type="button" className="tui-login-open" onClick={() => { setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
+                      ⎆ đăng nhập nhanh
+                    </button>
+                    <div className="tui-login-oauth">
+                      <button type="button" className="gh" title="Đăng nhập bằng GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
+                      <button type="button" className="dc" title="Đăng nhập bằng Discord" onClick={() => oauthLogin('discord')}>Discord</button>
+                    </div>
+                  </>
                 ) : (
                   <form className="tui-login-form"
                         onSubmit={(e) => { e.preventDefault(); submitQuickLogin(); }}
@@ -2111,6 +2122,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         {loginBusy ? <Spinner label="…" /> : 'Enter ⏎'}
                       </button>
                       <button type="button" onClick={() => { setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }}>Esc</button>
+                    </div>
+                    <div className="tui-login-oauth">
+                      <button type="button" className="gh" title="Đăng nhập bằng GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
+                      <button type="button" className="dc" title="Đăng nhập bằng Discord" onClick={() => oauthLogin('discord')}>Discord</button>
                     </div>
                     <button type="button" className="tui-login-full" onClick={gotoLogin}>trang đăng nhập đầy đủ →</button>
                   </form>
@@ -2596,11 +2611,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               ◐ {tuiTheme}
             </button>
             {authed ? (
-              <button type="button" className="tui-auth-chip" title={`Logged in as ${authUser} — click to log out`}
-                      onClick={(e) => { e.stopPropagation(); doLogout(); }}>
+              <span className="tui-auth-chip authed" title={`Logged in as ${authUser}`}>
                 <span className="who">@{authUser}</span>
-                <span className="ico">⏻</span>
-              </button>
+                <button type="button" className="out" title="Log out"
+                        onClick={(e) => { e.stopPropagation(); doLogout(); }}>⏻</button>
+              </span>
             ) : (
               <button type="button" className="tui-auth-chip login" title="Log in (quick form in FOLDERS)"
                       onClick={(e) => {
