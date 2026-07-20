@@ -42,6 +42,7 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
   const [vimMode, setVimMode] = useState('normal'); // nvim: 'normal' | 'insert'
   const [vimIndex, setVimIndex] = useState(0);       // block the vim cursor is on
   const pendingSeq = useRef(null);                   // 'g' or 'd' waiting for the 2nd key
+  const rootElRef = useRef(null);                    // the .notion-editor container (owns nvim keys)
 
   // Markdown we last emitted. When our own onChange feeds `content` right back,
   // it equals this — so we must NOT re-parse (re-parsing mints new block ids,
@@ -217,12 +218,21 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
         e.preventDefault();
         setVimMode('normal');
         vimEl()?.blur();
+        // blur() drops focus to <body>; hand it back to the container or the
+        // next NORMAL key goes nowhere.
+        rootElRef.current?.focus({ preventScroll: true });
       }
       return; // typing handled by the editable
     }
     // NORMAL
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === 'Escape') { e.preventDefault(); pendingSeq.current = null; return; }
+    // Esc in NORMAL only cancels a half-typed sequence (gg/dd). With nothing
+    // pending, let it bubble so the TUI can close the editor — otherwise the
+    // note becomes impossible to exit with the keyboard.
+    if (e.key === 'Escape') {
+      if (pendingSeq.current) { e.preventDefault(); pendingSeq.current = null; }
+      return;
+    }
     if (e.key === ':') { e.preventDefault(); onEx?.(); return; } // Ex command-line
     // Arrow keys behave like h/j/k/l.
     const arrow = { ArrowLeft: 'h', ArrowRight: 'l', ArrowDown: 'j', ArrowUp: 'k' }[e.key];
@@ -231,6 +241,18 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
       if (handleNormalKey(key)) e.preventDefault();
     }
   };
+
+  // With nvim on, the container owns the modal keys — it must actually hold
+  // DOM focus or NORMAL→INSERT never fires. Claim it on mount / when nvim
+  // turns on, unless the user is already typing in a block.
+  useEffect(() => {
+    if (!nvim) return;
+    const el = rootElRef.current;
+    if (!el) return;
+    const a = document.activeElement;
+    if (a && (a.isContentEditable || a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) return;
+    if (!el.contains(a)) el.focus({ preventScroll: true });
+  }, [nvim]);
 
   // Keep vimIndex in range as blocks come and go; reset to normal when nvim off.
   useEffect(() => {
@@ -270,7 +292,11 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
     <DragDropContext onDragEnd={onDragEnd}>
       <Droppable droppableId="notion-editor">
         {(dp) => (
-          <div className={`notion-editor ${nvim ? `vim vim-${vimMode}` : ''}`} ref={dp.innerRef} {...dp.droppableProps}
+          <div className={`notion-editor ${nvim ? `vim vim-${vimMode}` : ''}`}
+               ref={(el) => {
+                 dp.innerRef(el);
+                 rootElRef.current = el;
+               }} {...dp.droppableProps}
                tabIndex={nvim ? 0 : undefined}
                onMouseUp={endSweep} onMouseLeave={endSweep}
                onKeyDownCapture={onVimKeyDown}>

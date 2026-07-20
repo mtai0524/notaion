@@ -468,8 +468,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       if (mode === 'body' && noteFormat === 'md' && nvimOn) { setMdVim('normal'); mdVimPending.current = null; }
       // Notion body has no textarea input — keep focus on the TUI root so
       // Esc / Ctrl+Enter (save/cancel) work; clicking a block takes over editing.
+      // With nvim on the editor container owns the modal keys instead: it
+      // focuses itself on mount, so don't yank focus back here (that made
+      // NORMAL→INSERT impossible).
       if (mode === 'body' && noteFormat === 'notion') {
-        requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
+        if (!nvimOn) requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
       } else {
         // preventScroll: the command/search input lives in the bottom status bar;
         // a plain focus() would scroll the page down to it and clip the top.
@@ -1492,6 +1495,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     // save/cancel keys here; block-internal keys (typing, Enter) are handled by
     // the contentEditable blocks and never reach this far.
     if (mode === 'body' && noteFormat === 'notion') {
+      // With nvim on, Esc belongs to the editor first: its capture handler
+      // flips INSERT→NORMAL and calls preventDefault. The event still bubbles
+      // here, so consuming it again would exit the note on the very same
+      // press — honour defaultPrevented and let the next Esc do the exit.
+      if (e.key === 'Escape' && nvimOn && e.defaultPrevented) return;
       if (e.key === 'Escape') { e.preventDefault(); commit(); return; }
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); commit(); return; }
       return;
@@ -2048,11 +2056,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
            if (nvimOn && leaderRef.current) leaderRef.current = false; // any other key clears the leader
          }}
          onClick={(e) => {
-           // Don't steal focus from an editable target — inputs, textareas, or a
-           // contentEditable block (Notion mode). Otherwise clicking a block
-           // yanks focus back to the root and the caret never lands.
+           // Don't steal focus from an editable target — inputs, textareas, a
+           // contentEditable block, or the Notion editor container itself
+           // (it's tabIndex-focusable and owns the nvim keys; stealing focus
+           // from it makes NORMAL→INSERT impossible). Otherwise clicking a
+           // block yanks focus back to the root and the caret never lands.
            const t = e.target;
-           const editable = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable || t.closest?.('[contenteditable="true"]');
+           const editable = t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable
+             || t.closest?.('[contenteditable="true"]') || t.closest?.('.notion-editor');
            if (!editable) rootRef.current?.focus({ preventScroll: true });
          }}>
       {/* Mobile: one panel at a time — this switcher only renders under 768px (CSS) */}
