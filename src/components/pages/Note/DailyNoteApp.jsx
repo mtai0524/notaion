@@ -2963,6 +2963,8 @@ const DailyNoteApp = () => {
               onGoToDate={(d) => setCurrentDate(d)}
               loading={loading}
               syncStatus={syncStatus}
+              fullscreenOn={appFullscreen}
+              onToggleFullscreen={() => setAppFullscreen((v) => !v)}
             />
           ) : viewMode === 'canvas' ? (
             <div className="notes-canvas">

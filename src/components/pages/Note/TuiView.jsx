@@ -216,7 +216,8 @@ const PomoWave = ({ color }) => {
 PomoWave.propTypes = { color: PropTypes.string.isRequired };
 
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate, loading, syncStatus }) => {
+  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate, loading, syncStatus,
+  fullscreenOn, onToggleFullscreen }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -2806,6 +2807,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <button type="button" className="danger"
                       onClick={() => { setSheetOpen(null); setMode('delete'); }}>🗑 Delete</button>
             </>) : (<>
+              <button type="button" onClick={() => { onToggleFullscreen?.(); setSheetOpen(null); }}>
+                ⛶ Fullscreen {fullscreenOn ? 'off' : 'on'}</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowTele(true); }}>🔍 Search notes</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowCal(true); }}>📅 Calendar</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowWeek(true); }}>📊 Week review</button>
@@ -2842,6 +2845,8 @@ TuiView.propTypes = {
   onToggleGrid: PropTypes.func,
   onRestore: PropTypes.func,
   onGoToDate: PropTypes.func,
+  fullscreenOn: PropTypes.bool,
+  onToggleFullscreen: PropTypes.func,
 };
 
 export default TuiView;
