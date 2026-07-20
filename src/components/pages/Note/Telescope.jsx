@@ -52,7 +52,7 @@ const Telescope = ({ sources, onClose }) => {
             <button key={s.key} type="button" className={`tele-tab ${i === srcIdx ? 'on' : ''}`}
                     onClick={() => { setSrcIdx(i); setSel(0); }}>{s.label}</button>
           ))}
-          <span className="tele-tabhint">Tab đổi nguồn</span>
+          <span className="tele-tabhint">Tab switches source</span>
         </div>
         <div className="tele-prompt">
           <span className="tele-caret">›</span>

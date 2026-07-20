@@ -427,7 +427,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       }
       if (pomoCfg.soundOn) playSound('focus-end');
       try {
-        if (Notification?.permission === 'granted') new Notification('🍅 Pomodoro xong!', { body: 'Nghỉ một chút nhé ☕' });
+        if (Notification?.permission === 'granted') new Notification('🍅 Pomodoro done!', { body: 'Take a short break ☕' });
       } catch { /* ignore */ }
       const long = p.cycle % LONG_EVERY === 0;
       setPomodoro({
@@ -437,7 +437,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     } else {
       if (pomoCfg.soundOn) playSound('break-end');
       try {
-        if (Notification?.permission === 'granted') new Notification('☕ Hết giờ nghỉ!', { body: 'Vào phiên tập trung tiếp theo 🍅' });
+        if (Notification?.permission === 'granted') new Notification('☕ Break is over!', { body: 'Next focus session 🍅' });
       } catch { /* ignore */ }
       const focusSecs = pomoCfg.focusMin * 60;
       setPomodoro({
@@ -854,7 +854,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const submitQuickLogin = async () => {
     const id = (quickLogin?.id || '').trim();
     const pw = quickLogin?.pw || '';
-    if (!id || !pw) { setLoginErr('nhập tài khoản và mật khẩu'); return; }
+    if (!id || !pw) { setLoginErr('enter your account and password'); return; }
     setLoginBusy(true); setLoginErr(null);
     try {
       const res = await axiosInstance.post('/api/account/SignIn', { email: id, username: id, password: pw });
@@ -863,7 +863,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       Cookies.set('token', token, { expires: 7 });
       window.location.reload();
     } catch (err) {
-      setLoginErr(err?.response?.data?.message || 'sai tài khoản hoặc mật khẩu');
+      setLoginErr(err?.response?.data?.message || 'wrong account or password');
       setLoginBusy(false);
     }
   };
@@ -873,25 +873,25 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const editorRows = [
     { kbd: 'F', label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
       run: toggleNoteFormat },
-    { kbd: 'V', label: 'nvim mode — modal editing trong editor', value: nvim ? 'on' : 'off', on: nvim,
+    { kbd: 'V', label: 'nvim mode — modal editing in the editor', value: nvim ? 'on' : 'off', on: nvim,
       run: toggleNvim },
-    { kbd: 'N', label: 'nvim line numbers — số dòng bên trái', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
+    { kbd: 'N', label: 'nvim line numbers — gutter on the left', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
       run: toggleLineNo },
-    { kbd: '↵', label: 'auto-continue lists — Enter tự nối bullet/checkbox', value: autoList ? 'on' : 'off', on: autoList,
+    { kbd: '↵', label: 'auto-continue lists — Enter continues bullets/checkboxes', value: autoList ? 'on' : 'off', on: autoList,
       run: toggleAutoList },
-    { kbd: 'P', label: 'live preview — soạn + xem markdown song song', value: livePreview ? 'on' : 'off', on: livePreview,
+    { kbd: 'P', label: 'live preview — edit and rendered markdown side by side', value: livePreview ? 'on' : 'off', on: livePreview,
       run: () => setLivePreview((v) => !v) },
-    { kbd: '?', label: 'markdown cheatsheet — bảng cú pháp', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
+    { kbd: '?', label: 'markdown cheatsheet — syntax reference', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
       run: () => setShowCheatsheet((v) => !v) },
   ];
   const viewRows = [
-    { kbd: 'z', label: 'zen mode — chỉ hiện panel NOTES', value: zen ? 'on' : 'off', on: zen,
+    { kbd: 'z', label: 'zen mode — show only the NOTES panel', value: zen ? 'on' : 'off', on: zen,
       run: toggleZen },
-    { kbd: '⛶', label: 'fullscreen — ẩn header + toolbar', value: fullscreenOn ? 'on' : 'off', on: !!fullscreenOn,
+    { kbd: '⛶', label: 'fullscreen — hide header and toolbar', value: fullscreenOn ? 'on' : 'off', on: !!fullscreenOn,
       run: () => onToggleFullscreen?.() },
-    { kbd: '#', label: 'canvas grid — lưới nền (view canvas)', value: gridOn ? 'on' : 'off', on: !!gridOn,
+    { kbd: '#', label: 'canvas grid — background grid (canvas view)', value: gridOn ? 'on' : 'off', on: !!gridOn,
       run: () => onToggleGrid?.() },
-    { kbd: 'S', label: 'sort — thứ tự sắp xếp note', value: sortBy, on: true,
+    { kbd: 'S', label: 'sort — note ordering', value: sortBy, on: true,
       run: cycleSort },
     { kbd: '⟲', label: 'reset to defaults', value: '', on: false, danger: true,
       run: resetAppearance },
@@ -899,7 +899,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const pomoRows = [
     { kbd: '🍅', label: 'pomodoro length', value: `${pomoCfg.focusMin}m`, on: true,
       run: () => setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]) },
-    { kbd: '♪', label: 'pomodoro sound — chuông + tick', value: pomoCfg.soundOn ? 'on' : 'off', on: pomoCfg.soundOn,
+    { kbd: '♪', label: 'pomodoro sound — chime and tick', value: pomoCfg.soundOn ? 'on' : 'off', on: pomoCfg.soundOn,
       run: toggleSound },
     { kbd: '~', label: 'ambient — rain / lofi / waves', value: pomoCfg.ambient || 'off', on: (pomoCfg.ambient || 'off') !== 'off',
       run: cycleAmbient },
@@ -1448,7 +1448,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     } catch (err) {
       console.error('[TUI-UPLOAD-ERROR]', err);
       // eslint-disable-next-line no-alert
-      alert('Upload thất bại — thử lại.');
+      alert('Upload failed — please try again.');
     } finally {
       setUploading(false);
       suppressBlurRef.current = false;
@@ -1877,7 +1877,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['i', 'edit body · Ctrl+Enter saves'],
         ['x · p', 'toggle done · pin'],
         ['y · d→y', 'duplicate · delete'],
-        ['A → y', 'archive → 📦 (hỏi trước)'],
+        ['A → y', 'archive → 📦 (asks first)'],
       ],
     },
     {
@@ -2097,11 +2097,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 {quickLogin === null ? (
                   <>
                     <button type="button" className="tui-login-open" onClick={() => { setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
-                      ⎆ đăng nhập nhanh
+                      ⎆ quick sign in
                     </button>
                     <div className="tui-login-oauth">
-                      <button type="button" className="gh" title="Đăng nhập bằng GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
-                      <button type="button" className="dc" title="Đăng nhập bằng Discord" onClick={() => oauthLogin('discord')}>Discord</button>
+                      <button type="button" className="gh" title="Sign in with GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
+                      <button type="button" className="dc" title="Sign in with Discord" onClick={() => oauthLogin('discord')}>Discord</button>
                     </div>
                   </>
                 ) : (
@@ -2114,7 +2114,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
                     <input autoFocus value={quickLogin.id} placeholder="email / username" autoComplete="username"
                            onChange={(e) => setQuickLogin((s) => ({ ...s, id: e.target.value }))} />
-                    <input type="password" value={quickLogin.pw} placeholder="mật khẩu" autoComplete="current-password"
+                    <input type="password" value={quickLogin.pw} placeholder="password" autoComplete="current-password"
                            onChange={(e) => setQuickLogin((s) => ({ ...s, pw: e.target.value }))} />
                     {loginErr && <div className="tui-login-err">{loginErr}</div>}
                     <div className="tui-login-btns">
@@ -2124,10 +2124,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       <button type="button" onClick={() => { setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }}>Esc</button>
                     </div>
                     <div className="tui-login-oauth">
-                      <button type="button" className="gh" title="Đăng nhập bằng GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
-                      <button type="button" className="dc" title="Đăng nhập bằng Discord" onClick={() => oauthLogin('discord')}>Discord</button>
+                      <button type="button" className="gh" title="Sign in with GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
+                      <button type="button" className="dc" title="Sign in with Discord" onClick={() => oauthLogin('discord')}>Discord</button>
                     </div>
-                    <button type="button" className="tui-login-full" onClick={gotoLogin}>trang đăng nhập đầy đủ →</button>
+                    <button type="button" className="tui-login-full" onClick={gotoLogin}>full sign-in page →</button>
                   </form>
                 )}
               </div>
@@ -2324,13 +2324,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     <span className="tui-fmt-sep" />
                     <button type="button"
                             className={`tui-fmt-toggle ${livePreview ? 'on' : ''}`}
-                            title="Live preview — xem markdown hiển thị ra sao"
+                            title="Live preview — see how the markdown renders"
                             onMouseDown={(e) => { e.preventDefault(); setLivePreview((v) => !v); }}>
                       👁 Preview
                     </button>
                     <button type="button"
                             className={`tui-fmt-toggle ${showCheatsheet ? 'on' : ''}`}
-                            title="Cú pháp Markdown"
+                            title="Markdown syntax"
                             onMouseDown={(e) => { e.preventDefault(); setShowCheatsheet((v) => !v); }}>
                       ? Markdown
                     </button>
@@ -2338,17 +2338,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
                   {showCheatsheet && (
                     <div className="tui-cheatsheet">
-                      <div><code>**đậm**</code> → <strong>đậm</strong></div>
-                      <div><code>*nghiêng*</code> → <em>nghiêng</em></div>
-                      <div><code># Tiêu đề</code> → tiêu đề lớn</div>
-                      <div><code>- mục</code> → gạch đầu dòng</div>
-                      <div><code>- [ ] việc</code> → checklist</div>
-                      <div><code>&gt; trích</code> → trích dẫn</div>
-                      <div><code>`mã`</code> → mã lệnh</div>
-                      <div><code>[chữ](url)</code> → liên kết</div>
+                      <div><code>**bold**</code> → <strong>bold</strong></div>
+                      <div><code>*italic*</code> → <em>italic</em></div>
+                      <div><code># Heading</code> → large heading</div>
+                      <div><code>- item</code> → bullet list</div>
+                      <div><code>- [ ] task</code> → checklist</div>
+                      <div><code>&gt; quote</code> → block quote</div>
+                      <div><code>`code`</code> → inline code</div>
+                      <div><code>[text](url)</code> → link</div>
                       <div><code>&gt; [!note] …</code> → 💡 callout (info · warning · success · danger)</div>
-                      <div><code>&gt; [&gt;] Tiêu đề</code> → ▸ toggle (dòng con thụt 4 dấu cách)</div>
-                      <div className="tui-cheatsheet-tip">Không cần nhớ — cứ viết bình thường, hoặc bấm nút định dạng / gõ <kbd>/</kbd> (kiểu Notion).</div>
+                      <div><code>&gt; [&gt;] Title</code> → ▸ toggle (indent child lines by 4 spaces)</div>
+                      <div className="tui-cheatsheet-tip">No need to memorise — just type normally, use the format buttons, or press <kbd>/</kbd> (Notion-style).</div>
                     </div>
                   )}
 
@@ -2401,7 +2401,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                                   onFocus={() => { suppressBlurRef.current = false; }}
                                   onScroll={(e) => { if (lineNoRef.current) lineNoRef.current.scrollTop = e.target.scrollTop; }}
                                   onPaste={handleEditorPaste}
-                                  placeholder="Viết ghi chú… (viết bình thường được — hoặc bấm nút định dạng · gõ / để chèn khối · dán ảnh/file)" />
+                                  placeholder="Write your note… (plain text is fine — or use the format buttons · press / to insert a block · paste images/files)" />
                       </div>
                     </div>
                     {livePreview && (
@@ -2690,8 +2690,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                   : `FOCUS #${pomodoro.cycle} · ${focusNote?.title || 'deep work'}${pomodoro.running ? '' : ' · PAUSED'}`}
               </div>
               <div className="tui-pomo-sub">
-                hôm nay: {'🍅'.repeat(Math.min(todayCount, 8))}{todayCount > 8 ? ` ×${todayCount}` : todayCount === 0 ? '—' : ''}
-                {' · '}sau {LONG_EVERY - ((pomodoro.cycle - 1) % LONG_EVERY)} 🍅 nữa được nghỉ dài
+                today: {'🍅'.repeat(Math.min(todayCount, 8))}{todayCount > 8 ? ` ×${todayCount}` : todayCount === 0 ? '—' : ''}
+                {' · '}{LONG_EVERY - ((pomodoro.cycle - 1) % LONG_EVERY)} 🍅 until the long break
               </div>
               <div className="tui-pomo-ctl">
                 <button type="button" onClick={togglePomodoro}>
@@ -2714,7 +2714,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <div className="tui-pomo-cfg tui-pomo-amb">
                 {AMBIENT_KINDS.map((k) => (
                   <button key={k} type="button" className={pomoCfg.ambient === k ? 'on' : ''}
-                          title={`Ambient: ${k} — m để đổi, bấm lại để tắt`}
+                          title={`Ambient: ${k} — press m to cycle, click again to turn off`}
                           onClick={() => setAmbientKind(k)}>
                     {k === 'rain' ? '⛆ rain' : k === 'lofi' ? '♫ lofi' : '≈ waves'}
                   </button>
@@ -2775,7 +2775,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     <div className="tui-opt-row sel tui-opt-custom">
                       <kbd>✎</kbd>
                       {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                      <input autoFocus value={fontDraft} placeholder="tên font trên máy bạn, vd: Iosevka"
+                      <input autoFocus value={fontDraft} placeholder="a font installed on your machine, e.g. Iosevka"
                              onChange={(e) => setFontDraft(e.target.value)}
                              onKeyDown={(e) => {
                                e.stopPropagation();
@@ -2800,7 +2800,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     <span className="pct">{Math.round(tuiFont * 100)}%</span>
                     <button type="button" title="Larger (+)" onClick={() => stepFont(1)}>+</button>
                     <span className="sample" style={{ fontSize: `${tuiFont}rem`, fontFamily: tuiFontFam.stack }}>
-                      xin chào — the quick fox 🦊
+                      hello — the quick brown fox 🦊
                     </span>
                   </div>
                 </>

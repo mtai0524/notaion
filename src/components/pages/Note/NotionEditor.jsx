@@ -283,12 +283,12 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
                   <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''} ${selected.has(b.id) ? 'selected' : ''}`}
                        ref={dr.innerRef} {...dr.draggableProps}
                        onMouseEnter={() => extendSweep(i)}>
-                    <span className="ne-gutter" title="Giữ & quét để chọn nhiều block rồi Delete"
+                    <span className="ne-gutter" title="Hold and drag to select multiple blocks, then Delete"
                           onMouseDown={(e) => { e.preventDefault(); startSweep(i); }} />
-                    <span className="ne-handle" title="Kéo để đổi thứ tự" {...dr.dragHandleProps}>⠿</span>
+                    <span className="ne-handle" title="Drag to reorder" {...dr.dragHandleProps}>⠿</span>
                     <button type="button" className="ne-add" title="Insert / turn into block"
                             onClick={() => openSlash(i)}>+</button>
-                    <button type="button" className="ne-del" title="Xóa block này"
+                    <button type="button" className="ne-del" title="Delete this block"
                             onClick={() => removeAt(i)}>🗑</button>
                     <div className={`ne-block ${nvim && vimIndex === i ? 'vim-cur' : ''}`} data-vi={i}>
                       <NotionBlock

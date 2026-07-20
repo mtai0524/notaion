@@ -80,7 +80,7 @@ describe('NotionEditor', () => {
   it('deletes a single block via its per-block delete button', () => {
     const onChange = vi.fn();
     render(<NotionEditor content={'one\ntwo\nthree'} onChange={onChange} />);
-    const delButtons = screen.getAllByTitle('Xóa block này');
+    const delButtons = screen.getAllByTitle('Delete this block');
     fireEvent.click(delButtons[1]); // delete "two"
     expect(onChange).toHaveBeenCalledWith('one\nthree');
   });
