@@ -10,6 +10,7 @@ import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './
 import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
 import Cookies from 'js-cookie';
+import jwt_decode from 'jwt-decode';
 import Telescope from './Telescope';
 import LineGutter from './LineGutter';
 import Spinner from './Spinner';
@@ -823,7 +824,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   // Đăng nhập/đăng xuất ngay trong TUI — fullscreen ẩn header (nơi có avatar)
   // nên cần lối vào ở đây. Điều hướng full-page: /login tự lo phần còn lại.
-  const authed = !!Cookies.get('token');
+  // Tên hiển thị lấy từ claim "name" của JWT, giống Header.
+  const authUser = useMemo(() => {
+    const t = Cookies.get('token');
+    if (!t) return null;
+    try {
+      const d = jwt_decode(t);
+      return d['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name']
+        || d['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+        || 'user';
+    } catch { return 'user'; }
+  }, []);
+  const authed = !!authUser;
   const gotoLogin = () => { window.location.assign('/login'); };
   const doLogout = () => { Cookies.remove('token'); window.location.assign('/login'); };
 
@@ -2527,8 +2539,11 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               ◐ {tuiTheme}
             </button>
             {authed ? (
-              <button type="button" className="tui-auth-chip" title="Log out"
-                      onClick={(e) => { e.stopPropagation(); doLogout(); }}>⏻</button>
+              <button type="button" className="tui-auth-chip" title={`Logged in as ${authUser} — click to log out`}
+                      onClick={(e) => { e.stopPropagation(); doLogout(); }}>
+                <span className="who">@{authUser}</span>
+                <span className="ico">⏻</span>
+              </button>
             ) : (
               <button type="button" className="tui-auth-chip login" title="Log in"
                       onClick={(e) => { e.stopPropagation(); gotoLogin(); }}>⎆ login</button>
@@ -2881,7 +2896,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 🍅 {pomodoro ? 'Stop pomodoro' : 'Pomodoro'}</button>
               <button type="button" onClick={() => { setSheetOpen(null); setMode('help'); }}>? Help</button>
               {authed ? (
-                <button type="button" className="danger" onClick={doLogout}>⏻ Log out</button>
+                <button type="button" className="danger" onClick={doLogout}>⏻ Log out — @{authUser}</button>
               ) : (
                 <button type="button" onClick={gotoLogin}>⎆ Log in</button>
               )}

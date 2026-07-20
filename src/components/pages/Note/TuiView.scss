@@ -775,8 +775,9 @@
     font-size: 0.8rem;
     white-space: nowrap;
     overflow: hidden;
-    /* keep the right-edge stats clear of the app's floating chat button */
-    padding-right: 52px;
+    /* keep the right-edge controls clear of the app's floating chat button
+       (60px wide, sits 15px from the viewport edge — measured, not guessed) */
+    padding-right: 84px;
 
     .tui-badge {
       flex-shrink: 0;
@@ -2230,4 +2231,20 @@
     border-color: var(--text-color, #111827);
     &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
   }
+}
+
+/* auth chip: tên người dùng + nút tắt */
+.tui .tui-auth-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  .who {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ico { opacity: 0.75; }
 }
