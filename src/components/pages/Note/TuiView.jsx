@@ -4,6 +4,7 @@ import { format, addDays, addMonths, subMonths, startOfMonth, startOfWeek, isSam
 import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadTextFile } from './noteUtils';
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
+import { mobileActionContext, swipePanelTarget } from './tuiMobile';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
@@ -228,6 +229,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
+  // Màn hình cảm ứng không có Esc — NORMAL mode là bẫy kẹt. Tắt hành vi nvim
+  // trên coarse pointer; setting nvim của user vẫn được giữ cho desktop.
+  const coarsePointer = useMemo(() => window.matchMedia?.('(pointer: coarse)')?.matches ?? false, []);
+  const nvimOn = nvim && !coarsePointer;
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
@@ -261,6 +266,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [flash, setFlash] = useState(null); // transient status-bar message
   const [showWeek, setShowWeek] = useState(false); // weekly review overlay
   const [showCal, setShowCal] = useState(false); // keyboard-driven calendar (c)
+  const [sheetOpen, setSheetOpen] = useState(null); // mobile action sheet: null | 'tools' | 'note'
   const [calCursor, setCalCursor] = useState(() => new Date()); // day highlighted in the calendar
   const rootRef = useRef(null);
   const inputRef = useRef(null);
@@ -275,6 +281,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // While true, the textarea's onBlur must NOT commit/close the editor —
   // opening the file dialog blurs the textarea, and we want to come back to it.
   const suppressBlurRef = useRef(false);
+  const lpRef = useRef(null); // long-press trên note row: { timer, x, y, fired }
 
   notesRef.current = notes;
   pomoMetaRef.current = { overlayOpen: pomoOverlay, soundOn: pomoCfg.soundOn };
@@ -442,7 +449,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') {
       // Entering the md body with nvim on starts in NORMAL (like nvim opening a file).
-      if (mode === 'body' && noteFormat === 'md' && nvim) { setMdVim('normal'); mdVimPending.current = null; }
+      if (mode === 'body' && noteFormat === 'md' && nvimOn) { setMdVim('normal'); mdVimPending.current = null; }
       // Notion body has no textarea input — keep focus on the TUI root so
       // Esc / Ctrl+Enter (save/cancel) work; clicking a block takes over editing.
       if (mode === 'body' && noteFormat === 'notion') {
@@ -578,6 +585,64 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   /* ── Pin / sort ── */
   const togglePin = () => { if (current) doUpdate(current.id, { pinned: !current.pinned }); };
   const cycleSort = () => setSortBy((s) => SORTS[(SORTS.findIndex(x => x.key === s) + 1) % SORTS.length].key);
+
+  /* Long-press (~500ms, không rê quá 10px) trên một note row mở action sheet
+     cho đúng note đó. Tap thường vẫn drill vào preview như cũ. */
+  const lpStart = (i, e) => {
+    const t = e.touches?.[0];
+    if (!t) return;
+    lpRef.current = {
+      x: t.clientX, y: t.clientY, fired: false,
+      timer: setTimeout(() => {
+        if (!lpRef.current) return;
+        lpRef.current.fired = true;
+        setNoteIndex(i);
+        setSheetOpen('note');
+      }, 500),
+    };
+  };
+  const lpMove = (e) => {
+    const s = lpRef.current;
+    const t = e.touches?.[0];
+    if (!s || !t) return;
+    if (Math.abs(t.clientX - s.x) > 10 || Math.abs(t.clientY - s.y) > 10) {
+      clearTimeout(s.timer);
+      lpRef.current = null;
+    }
+  };
+  const lpEnd = () => { if (lpRef.current) clearTimeout(lpRef.current.timer); };
+
+  /* Vuốt ngang trên vùng panel → chuyển FOLDERS ↔ NOTES ↔ PREVIEW.
+     Không kích hoạt khi đang soạn (xung đột chọn text / cuộn textarea). */
+  const swipeRef = useRef(null); // { x, y } — điểm touchstart trên .tui-body
+  const bodySwipeStart = (e) => {
+    const t = e.touches?.[0];
+    swipeRef.current = t ? { x: t.clientX, y: t.clientY } : null;
+  };
+  const bodySwipeEnd = (e) => {
+    const s = swipeRef.current;
+    swipeRef.current = null;
+    if (!s || mode === 'body' || mode === 'title') return;
+    const t = e.changedTouches?.[0];
+    if (!t) return;
+    const target = swipePanelTarget(focus, t.clientX - s.x, t.clientY - s.y);
+    if (target) setFocus(target);
+  };
+
+  // Bàn phím ảo mobile: visualViewport.height = phần màn hình còn thấy được.
+  // Đặt vào --tui-vvh để CSS co editor + giữ thanh action nổi trên bàn phím.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const apply = () => rootRef.current?.style.setProperty('--tui-vvh', `${vv.height}px`);
+    apply();
+    vv.addEventListener('resize', apply);
+    vv.addEventListener('scroll', apply);
+    return () => {
+      vv.removeEventListener('resize', apply);
+      vv.removeEventListener('scroll', apply);
+    };
+  }, []);
 
   /* ── Multi-select / bulk actions ── */
   const toggleSelect = (id) => setSelectedIds((ids) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
@@ -1265,7 +1330,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const handleBodyChange = (e) => {
     // In nvim NORMAL/VISUAL, block all text mutation (IME/paste bypass keydown
     // preventDefault) — snap the textarea back to the current draft.
-    if (nvim && noteFormat === 'md' && mode === 'body' && mdVim !== 'insert') {
+    if (nvimOn && noteFormat === 'md' && mode === 'body' && mdVim !== 'insert') {
       const el = e.target;
       const p = el.selectionStart;
       requestAnimationFrame(() => { if (el) { el.value = draft; el.setSelectionRange(p, p); } });
@@ -1589,7 +1654,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // consumed by vim (caller should stop). Only active when nvim is on and we're
   // editing the md body.
   const handleMdVim = (e) => {
-    if (!nvim || noteFormat !== 'md' || mode !== 'body') return false;
+    if (!nvimOn || noteFormat !== 'md' || mode !== 'body') return false;
     const el = inputRef.current;
     if (!el) return false;
     // In NORMAL, Escape/Ctrl+Enter fall through to the normal exit/save flow.
@@ -1758,7 +1823,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       ],
     },
   ];
-  if (nvim) {
+  if (nvimOn) {
     helpSections.push({
       title: 'NVIM · modes & motion',
       rows: [
@@ -1870,9 +1935,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
            // stopPropagation so these keys don't ALSO reach the bubbling
            // handleKeyDown (where 'f' would cycle the folder → jumps to SYSTEM).
            if (e.key === 'p' && e.ctrlKey) { e.preventDefault(); e.stopPropagation(); setShowTele(true); return; }
-           if (nvim && e.key === ' ') { e.preventDefault(); e.stopPropagation(); leaderRef.current = true; return; }
-           if (nvim && leaderRef.current && e.key === 'f') { e.preventDefault(); e.stopPropagation(); leaderRef.current = false; setShowTele(true); return; }
-           if (nvim && leaderRef.current) leaderRef.current = false; // any other key clears the leader
+           if (nvimOn && e.key === ' ') { e.preventDefault(); e.stopPropagation(); leaderRef.current = true; return; }
+           if (nvimOn && leaderRef.current && e.key === 'f') { e.preventDefault(); e.stopPropagation(); leaderRef.current = false; setShowTele(true); return; }
+           if (nvimOn && leaderRef.current) leaderRef.current = false; // any other key clears the leader
          }}
          onClick={(e) => {
            // Don't steal focus from an editable target — inputs, textareas, or a
@@ -1891,7 +1956,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         <button type="button" className={focus === 'preview' ? 'on' : ''}
                 onClick={() => setFocus('preview')}>◨ PREVIEW</button>
       </div>
-      <div className="tui-body">
+      <div className="tui-body" onTouchStart={bodySwipeStart} onTouchEnd={bodySwipeEnd}>
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
           <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
@@ -1952,7 +2017,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </span>
           <div className="tui-scroll">
             {list.length === 0 ? (
-              <div className="tui-empty">{query ? 'no matches' : 'no entries — press n'}</div>
+              <div className="tui-empty">{query ? 'no matches' : 'no entries — press n / tap + New'}</div>
             ) : (
               list.map((n, i) => {
                 const sel = i === noteIndex;
@@ -1962,7 +2027,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                   <div key={n.id}
                        ref={sel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
                        className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
+                       onTouchStart={(e) => lpStart(i, e)}
+                       onTouchMove={lpMove}
+                       onTouchEnd={lpEnd}
+                       onContextMenu={(e) => { if (lpRef.current?.fired) e.preventDefault(); }}
                        onClick={(e) => {
+                         if (lpRef.current?.fired) { lpRef.current = null; return; } // long-press đã xử lý
                          if (e.ctrlKey || e.metaKey) { toggleSelect(n.id); return; }
                          setNoteIndex(i);
                          // phone: tapping a note drills into its preview
@@ -2058,7 +2128,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               </div>
               {mode === 'body' && noteFormat === 'notion' ? (
                 <div className="tui-editor-wrap notion">
-                  <NotionEditor content={draft} onChange={setDraft} nvim={nvim} onEx={() => setEdCmd('')} />
+                  <NotionEditor content={draft} onChange={setDraft} nvim={nvimOn} onEx={() => setEdCmd('')} />
                   {edCmd !== null && (
                     // eslint-disable-next-line jsx-a11y/no-autofocus
                     <div className="ed-cmdline">:<input autoFocus value={edCmd}
@@ -2153,8 +2223,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       {/* Not readOnly in NORMAL: a readonly textarea hides the
                           caret. We block text mutation by intercepting keys in
                           handleMdVim; the caret stays visible + movable. */}
-                      <div className={`tui-textarea-wrap ${nvim && vimLineNo ? 'with-lineno' : ''}`}>
-                        {nvim && vimLineNo && (
+                      <div className={`tui-textarea-wrap ${nvimOn && vimLineNo ? 'with-lineno' : ''}`}>
+                        {nvimOn && vimLineNo && (
                           <LineGutter text={draft} textareaRef={inputRef} gutterRef={lineNoRef} />
                         )}
                         <textarea
@@ -2168,12 +2238,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                                       el.focus({ preventScroll: true });
                                     }
                                   }}
-                                  className={`tui-textarea ${nvim && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
+                                  className={`tui-textarea ${nvimOn && mdVim !== 'insert' ? 'vim-normal' : ''}`} value={draft}
                                   onChange={handleBodyChange} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                                   onBeforeInput={(e) => {
                                     // Catch ":" even when an IME/keyboard layout swallows the
                                     // keydown — opens the Ex command-line in NORMAL.
-                                    if (nvim && mdVim !== 'insert') {
+                                    if (nvimOn && mdVim !== 'insert') {
                                       e.preventDefault();
                                       if (mdVim === 'normal' && e.data === ':') { suppressBlurRef.current = true; setEdCmd(''); }
                                     }
@@ -2202,7 +2272,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                       placeholder="w · wq · q · q! · x · e! · noh" /></div>
                   )}
                   <div className="tui-editor-bar">
-                    {nvim && (
+                    {nvimOn && (
                       <span className={`ne-vim-badge inline ${mdVim}`}>-- {mdVim === 'vline' ? 'V-LINE' : mdVim.toUpperCase()} --</span>
                     )}
                     <input type="file" ref={fileInputRef} multiple accept="image/*,*" style={{ display: 'none' }}
@@ -2221,7 +2291,19 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                     </button>
                     {unsavedPrompt ? (
                       <span className="tui-unsaved-prompt">
-                        Save changes? <kbd>y</kbd> save · <kbd>n</kbd> discard · <kbd>Esc</kbd> keep editing
+                        Save changes?
+                        <button type="button" className="tui-warn-btn yes"
+                                onClick={() => { saveBody(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }}>
+                          Save (y)
+                        </button>
+                        <button type="button" className="tui-warn-btn no"
+                                onClick={() => { setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }}>
+                          Discard (n)
+                        </button>
+                        <button type="button" className="tui-warn-btn"
+                                onClick={() => { setUnsavedPrompt(false); requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true })); }}>
+                          Keep (Esc)
+                        </button>
                       </span>
                     ) : (
                       <span className="tui-editor-tip">
@@ -2243,6 +2325,45 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             <div className="tui-empty">no note selected</div>
           )}
         </div>
+      </div>
+
+      {/* Mobile bottom action bar — context-aware; CSS hides it above 768px */}
+      <div className="tui-mobile-actions">
+        {(() => {
+          const ctx = mobileActionContext({ focus, mode, unsavedPrompt });
+          if (ctx === 'unsaved') return (<>
+            <button type="button" className="tma-btn primary"
+                    onClick={() => { saveBody(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }}>✓ Save</button>
+            <button type="button" className="tma-btn danger"
+                    onClick={() => { setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }}>✕ Discard</button>
+            <button type="button" className="tma-btn"
+                    onClick={() => { setUnsavedPrompt(false); requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true })); }}>Keep</button>
+          </>);
+          if (ctx === 'editor') return (<>
+            <button type="button" className="tma-btn primary"
+                    onMouseDown={(e) => { e.preventDefault(); commit(); }}>✓ Save</button>
+            <button type="button" className="tma-btn"
+                    onMouseDown={(e) => { e.preventDefault();
+                      if (mode === 'body' && bodyDirty()) setUnsavedPrompt(true);
+                      else { setMode('normal'); setDraft(''); setSlash(null); } }}>✕ Cancel</button>
+            {mode === 'body' && (
+              <button type="button" className="tma-btn"
+                      onMouseDown={(e) => { e.preventDefault(); suppressBlurRef.current = true; fileInputRef.current?.click(); }}>📎</button>
+            )}
+          </>);
+          if (ctx === 'preview') return (<>
+            <button type="button" className="tma-btn primary" onClick={editBody}>✎ Edit</button>
+            <button type="button" className="tma-btn" onClick={toggleDone}>{current?.isCompleted ? '↺ Undone' : '✓ Done'}</button>
+            <button type="button" className="tma-btn" onClick={togglePin}>{current?.pinned ? '📌 Unpin' : '📌 Pin'}</button>
+            <button type="button" className="tma-btn" onClick={() => setSheetOpen('note')}>⋯</button>
+          </>);
+          return (<>
+            <button type="button" className="tma-btn primary" onClick={() => createNote('blank')}>+ New</button>
+            <button type="button" className="tma-btn" onClick={() => setShowTele(true)}>🔍</button>
+            <button type="button" className="tma-btn" onClick={() => setShowCal(true)}>📅</button>
+            <button type="button" className="tma-btn" onClick={() => setSheetOpen('tools')}>⋯</button>
+          </>);
+        })()}
       </div>
 
       {/* STATUS BAR */}
@@ -2642,6 +2763,46 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             <div className="tui-week-foot">
               <span>←↑↓→ / hjkl move · [ ] month · t today · Enter open · Esc close</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile action sheet — long-press trên note row hoặc nút ⋯ */}
+      {sheetOpen && (
+        <div className="tui-sheet-backdrop" onClick={() => setSheetOpen(null)}>
+          <div className="tui-action-sheet" onClick={(e) => e.stopPropagation()}>
+            {sheetOpen === 'note' && current ? (<>
+              <div className="tui-sheet-title">{current.title || '(untitled)'}</div>
+              <button type="button" onClick={() => { toggleDone(); setSheetOpen(null); }}>
+                ✓ {current.isCompleted ? 'Mark undone' : 'Mark done'}</button>
+              <button type="button" onClick={() => { togglePin(); setSheetOpen(null); }}>
+                📌 {current.pinned ? 'Unpin' : 'Pin'}</button>
+              <button type="button" onClick={() => { setSheetOpen(null); editBody(); }}>✎ Edit content</button>
+              <button type="button" onClick={() => { setSheetOpen(null); askArchive(); }}>📦 Archive</button>
+              <button type="button" onClick={() => { setSheetOpen(null); setMode('category'); }}>🏷 Category</button>
+              <button type="button" onClick={() => { yankNote(); setSheetOpen(null); }}>⧉ Copy</button>
+              <div className="tui-sheet-due">
+                <span>⏰ Due</span>
+                <input type="time"
+                       defaultValue={current.deadline
+                         ? `${String(new Date(current.deadline).getHours()).padStart(2, '0')}:${String(new Date(current.deadline).getMinutes()).padStart(2, '0')}`
+                         : ''}
+                       onChange={(e) => { if (e.target.value) setDue(e.target.value); }} />
+                {current.deadline && (
+                  <button type="button" onClick={() => { setDue('off'); setSheetOpen(null); }}>clear</button>
+                )}
+              </div>
+              <button type="button" className="danger"
+                      onClick={() => { setSheetOpen(null); setMode('delete'); }}>🗑 Delete</button>
+            </>) : (<>
+              <button type="button" onClick={() => { setSheetOpen(null); setShowWeek(true); }}>📊 Week review</button>
+              <button type="button" onClick={() => { setSheetOpen(null); setShowTheme(true); }}>⚙ Options</button>
+              <button type="button" onClick={() => { toggleZen(); setSheetOpen(null); }}>
+                ◱ Zen {zen ? 'off' : 'on'}</button>
+              <button type="button" onClick={() => { setSheetOpen(null); if (pomodoro) stopPomodoro(); else startPomodoro(); }}>
+                🍅 {pomodoro ? 'Stop pomodoro' : 'Pomodoro'}</button>
+              <button type="button" onClick={() => { setSheetOpen(null); setMode('help'); }}>? Help</button>
+            </>)}
           </div>
         </div>
       )}

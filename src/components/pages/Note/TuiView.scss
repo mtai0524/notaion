@@ -2040,3 +2040,135 @@
   border-radius: var(--radius-sm, 4px);
   outline: none;
 }
+
+/* ── Mobile bottom action bar (context-aware) — phones only ── */
+.tui .tui-mobile-actions { display: none; }
+
+@media (max-width: 768px) {
+  .tui .tui-mobile-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    z-index: 30;
+    padding: 8px 2px calc(8px + env(safe-area-inset-bottom, 0px));
+    background: var(--container-bg, #fff);
+    border-top: 1.5px solid var(--border-color, #111827);
+
+    .tma-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 6px;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      cursor: pointer;
+      box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+
+      &:active { box-shadow: none; transform: translate(-1px, 1px); }
+      &.primary { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+      &.danger { border-color: #dc2626; color: #dc2626; }
+    }
+  }
+}
+
+/* ── Mobile action sheet (long-press / ⋯) ── */
+.tui-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 240;
+  display: flex;
+  align-items: flex-end;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.tui-action-sheet {
+  width: 100%;
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--container-bg, #fff);
+  border-top: 2px solid var(--border-color, #111827);
+  font-family: inherit;
+
+  .tui-sheet-title {
+    font-weight: 800;
+    font-size: 0.78rem;
+    letter-spacing: 0.5px;
+    padding: 2px 2px 6px;
+    border-bottom: 1.5px dashed var(--border-color, #d1d5db);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  button {
+    min-height: 44px;
+    text-align: left;
+    padding: 8px 10px;
+    background: var(--container-bg, #fff);
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-color, #111827);
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: -1.5px 1.5px 0 0 var(--shadow-color, #111827);
+
+    &:active { box-shadow: none; transform: translate(-1px, 1px); }
+    &.danger { border-color: #dc2626; color: #dc2626; }
+  }
+
+  .tui-sheet-due {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 2px;
+    font-size: 0.78rem;
+    font-weight: 700;
+
+    input[type='time'] {
+      flex: 1;
+      min-height: 40px;
+      padding: 4px 8px;
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      background: var(--container-bg, #fff);
+      color: var(--text-color, #111827);
+      font: inherit;
+    }
+
+    button { flex: 0 0 auto; min-height: 40px; }
+  }
+}
+
+/* row long-press: chặn callout chọn chữ trên iOS */
+@media (max-width: 768px) {
+  .tui .tui-row {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Khi bàn phím ảo mở, co TUI theo phần còn nhìn thấy để thanh action
+     (sticky bottom) không bị đẩy xuống dưới bàn phím. */
+  .tui {
+    max-height: var(--tui-vvh, 100dvh);
+  }
+}
