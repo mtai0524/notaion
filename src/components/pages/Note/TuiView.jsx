@@ -8,7 +8,7 @@ import { mobileActionContext, swipePanelTarget } from './tuiMobile';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
-import { vimTextareaKey } from './vimTextarea';
+import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
 import Telescope from './Telescope';
 import LineGutter from './LineGutter';
 import Spinner from './Spinner';
@@ -1753,6 +1753,26 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         if (e.key === 'Escape') { e.preventDefault(); setSlash(null); return; }
       }
     }
+    // Enter khi đang gõ trên dòng danh sách → tự nối bullet/checkbox/số thứ tự
+    // (Enter trên mục rỗng thì kết thúc danh sách). Chỉ khi thật sự đang gõ:
+    // nvim tắt hoặc đang INSERT — NORMAL không sửa text.
+    if (e.key === 'Enter' && mode === 'body' && !slash && !(e.ctrlKey || e.metaKey)
+        && (!nvimOn || mdVim === 'insert')) {
+      const el = e.target;
+      if (el.selectionStart === el.selectionEnd) {
+        const r = continueListOnEnter(el.value, el.selectionStart);
+        if (r) {
+          e.preventDefault();
+          // Ghi thẳng vào DOM trước khi setDraft: phím kế tiếp (gõ nhanh) phải
+          // thấy ngay text + caret mới — đặt caret qua rAF sẽ race với typing.
+          el.value = r.text;
+          el.setSelectionRange(r.pos, r.pos);
+          setDraft(r.text);
+          scrollCaretIntoView(el, r.pos);
+          return;
+        }
+      }
+    }
     // body edit is multi-line: Ctrl+Enter saves, Enter inserts newline.
     if (e.key === 'Enter' && (mode === 'title' || mode === 'search' || (mode === 'body' && (e.ctrlKey || e.metaKey)))) {
       e.preventDefault();
@@ -1856,6 +1876,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['u · Ctrl+r', 'undo · redo'],
         [': :w :wq :q!', 'save · save-quit · force-quit'],
         [':set number · Ctrl+p', 'line numbers · Telescope'],
+      ],
+    });
+    helpSections.push({
+      title: 'NVIM · markdown',
+      rows: [
+        ['gx', 'toggle checkbox · turn line into a task'],
+        ['gs b · gs c', 'bold / code the word under cursor (toggle)'],
+        ['o / O on a list line', 'new line keeps the bullet / box / number'],
+        ['Enter (typing)', 'continues the list · Enter on empty item ends it'],
       ],
     });
   }

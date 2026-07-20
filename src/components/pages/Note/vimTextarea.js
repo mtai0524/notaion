@@ -60,6 +60,35 @@ const vMove = (text, pos, dir, count) => {
   return p;
 };
 
+// Markdown list prefix of a line → the prefix a NEW sibling line should get,
+// or null when the line isn't a list item. Checkbox items always continue
+// unchecked; numbered items continue with n+1 (or n when increment=false, for
+// O which opens a line above).
+const listPrefix = (line, { increment = true } = {}) => {
+  const m = /^(\s*)((?:[-*] \[[ xX]\] )|(?:[-*] )|(?:> )|(?:(\d+)([.)]) ))/.exec(line);
+  if (!m) return null;
+  if (m[3]) return `${m[1]}${parseInt(m[3], 10) + (increment ? 1 : 0)}${m[4]} `;
+  if (/\[[ xX]\]/.test(m[2])) return `${m[1]}${m[2][0]} [ ] `;
+  return m[1] + m[2];
+};
+
+// Enter while typing on a list line → split the line and carry the prefix to
+// the new one; Enter on an EMPTY item removes the prefix (ends the list).
+// Returns { text, pos } or null to let the textarea insert a plain newline.
+export const continueListOnEnter = (text, pos) => {
+  const s = lineStart(text, pos);
+  const e = lineEnd(text, pos);
+  const line = text.slice(s, e);
+  if (/^(\s*)((?:[-*] \[[ xX]\] )|(?:[-*] )|(?:> )|(?:\d+[.)] ))\s*$/.test(line) && pos === e) {
+    const next = text.slice(0, s) + text.slice(e);
+    return { text: next, pos: s };
+  }
+  const prefix = listPrefix(line);
+  if (!prefix) return null;
+  const next = text.slice(0, pos) + '\n' + prefix + text.slice(pos);
+  return { text: next, pos: pos + 1 + prefix.length };
+};
+
 // Delete the range [from, to) and return { text, pos } (pos = from clamped).
 const deleteRange = (text, from, to) => {
   const [lo, hi] = from <= to ? [from, to] : [to, from];
@@ -149,7 +178,46 @@ export const vimTextareaKey = (state, e) => {
   // ── NORMAL two-key sequences ──
   if (pending === 'g') {
     if (key === 'g') return { ...state, pos: 0, pending: null, count: '' };
+    // gx — cycle the line into a task / toggle its checkbox
+    if (key === 'x') {
+      const s0 = lineStart(text, pos);
+      const e0 = lineEnd(text, pos);
+      const line = text.slice(s0, e0);
+      let newLine = line;
+      const cb = /^(\s*[-*] )\[([ xX])\](.*)$/.exec(line);
+      const bl = /^(\s*[-*] )(.*)$/.exec(line);
+      if (cb) newLine = `${cb[1]}[${cb[2] === ' ' ? 'x' : ' '}]${cb[3]}`;
+      else if (bl) newLine = `${bl[1]}[ ] ${bl[2]}`;
+      else if (line.trim() !== '') {
+        const ind = /^\s*/.exec(line)[0];
+        newLine = `${ind}- [ ] ${line.slice(ind.length)}`;
+      }
+      if (newLine === line) return { ...state, pending: null, count: '' };
+      const u = withUndo(state);
+      const next = text.slice(0, s0) + newLine + text.slice(e0);
+      return { ...state, ...u, text: next, pos: clamp(pos + (newLine.length - line.length), s0, s0 + newLine.length), pending: null, count: '' };
+    }
+    if (key === 's') return { ...state, pending: 'gs' };
     return { ...state, pending: null, count: '' };
+  }
+
+  // gs{b,c} — surround (toggle) the word under the cursor: b=**bold**, c=`code`
+  if (pending === 'gs') {
+    const marker = key === 'b' ? '**' : key === 'c' ? '`' : null;
+    if (!marker) return { ...state, pending: null, count: '' };
+    const isW = (ch) => !!ch && /[\p{L}\p{N}_]/u.test(ch);
+    let a = pos;
+    let b = pos;
+    while (a > 0 && isW(text[a - 1])) a--;
+    while (b < text.length && isW(text[b])) b++;
+    if (a === b) return { ...state, pending: null, count: '' };
+    const u = withUndo(state);
+    const ml = marker.length;
+    const wrapped = text.slice(a - ml, a) === marker && text.slice(b, b + ml) === marker;
+    const next = wrapped
+      ? text.slice(0, a - ml) + text.slice(a, b) + text.slice(b + ml)
+      : text.slice(0, a) + marker + text.slice(a, b) + marker + text.slice(b);
+    return { ...state, ...u, text: next, pos: wrapped ? clamp(pos - ml, 0, next.length) : pos + ml, pending: null, count: '' };
   }
 
   // operator pending: d / c / y  → expect a motion or doubled key
@@ -193,8 +261,19 @@ export const vimTextareaKey = (state, e) => {
     case 'i': return { ...state, mode: 'insert', pending: null, count: '' };
     case 'a': return { ...state, pos: clamp(pos + 1, 0, text.length), mode: 'insert', pending: null, count: '' };
     case 'A': return { ...state, pos: lineEnd(text, pos), mode: 'insert', pending: null, count: '' };
-    case 'o': { const u = withUndo(state); const eol = lineEnd(text, pos); return { ...state, ...u, text: text.slice(0, eol) + '\n' + text.slice(eol), pos: eol + 1, mode: 'insert', pending: null, count: '' }; }
-    case 'O': { const u = withUndo(state); const s = lineStart(text, pos); return { ...state, ...u, text: text.slice(0, s) + '\n' + text.slice(s), pos: s, mode: 'insert', pending: null, count: '' }; }
+    // o/O trên dòng danh sách kế thừa đầu dòng (bullet/checkbox/số thứ tự)
+    case 'o': {
+      const u = withUndo(state);
+      const eol = lineEnd(text, pos);
+      const prefix = listPrefix(text.slice(lineStart(text, pos), eol)) || '';
+      return { ...state, ...u, text: text.slice(0, eol) + '\n' + prefix + text.slice(eol), pos: eol + 1 + prefix.length, mode: 'insert', pending: null, count: '' };
+    }
+    case 'O': {
+      const u = withUndo(state);
+      const s = lineStart(text, pos);
+      const prefix = listPrefix(text.slice(s, lineEnd(text, pos)), { increment: false }) || '';
+      return { ...state, ...u, text: text.slice(0, s) + prefix + '\n' + text.slice(s), pos: s + prefix.length, mode: 'insert', pending: null, count: '' };
+    }
     // visual
     case 'v': return { ...state, mode: 'visual', anchor: pos, count: '' };
     case 'V': return { ...state, mode: 'vline', anchor: pos, count: '' };

@@ -186,3 +186,109 @@ describe('vimTextarea — r / ~', () => {
     expect(r.pos).toBe(1);
   });
 });
+
+describe('vimTextarea — markdown note keys (gx, gs, o/O bullets)', () => {
+  it('gx toggles a checkbox on the current line', () => {
+    const s = seq({ text: '- [ ] mua sữa', pos: 8, mode: 'normal' }, ['g', 'x']);
+    expect(s.text).toBe('- [x] mua sữa');
+    const s2 = seq({ text: '- [x] mua sữa', pos: 8, mode: 'normal' }, ['g', 'x']);
+    expect(s2.text).toBe('- [ ] mua sữa');
+  });
+
+  it('gx on a plain bullet inserts a checkbox', () => {
+    const s = seq({ text: '- mua sữa', pos: 4, mode: 'normal' }, ['g', 'x']);
+    expect(s.text).toBe('- [ ] mua sữa');
+  });
+
+  it('gx on a plain line converts it into a task', () => {
+    const s = seq({ text: 'mua sữa', pos: 3, mode: 'normal' }, ['g', 'x']);
+    expect(s.text).toBe('- [ ] mua sữa');
+  });
+
+  it('gx works on the right line in multi-line text and is undoable', () => {
+    const text = 'tiêu đề\n- [ ] việc A\n- [ ] việc B';
+    const pos = text.indexOf('việc B');
+    const s = seq({ text, pos, mode: 'normal' }, ['g', 'x']);
+    expect(s.text).toBe('tiêu đề\n- [ ] việc A\n- [x] việc B');
+    const u = run(s, 'u');
+    expect(u.text).toBe(text);
+  });
+
+  it('gsb bolds the word under the cursor and toggles back', () => {
+    const s = seq({ text: 'xin chào bạn', pos: 5, mode: 'normal' }, ['g', 's', 'b']);
+    expect(s.text).toBe('xin **chào** bạn');
+    const s2 = seq({ text: 'xin **chào** bạn', pos: 6, mode: 'normal' }, ['g', 's', 'b']);
+    expect(s2.text).toBe('xin chào bạn');
+  });
+
+  it('gsc wraps the word in inline code', () => {
+    const s = seq({ text: 'chạy npm nhé', pos: 5, mode: 'normal' }, ['g', 's', 'c']);
+    expect(s.text).toBe('chạy `npm` nhé');
+  });
+
+  it('o on a bullet line continues the bullet', () => {
+    const s = run({ text: '- việc A', pos: 3, mode: 'normal' }, 'o');
+    expect(s.text).toBe('- việc A\n- ');
+    expect(s.mode).toBe('insert');
+    expect(s.pos).toBe('- việc A\n- '.length);
+  });
+
+  it('o on a checkbox line continues with an unchecked box', () => {
+    const s = run({ text: '- [x] xong', pos: 3, mode: 'normal' }, 'o');
+    expect(s.text).toBe('- [x] xong\n- [ ] ');
+  });
+
+  it('O on a numbered line inherits the number prefix', () => {
+    const s = run({ text: '1. một\n2. hai', pos: 8, mode: 'normal' }, 'O');
+    expect(s.text).toBe('1. một\n2. \n2. hai');
+  });
+
+  it('o on a plain line stays plain', () => {
+    const s = run({ text: 'ghi chú', pos: 2, mode: 'normal' }, 'o');
+    expect(s.text).toBe('ghi chú\n');
+  });
+});
+
+describe('continueListOnEnter — auto-continue bullets in INSERT/plain typing', () => {
+  it('Enter on a bullet line adds the next bullet', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    const text = '- việc A';
+    const r = continueListOnEnter(text, text.length);
+    expect(r.text).toBe('- việc A\n- ');
+    expect(r.pos).toBe(r.text.length);
+  });
+
+  it('Enter on a checkbox line adds an unchecked box', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    const text = '- [x] xong';
+    const r = continueListOnEnter(text, text.length);
+    expect(r.text).toBe('- [x] xong\n- [ ] ');
+  });
+
+  it('Enter on a numbered line increments the number', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    const text = '3. ba';
+    const r = continueListOnEnter(text, text.length);
+    expect(r.text).toBe('3. ba\n4. ');
+  });
+
+  it('Enter on an EMPTY bullet removes it (end of list)', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    const text = 'trên\n- ';
+    const r = continueListOnEnter(text, text.length);
+    expect(r.text).toBe('trên\n');
+    expect(r.pos).toBe(r.text.length);
+  });
+
+  it('Enter mid-line splits and carries the prefix', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    const text = '- một hai';
+    const r = continueListOnEnter(text, 5); // caret after "một"
+    expect(r.text).toBe('- một\n-  hai');
+  });
+
+  it('returns null on a plain line (native newline)', async () => {
+    const { continueListOnEnter } = await import('./vimTextarea');
+    expect(continueListOnEnter('ghi chú', 7)).toBe(null);
+  });
+});
