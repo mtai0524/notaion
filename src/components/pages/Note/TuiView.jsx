@@ -11,6 +11,7 @@ import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
 import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
+import axiosInstance from '../../../axiosConfig';
 import Telescope from './Telescope';
 import LineGutter from './LineGutter';
 import Spinner from './Spinner';
@@ -839,6 +840,29 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const gotoLogin = () => { window.location.assign('/login'); };
   const doLogout = () => { Cookies.remove('token'); window.location.assign('/login'); };
 
+  /* ── Đăng nhập nhanh ngay trong TUI (không rời trang) ──
+     Gọi cùng endpoint như trang /login; thành công thì reload để mọi thứ
+     (SignalR, Header, notes) khởi động lại với token mới. */
+  const [quickLogin, setQuickLogin] = useState(null); // { id, pw } | null
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [loginErr, setLoginErr] = useState(null);
+  const submitQuickLogin = async () => {
+    const id = (quickLogin?.id || '').trim();
+    const pw = quickLogin?.pw || '';
+    if (!id || !pw) { setLoginErr('nhập tài khoản và mật khẩu'); return; }
+    setLoginBusy(true); setLoginErr(null);
+    try {
+      const res = await axiosInstance.post('/api/account/SignIn', { email: id, username: id, password: pw });
+      const token = res?.data?.token;
+      if (!token) throw new Error('no token');
+      Cookies.set('token', token, { expires: 7 });
+      window.location.reload();
+    } catch (err) {
+      setLoginErr(err?.response?.data?.message || 'sai tài khoản hoặc mật khẩu');
+      setLoginBusy(false);
+    }
+  };
+
   // Settings rows, grouped per tab: EDITOR (soạn thảo) · VIEW (hiển thị) ·
   // POMO (pomodoro). Cùng shape { kbd, label, value, on, run, danger? }.
   const editorRows = [
@@ -1471,6 +1495,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
     if (mode === 'command') return; // the ":" input handles its own keys
+    if (quickLogin !== null) return; // the quick-login form owns its keys
 
     // Appearance popup: h/l or Tab switch tabs · j/k move · Enter apply ·
     // 1-9 quick-pick · +/- font size · Esc/T/q closes.
@@ -2061,6 +2086,38 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               </div>
             )}
 
+            {!authed && (
+              <div className="tui-login">
+                <div className="tui-side-h">SIGN IN</div>
+                {quickLogin === null ? (
+                  <button type="button" className="tui-login-open" onClick={() => { setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
+                    ⎆ đăng nhập nhanh
+                  </button>
+                ) : (
+                  <form className="tui-login-form"
+                        onSubmit={(e) => { e.preventDefault(); submitQuickLogin(); }}
+                        onKeyDown={(e) => {
+                          e.stopPropagation();
+                          if (e.key === 'Escape') { e.preventDefault(); setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }
+                        }}>
+                    {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+                    <input autoFocus value={quickLogin.id} placeholder="email / username" autoComplete="username"
+                           onChange={(e) => setQuickLogin((s) => ({ ...s, id: e.target.value }))} />
+                    <input type="password" value={quickLogin.pw} placeholder="mật khẩu" autoComplete="current-password"
+                           onChange={(e) => setQuickLogin((s) => ({ ...s, pw: e.target.value }))} />
+                    {loginErr && <div className="tui-login-err">{loginErr}</div>}
+                    <div className="tui-login-btns">
+                      <button type="submit" className="go" disabled={loginBusy}>
+                        {loginBusy ? <Spinner label="…" /> : 'Enter ⏎'}
+                      </button>
+                      <button type="button" onClick={() => { setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }}>Esc</button>
+                    </div>
+                    <button type="button" className="tui-login-full" onClick={gotoLogin}>trang đăng nhập đầy đủ →</button>
+                  </form>
+                )}
+              </div>
+            )}
+
             <div className="tui-heatmap">
               <div className="tui-side-h">ACTIVITY · {dateLabel.slice(0, 7)}</div>
               <div className="tui-heatmap-grid">
@@ -2545,8 +2602,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 <span className="ico">⏻</span>
               </button>
             ) : (
-              <button type="button" className="tui-auth-chip login" title="Log in"
-                      onClick={(e) => { e.stopPropagation(); gotoLogin(); }}>⎆ login</button>
+              <button type="button" className="tui-auth-chip login" title="Log in (quick form in FOLDERS)"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFocus('folders');
+                        setQuickLogin({ id: '', pw: '' });
+                        setLoginErr(null);
+                      }}>⎆ login</button>
             )}
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
                     onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus({ preventScroll: true }); }}>?</button>
@@ -2898,7 +2960,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               {authed ? (
                 <button type="button" className="danger" onClick={doLogout}>⏻ Log out — @{authUser}</button>
               ) : (
-                <button type="button" onClick={gotoLogin}>⎆ Log in</button>
+                <button type="button"
+                        onClick={() => { setSheetOpen(null); setFocus('folders'); setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
+                  ⎆ Log in
+                </button>
               )}
             </>)}
           </div>

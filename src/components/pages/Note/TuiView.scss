@@ -2248,3 +2248,91 @@
 
   .ico { opacity: 0.75; }
 }
+
+/* ── Đăng nhập nhanh trong panel FOLDERS — không phải rời TUI ── */
+.tui .tui-login {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1.5px dashed var(--border-color, #d1d5db);
+
+  .tui-login-open {
+    width: 100%;
+    padding: 6px 8px;
+    background: transparent;
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--text-color, #111827);
+    font: inherit;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+
+    &:hover { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+  }
+
+  .tui-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    input {
+      width: 100%;
+      min-height: 32px;
+      padding: 4px 8px;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.72rem;
+      outline: none;
+
+      &:focus { border-color: var(--accent-color, #3b82f6); }
+      &::placeholder { color: var(--text-muted, #9ca3af); }
+    }
+  }
+
+  .tui-login-err {
+    padding: 3px 6px;
+    background: #dc2626;
+    border-radius: var(--radius-sm, 4px);
+    color: #fff;
+    font-size: 0.66rem;
+    font-weight: 700;
+    white-space: normal;
+  }
+
+  .tui-login-btns {
+    display: flex;
+    gap: 6px;
+
+    button {
+      flex: 1;
+      min-height: 32px;
+      padding: 4px 6px;
+      background: var(--container-bg, #fff);
+      border: 1.5px solid var(--border-color, #111827);
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-color, #111827);
+      font: inherit;
+      font-size: 0.7rem;
+      font-weight: 800;
+      cursor: pointer;
+
+      &.go { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+      &:disabled { opacity: 0.6; cursor: default; }
+    }
+  }
+
+  .tui-login-full {
+    padding: 2px;
+    background: none;
+    border: none;
+    color: var(--text-muted, #6b7280);
+    font: inherit;
+    font-size: 0.64rem;
+    text-align: left;
+    cursor: pointer;
+    &:hover { color: var(--text-color, #111827); text-decoration: underline; }
+  }
+}
