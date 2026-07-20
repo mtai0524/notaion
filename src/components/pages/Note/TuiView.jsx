@@ -229,10 +229,20 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [collapsedToggles, setCollapsedToggles] = useState({}); // { 'noteId:lineIdx': true } — folded toggles
   const [noteFormat, setNoteFormat] = useState(() => lsGet(NOTE_FORMAT_KEY, 'notion')); // 'notion' | 'md'
   const [nvim, setNvim] = useState(() => lsGet(NVIM_KEY, 'off') === 'on'); // modal editing in the editor
-  // Màn hình cảm ứng không có Esc — NORMAL mode là bẫy kẹt. Tắt hành vi nvim
-  // trên coarse pointer; setting nvim của user vẫn được giữ cho desktop.
-  const coarsePointer = useMemo(() => window.matchMedia?.('(pointer: coarse)')?.matches ?? false, []);
-  const nvimOn = nvim && !coarsePointer;
+  // Bàn phím ảo không có Esc — NORMAL mode là bẫy kẹt trên điện thoại. Chỉ tắt
+  // nvim khi đang ở đúng layout mobile (≤768px + coarse pointer); màn desktop
+  // trên laptop cảm ứng vẫn giữ nvim. Theo dõi change (resize / DevTools
+  // emulation) thay vì đo một lần — đo một lần sẽ kẹt giá trị sai cả phiên.
+  const [touchUi, setTouchUi] = useState(() =>
+    window.matchMedia?.('(max-width: 768px) and (pointer: coarse)')?.matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-width: 768px) and (pointer: coarse)');
+    if (!mq?.addEventListener) return undefined;
+    const onChange = (e) => setTouchUi(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  const nvimOn = nvim && !touchUi;
   const [mdVim, setMdVim] = useState('normal'); // nvim mode for the markdown textarea: 'normal' | 'insert'
   const [vimLineNo, setVimLineNo] = useState(() => lsGet(VIM_LINENO_KEY, 'off') === 'on'); // nvim line numbers
   const mdVimPending = useRef(null);            // 'g' | 'd' waiting for the 2nd key
