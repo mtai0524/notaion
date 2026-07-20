@@ -54,6 +54,17 @@
 //   transition: background-color 0.3s;
 // }
 
+/* Điện thoại: thu nhỏ + nâng lên trên thanh action của Daily Note TUI —
+   ở 60px sát đáy nó đè lên và chặn chạm các nút dưới cùng. */
+@media (max-width: 768px) {
+  .floating-button {
+    width: 44px;
+    height: 44px;
+    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    right: 10px;
+  }
+}
+
 .floating-button:hover {
   background-color: #f0f0f0;
 }

@@ -2363,21 +2363,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </>);
           if (ctx === 'preview') return (<>
             <button type="button" className="tma-btn primary" onClick={editBody}>✎ Edit</button>
-            <button type="button" className="tma-btn" onClick={toggleDone}>{current?.isCompleted ? '↺ Undone' : '✓ Done'}</button>
-            <button type="button" className="tma-btn" onClick={togglePin}>{current?.pinned ? '📌 Unpin' : '📌 Pin'}</button>
-            <button type="button" className="tma-btn" onClick={() => setSheetOpen('note')}>⋯</button>
+            <button type="button" className={`tma-btn icon ${current?.isCompleted ? 'on' : ''}`}
+                    title={current?.isCompleted ? 'Mark undone' : 'Mark done'} onClick={toggleDone}>✓</button>
+            <button type="button" className={`tma-btn icon ${current?.pinned ? 'on' : ''}`}
+                    title={current?.pinned ? 'Unpin' : 'Pin'} onClick={togglePin}>📌</button>
+            <button type="button" className="tma-btn icon" onClick={() => setSheetOpen('note')}>⋯</button>
           </>);
           return (<>
             <button type="button" className="tma-btn primary" onClick={() => createNote('blank')}>+ New</button>
-            <button type="button" className="tma-btn" onClick={() => setShowTele(true)}>🔍</button>
-            <button type="button" className="tma-btn" onClick={() => setShowCal(true)}>📅</button>
-            <button type="button" className="tma-btn" onClick={() => setSheetOpen('tools')}>⋯</button>
+            <button type="button" className="tma-btn icon" onClick={() => setSheetOpen('tools')}>⋯</button>
           </>);
         })()}
       </div>
 
-      {/* STATUS BAR */}
-      <div className="tui-status">
+      {/* STATUS BAR — st-idle: trên mobile ẩn đi khi chỉ hiện thông tin tĩnh
+          (giữ lại khi có confirm delete/category/…, flash, hay ô nhập) */}
+      <div className={`tui-status ${!flash && !['command', 'search', 'delete', 'archive', 'category', 'move'].includes(mode) ? 'st-idle' : ''}`}>
         {mode === 'command' ? (
           <span className="tui-search tui-cmdline">:<input ref={inputRef} className="tui-input inline" value={cmd}
             onChange={(e) => setCmd(e.target.value)}
@@ -2805,6 +2806,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <button type="button" className="danger"
                       onClick={() => { setSheetOpen(null); setMode('delete'); }}>🗑 Delete</button>
             </>) : (<>
+              <button type="button" onClick={() => { setSheetOpen(null); setShowTele(true); }}>🔍 Search notes</button>
+              <button type="button" onClick={() => { setSheetOpen(null); setShowCal(true); }}>📅 Calendar</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowWeek(true); }}>📊 Week review</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowTheme(true); }}>⚙ Options</button>
               <button type="button" onClick={() => { toggleZen(); setSheetOpen(null); }}>
