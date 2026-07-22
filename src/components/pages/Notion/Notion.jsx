@@ -846,8 +846,9 @@ const Notion = () => {
     setSlashSelectedIndex(0);
   };
 
-  // Open the slash command menu for a block — reused by the drag handle and by
-  // right-click (so a context menu shows the same "/" suggestions).
+  // Open the slash command menu for a block — triggered from the drag handle.
+  // Right-click is intentionally left to the browser's native menu so users can
+  // copy image/link addresses.
   const openSlashMenuFor = useCallback((id) => {
     setSlashMenuFor(id);
     setSlashQuery("");
@@ -1691,10 +1692,6 @@ const Notion = () => {
                           className={`draggable-item ${
                             selectedIds.has(item.id) ? "is-selected" : ""
                           }`}
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            openSlashMenuFor(item.id);
-                          }}
                         >
                           <div className="block-controls">
                             <Tooltip title="Click to add block below" placement="left">
