@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { downloadFile } from '../../services/fileService';
 
 const FileList = ({ files, onDelete }) => {
+  const [copiedId, setCopiedId] = useState(null);
   const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -20,16 +21,37 @@ const FileList = ({ files, onDelete }) => {
 
   const getFileIcon = (contentType, fileName) => {
     const extension = fileName.split('.').pop().toLowerCase();
-    
+
     if (contentType && contentType.startsWith('image/')) return '🖼️';
     if (contentType && contentType.startsWith('video/')) return '🎥';
     if (contentType && contentType.startsWith('audio/')) return '🎵';
-    if (contentType === 'application/pdf') return '📄';
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'].includes(extension)) return '🖼️';
+    if (['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(extension)) return '🎥';
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(extension)) return '🎵';
+    if (contentType === 'application/pdf' || extension === 'pdf') return '📄';
     if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) return '📦';
-    if (['doc', 'docx', 'txt', 'rtf'].includes(extension)) return '📝';
+    if (['doc', 'docx', 'txt', 'rtf', 'md'].includes(extension)) return '📝';
     if (['xls', 'xlsx', 'csv'].includes(extension)) return '📊';
-    
+    if (['ppt', 'pptx'].includes(extension)) return '📽️';
+    if (['js', 'jsx', 'ts', 'tsx', 'json', 'html', 'css', 'scss', 'py', 'java', 'c', 'cpp', 'go', 'rs', 'php', 'sh', 'xml', 'yml', 'yaml'].includes(extension)) return '💻';
+
     return '📁';
+  };
+
+  const handleCopyLink = async (url, id) => {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const el = document.createElement('textarea');
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+    }
+    setCopiedId(id);
+    setTimeout(() => setCopiedId((prev) => (prev === id ? null : prev)), 1500);
   };
 
   const handleDelete = (savedName, originalName) => {
@@ -93,6 +115,26 @@ const FileList = ({ files, onDelete }) => {
                       </span>
                     )}
                   </div>
+                  {file.cloudUrl && (
+                    <div className="flex items-center gap-2 mt-2 ml-9 max-w-[220px] sm:max-w-[340px]">
+                      <a
+                        href={file.cloudUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-mono text-gray-500 truncate underline decoration-dotted hover:text-black"
+                        title={file.cloudUrl}
+                      >
+                        {file.cloudUrl}
+                      </a>
+                      <button
+                        onClick={() => handleCopyLink(file.cloudUrl, file.id)}
+                        className="shrink-0 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border-2 border-black bg-white hover:bg-yellow-100 transition-colors active:translate-x-0.5 active:-translate-y-0.5"
+                        title="Copy link URL"
+                      >
+                        {copiedId === file.id ? '✓ Copied' : 'Copy'}
+                      </button>
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-4 text-xs font-bold text-gray-500 italic">
                   {formatFileSize(file.sizeInBytes)}
