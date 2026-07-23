@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import PropTypes from "prop-types";
 import { message } from "antd";
 import { downloadFile } from "../../../services/fileService";
+import "./MediaContextMenu.css";
 
 /**
  * Right-click context menu shared by images and file attachments in the editor.
