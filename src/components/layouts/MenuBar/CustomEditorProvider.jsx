@@ -28,7 +28,28 @@ import jwt_decode from "jwt-decode";
 import { common, createLowlight } from "lowlight";
 import { useAuth } from "../../../contexts/AuthContext";
 import SlashCommand from "./SlashCommand";
+import ImageNodeView from "./ImageNodeView";
+import FileAttachmentNodeView from "./FileAttachmentNodeView";
 const lowlight = createLowlight(common);
+
+// Image extended with a `name` attribute (original filename, persisted as
+// data-name) and a React NodeView that adds the right-click context menu.
+const ImageWithMenu = Image.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      name: {
+        default: null,
+        parseHTML: (element) => element.getAttribute("data-name"),
+        renderHTML: (attributes) =>
+          attributes.name ? { "data-name": attributes.name } : {},
+      },
+    };
+  },
+  addNodeView() {
+    return ReactNodeViewRenderer(ImageNodeView);
+  },
+});
 
 const formatFileSize = (bytes) => {
   if (!bytes && bytes !== 0) return "";
@@ -67,6 +88,10 @@ const FileAttachment = Node.create({
         }),
       },
     ];
+  },
+
+  addNodeView() {
+    return ReactNodeViewRenderer(FileAttachmentNodeView);
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -152,7 +177,7 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
         orderedList: { keepMarks: true, keepAttributes: false },
       }),
       Highlight.configure({ multicolor: true }),
-      Image.configure({ allowBase64: false }),
+      ImageWithMenu.configure({ allowBase64: false }),
       Dropcursor,
       Placeholder.configure({ placeholder: "Write something … or type '/' for commands" }),
       SlashCommand,
@@ -228,7 +253,7 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
             const fileUrl = fileData.cloudUrl;
 
             if (file.type.startsWith("image/")) {
-              editor.chain().focus().setImage({ src: fileUrl }).run();
+              editor.chain().focus().setImage({ src: fileUrl, name: fileData.originalName }).run();
               message.success("Tải ảnh thành công");
             } else {
               editor.chain().focus().insertContent({
@@ -279,7 +304,7 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
           const fileUrl = fileData.cloudUrl;
 
           if (file.type.startsWith("image/")) {
-            editor.chain().focus().setImage({ src: fileUrl }).run();
+            editor.chain().focus().setImage({ src: fileUrl, name: fileData.originalName }).run();
             message.success("Tải ảnh thành công");
           } else {
             editor.chain().focus().insertContent({
@@ -323,7 +348,7 @@ const CustomEditorProvider = ({ pageId, onWordCountChange }) => {
       const fileData = response.data[0];
       const fileUrl = fileData.cloudUrl;
       if (file.type.startsWith("image/")) {
-        editor.chain().focus().setImage({ src: fileUrl }).run();
+        editor.chain().focus().setImage({ src: fileUrl, name: fileData.originalName }).run();
         message.success("Tải ảnh thành công");
       } else {
         editor.chain().focus().insertContent({
