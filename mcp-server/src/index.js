@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { loadEnv } from "./loadEnv.js";
 import { loadConfig } from "./config.js";
+
+loadEnv();
 import { createAuth } from "./auth.js";
 import { createApi } from "./api.js";
 import {
