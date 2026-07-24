@@ -22,6 +22,7 @@ import {
   FileOutlined,
   DeleteOutlined,
 } from "@ant-design/icons";
+import MediaContextMenu from "../../layouts/MenuBar/MediaContextMenu";
 
 // Blocks taller than this (px) get clamped with a "Show more" toggle while not
 // being edited, so a long page stays scannable instead of forcing the reader to
@@ -577,6 +578,22 @@ const NotionBlock = memo(function NotionBlock({
   );
 
   const content = renderItemContent(item, handlers);
+
+  // Right-click menu (Download / Copy link / Open / Delete) for media blocks —
+  // images and file attachments. Text blocks keep the browser's native menu.
+  const [menu, setMenu] = useState(null);
+  const attachment = useMemo(
+    () => (item.attachments || []).find((att) => att.url === item.content),
+    [item.attachments, item.content]
+  );
+  const mediaName =
+    attachment?.originalName ||
+    (item.content ? describeFileUrl(item.content).fileName : "");
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    setMenu({ x: e.clientX, y: e.clientY });
+  };
+
   const clamped = collapsible && overflowing && !expanded && !focused;
   const showCollapse = collapsible && overflowing && expanded && !focused;
 
@@ -601,6 +618,7 @@ const NotionBlock = memo(function NotionBlock({
       <div
         ref={bodyRef}
         className={`block-collapsible${clamped ? " is-clamped" : ""}`}
+        onContextMenu={content ? handleContextMenu : undefined}
       >
         {content ? (
           content
@@ -652,6 +670,17 @@ const NotionBlock = memo(function NotionBlock({
             onSelect={(cmd) => handlers.onSelectSlash(cmd, item.id)}
           />
         </div>
+      )}
+      {menu && (
+        <MediaContextMenu
+          x={menu.x}
+          y={menu.y}
+          name={mediaName}
+          url={attachment?.cloudUrl || item.content}
+          savedName={attachment?.savedName}
+          onDelete={() => handlers.onDeleteBlock(item.id)}
+          onClose={() => setMenu(null)}
+        />
       )}
     </>
   );

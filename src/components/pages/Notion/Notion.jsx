@@ -1428,6 +1428,11 @@ const Notion = () => {
   // Keep the latest handler closures in a ref so the object handed to every
   // NotionBlock stays referentially stable. That lets React.memo skip blocks
   // that didn't change — typing in one block no longer re-renders the rest.
+  const deleteBlockById = async (id) => {
+    setItems((prev) => prev.filter((item) => item.id !== id));
+    await deleteItem(id, true);
+  };
+
   const cbRef = useRef({});
   cbRef.current = {
     handleChangeContent,
@@ -1436,6 +1441,7 @@ const Notion = () => {
     executeSlashCommand,
     closeSlashMenu,
     onDownload,
+    deleteBlockById,
   };
   const blockHandlers = useMemo(
     () => ({
@@ -1445,6 +1451,7 @@ const Notion = () => {
       onSelectSlash: (cmd, id) => cbRef.current.executeSlashCommand(cmd, id),
       onCloseSlash: () => cbRef.current.closeSlashMenu(),
       onDownload: (...a) => cbRef.current.onDownload(...a),
+      onDeleteBlock: (id) => cbRef.current.deleteBlockById(id),
       registerRef: (id, el) => {
         if (el) editTextareaRefs.current[id] = el;
         else delete editTextareaRefs.current[id];
