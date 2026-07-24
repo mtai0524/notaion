@@ -194,6 +194,16 @@ const minimapMeta = (item, newContent) => {
   return { kind: "text", icon: "", label: raw };
 };
 
+// Cloudinary returns a URL whose last path segment is a random public_id, not the
+// original filename — so a block that only stores that URL renders as e.g.
+// "a1b2c3.pdf". Carry the real name along in a `?name=` query param; describeFileUrl
+// (in NotionBlock) reads it back for display and downloads, and Cloudinary ignores
+// the extra param when serving the asset.
+const withName = (url, name) => {
+  if (!url || !name) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}name=${encodeURIComponent(name)}`;
+};
+
 const Minimap = ({ items, newContent, selectedIds, onJump, theme }) => {
   const [metrics, setMetrics] = useState({ docHeight: 1, blocks: [] });
   const [view, setView] = useState({ top: 0, height: 0 });
@@ -1035,7 +1045,7 @@ const Notion = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       const fileData = response.data[0];
-      const fileUrl = fileData.cloudUrl;
+      const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
       if (id) {
         if (file.type.startsWith("image/")) {
           responseDataImage({ data: { url: fileUrl } }, e, id);
@@ -1099,7 +1109,7 @@ const Notion = () => {
         try {
           const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
           const fileData = response.data[0];
-          const fileUrl = fileData.cloudUrl;
+          const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
           setItems((prevItems) => {
             const updated = prevItems.map((item) =>
               item.id === newBlockId ? { ...item, content: fileUrl } : item
@@ -1343,7 +1353,7 @@ const Notion = () => {
     try {
       const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
       const fileData = response.data[0];
-      const fileUrl = fileData.cloudUrl;
+      const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
       setItems((prevItems) => {
         const updated = prevItems.map((it) =>
           it.id === targetId ? { ...it, content: fileUrl } : it

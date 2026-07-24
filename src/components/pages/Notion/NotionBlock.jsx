@@ -405,7 +405,7 @@ const renderItemContent = (item, handlers) => {
   );
   if (
     item.content &&
-    item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)$/i) != null
+    item.content.match(/\.(jpeg|jpg|gif|png|webp|heic)(\?|#|$)/i) != null
   ) {
     return (
       <div
