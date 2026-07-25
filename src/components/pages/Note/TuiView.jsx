@@ -342,6 +342,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const t = setTimeout(() => saveSizes(sizes), 300);
     return () => clearTimeout(t);
   }, [sizes]);
+
+  // Zen bật hay cửa sổ co xuống mobile giữa lúc đang RESIZE → không còn biên
+  // nào để chỉnh, thoát về NORMAL kẻo kẹt trong mode vô nghĩa.
+  useEffect(() => {
+    if (!sizingOn && mode === 'resize') setMode('normal');
+  }, [sizingOn, mode]);
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
   const [count, setCount] = useState(''); // vim count prefix
