@@ -1619,6 +1619,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
     const k = e.key;
 
+    // Ctrl/Cmd chords belong to the browser: copy, cut, paste, select-all,
+    // find, reload… Without this, Ctrl+C matched `case 'c'` and popped the
+    // calendar (swallowing the copy), Ctrl+A hijacked select-all into
+    // "select all notes", etc. Our only own chord is Ctrl+d / Ctrl+u
+    // (half-page scroll in the preview) — let just those through.
+    if (e.ctrlKey || e.metaKey) {
+      const ownChord = focus === 'preview' && (k === 'd' || k === 'u');
+      if (!ownChord) return;
+    }
+
     // Vim count prefix. 1/2/3 stay panel switches when no count is pending —
     // start a count with 0 or 4-9 (e.g. 5j; 02j for "2j").
     if (/^\d$/.test(k) && (count !== '' || k === '0' || k >= '4')) {
