@@ -56,3 +56,28 @@ export function applyDelta(sizes, focus, delta) {
   out[j] -= move;
   return out.map((n) => Math.round(n * 1e6) / 1e6);
 }
+
+/* Drag a boundary to wherever the cursor is. boundary 0 = FOLDERS|NOTES,
+   1 = NOTES|PREVIEW. `ratio` is the pointer's x position inside .tui-body
+   (0–1). Only the two panels touching that boundary move; the third is
+   untouched, which matches the keyboard "borrow from neighbour" model.
+   Unlike the keyboard path this is continuous — snapping a drag to a 2%
+   grid feels notchy. */
+export function sizesFromDrag(sizes, boundary, ratio) {
+  const base = clampSizes(sizes);
+  if ((boundary !== 0 && boundary !== 1) || !Number.isFinite(ratio)) return base;
+  const out = [...base];
+  const pct = ratio * 100;
+  if (boundary === 0) {
+    const pair = base[0] + base[1];
+    const a = Math.min(Math.max(pct, MIN), pair - MIN);
+    out[0] = a;
+    out[1] = pair - a;
+  } else {
+    const pair = base[1] + base[2];
+    const edge = Math.min(Math.max(pct, base[0] + MIN), base[0] + pair - MIN);
+    out[1] = edge - base[0];
+    out[2] = pair - out[1];
+  }
+  return out.map((n) => Math.round(n * 1e6) / 1e6);
+}

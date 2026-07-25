@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_SIZES, MIN, clampSizes, applyDelta } from './tuiResize';
+import { DEFAULT_SIZES, MIN, clampSizes, applyDelta, sizesFromDrag } from './tuiResize';
 
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
@@ -66,5 +66,32 @@ describe('applyDelta', () => {
     let s = [16, 35, 49];
     for (const f of ['folders', 'notes', 'preview', 'folders']) s = applyDelta(s, f, 5);
     expect(sum(s)).toBeCloseTo(100);
+  });
+});
+
+describe('sizesFromDrag', () => {
+  it('biên 0: đặt mép phải của FOLDERS tại con trỏ, PREVIEW không đổi', () => {
+    const r = sizesFromDrag([16, 35, 49], 0, 0.25);
+    expect(r[0]).toBeCloseTo(25);
+    expect(r[1]).toBeCloseTo(26);
+    expect(r[2]).toBeCloseTo(49);
+  });
+  it('biên 1: đặt mép phải của NOTES tại con trỏ, FOLDERS không đổi', () => {
+    const r = sizesFromDrag([16, 35, 49], 1, 0.7);
+    expect(r[0]).toBeCloseTo(16);
+    expect(r[1]).toBeCloseTo(54);
+    expect(r[2]).toBeCloseTo(30);
+  });
+  it('kéo quá xa vẫn tôn trọng sàn MIN', () => {
+    const a = sizesFromDrag([16, 35, 49], 0, 0.98);
+    expect(a[1]).toBeGreaterThanOrEqual(MIN - 1e-6);
+    expect(sum(a)).toBeCloseTo(100);
+    const b = sizesFromDrag([16, 35, 49], 0, 0.0);
+    expect(b[0]).toBeGreaterThanOrEqual(MIN - 1e-6);
+    expect(sum(b)).toBeCloseTo(100);
+  });
+  it('biên lạ hoặc ratio hỏng → giữ nguyên', () => {
+    expect(sizesFromDrag([16, 35, 49], 9, 0.5)).toEqual([16, 35, 49]);
+    expect(sizesFromDrag([16, 35, 49], 0, NaN)).toEqual([16, 35, 49]);
   });
 });
