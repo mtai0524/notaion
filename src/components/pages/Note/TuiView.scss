@@ -107,6 +107,26 @@
   .tui-notes { flex: 1; }
   .tui-preview { flex: 1.4; }
 
+  /* Vùng bắt cho splitter. `gap: var(--tui-gap)` của .tui-body đã tạo sẵn
+     khe; resizer rộng bằng đúng khe đó và có margin âm hai bên để phủ lên nó
+     mà không chiếm thêm chỗ (nếu không, tổng % + chiều rộng resizer sẽ tràn
+     quá 100%). */
+  .tui-resizer {
+    flex: 0 0 var(--tui-gap);
+    margin: 0 calc(-1 * var(--tui-gap));
+    z-index: 2;
+    cursor: col-resize;
+    background: transparent;
+    touch-action: none;
+  }
+
+  /* Đang kéo: chặn bôi đen text và ép con trỏ giữ nguyên hình dạng dù chuột
+     đi lạc ra khỏi khe. */
+  .tui-body.tui-dragging {
+    user-select: none;
+    cursor: col-resize;
+  }
+
   .tui-scroll {
     flex: 1;
     min-height: 0;

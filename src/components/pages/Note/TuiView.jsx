@@ -5,7 +5,7 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
-// eslint-disable-next-line no-unused-vars -- clampSizes/sizesFromDrag land in Task 7
+// eslint-disable-next-line no-unused-vars -- clampSizes has no consumer yet
 import { DEFAULT_SIZES, loadSizes, saveSizes, clampSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
@@ -303,6 +303,39 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const panelStyle = (i) => (sizingOn
     ? { flex: `0 0 calc(${sizes[i]}% - var(--tui-gap) * 2 * ${sizes[i]} / 100)` }
     : undefined);
+
+  const bodyRef = useRef(null);
+  // Biên đang kéo (0 | 1 | null) — đọc đồng bộ trong pointermove nên vẫn cần
+  // ref (state cập nhật không kịp trong cùng sự kiện). `dragging` (state) chỉ
+  // dùng để React re-render và gắn class `tui-dragging` — mutate ref không
+  // trigger render nên riêng nó không đủ để đổi className kịp lúc.
+  const dragRef = useRef(null); // boundary đang kéo: 0 | 1 | null
+  const [dragging, setDragging] = useState(false);
+
+  /* Kéo một đường biên. Cập nhật liên tục theo con trỏ (không snap về bước 2%
+     như bàn phím) — kéo chuột mà snap vào lưới thì thấy rít. */
+  const dragMove = (clientX) => {
+    const el = bodyRef.current;
+    if (!el || dragRef.current === null) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width) return;
+    setSizes((s) => sizesFromDrag(s, dragRef.current, (clientX - r.left) / r.width));
+  };
+
+  const startDrag = (boundary, e) => {
+    if (!sizingOn) return;
+    dragRef.current = boundary;
+    setDragging(true);
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+  };
+
+  const endDrag = (e) => {
+    if (dragRef.current === null) return;
+    dragRef.current = null;
+    setDragging(false);
+    e.currentTarget.releasePointerCapture?.(e.pointerId);
+  };
 
   // Debounce: kéo chuột bắn setSizes mỗi frame, không đập vào storage từng lần.
   useEffect(() => {
@@ -2150,7 +2183,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         <button type="button" className={focus === 'preview' ? 'on' : ''}
                 onClick={() => setFocus('preview')}>◨ PREVIEW</button>
       </div>
-      <div className="tui-body" onTouchStart={bodySwipeStart} onTouchEnd={bodySwipeEnd}>
+      <div className={`tui-body ${dragging ? 'tui-dragging' : ''}`} ref={bodyRef}
+           onTouchStart={bodySwipeStart} onTouchEnd={bodySwipeEnd}
+           onPointerDown={(e) => {
+             // Alt+kéo ở bất kỳ đâu (kiểu Hyprland): điểm bắt đầu quyết định
+             // biên nào bị kéo — trong FOLDERS thì biên trái, còn lại biên phải.
+             if (!e.altKey || !sizingOn || e.button !== 0) return;
+             const inFolders = e.target.closest?.('.tui-folders');
+             startDrag(inFolders ? 0 : 1, e);
+           }}
+           onPointerMove={(e) => dragMove(e.clientX)}
+           onPointerUp={endDrag}
+           onPointerCancel={endDrag}>
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`} style={panelStyle(0)}>
           <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
@@ -2235,6 +2279,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </div>
         </div>
 
+        {sizingOn && (
+          <div className="tui-resizer" role="separator" aria-orientation="vertical"
+               aria-label="Resize folders panel"
+               onPointerDown={(e) => startDrag(0, e)}
+               onPointerMove={(e) => dragMove(e.clientX)}
+               onPointerUp={endDrag} onPointerCancel={endDrag} />
+        )}
+
         {/* NOTES */}
         <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`} style={panelStyle(1)}>
           <span className="tui-panel-title">
@@ -2318,6 +2370,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             )}
           </div>
         </div>
+
+        {sizingOn && (
+          <div className="tui-resizer" role="separator" aria-orientation="vertical"
+               aria-label="Resize notes panel"
+               onPointerDown={(e) => startDrag(1, e)}
+               onPointerMove={(e) => dragMove(e.clientX)}
+               onPointerUp={endDrag} onPointerCancel={endDrag} />
+        )}
 
         {/* PREVIEW */}
         <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`} style={panelStyle(2)}>
