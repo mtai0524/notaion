@@ -5,7 +5,7 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
-// eslint-disable-next-line no-unused-vars -- DEFAULT_SIZES/clampSizes/applyDelta/sizesFromDrag/STEP/BIG_STEP land in Tasks 5-7
+// eslint-disable-next-line no-unused-vars -- DEFAULT_SIZES/clampSizes/sizesFromDrag land in Tasks 6-7
 import { DEFAULT_SIZES, loadSizes, saveSizes, clampSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
@@ -278,7 +278,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [optSel, setOptSel] = useState(0); // keyboard row selection in the tab
   const [fontDraft, setFontDraft] = useState(null); // custom font input value (null = not editing)
   const [zen, setZen] = useState(() => lsGet(TUI_ZEN_KEY, false)); // notes-only layout
-  // eslint-disable-next-line no-unused-vars -- setSizes is wired up by Task 5 (drag/keyboard resize handlers)
   const [sizes, setSizes] = useState(loadSizes); // [folders, notes, preview] — % of .tui-body
 
   // Bề rộng thôi, KHÔNG dùng touchUi: touchUi cần cả pointer:coarse, nên cửa
@@ -1654,6 +1653,20 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (e.ctrlKey || e.metaKey) {
       const ownChord = focus === 'preview' && (k === 'd' || k === 'u');
       if (!ownChord) return;
+    }
+
+    // Alt+h/l resize panel đang focus (kiểu Hyprland; Super bị compositor
+    // nuốt nên không dùng được trong trình duyệt). PHẢI đứng trước switch(k):
+    // guard trên chỉ chặn Ctrl/Meta, nên Alt+h/l sẽ rơi xuống case 'h'/'l'
+    // (nhảy focus, dòng ~1708/1729) và chuyển panel thay vì resize.
+    if (e.altKey && sizingOn) {
+      // Shift capitalizes e.key (Alt+Shift+l arrives as 'L'), so match both cases.
+      const dir = (k === 'l' || k === 'L' || k === 'ArrowRight') ? 1 : (k === 'h' || k === 'H' || k === 'ArrowLeft') ? -1 : 0;
+      if (dir) {
+        setSizes((s) => applyDelta(s, focus, dir * (e.shiftKey ? BIG_STEP : STEP)));
+        e.preventDefault();
+        return;
+      }
     }
 
     // Vim count prefix. 1/2/3 stay panel switches when no count is pending —
