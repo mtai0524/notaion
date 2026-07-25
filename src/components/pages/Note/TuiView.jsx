@@ -2487,7 +2487,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                   </div>
                 </div>
               ) : (
-                <div className="tui-pv-body" onClick={editBody} title="Click to edit">
+                <div className="tui-pv-body"
+                     onClick={() => { if (!window.getSelection?.().toString().trim()) editBody(); }}
+                     title="Click to edit · select text to copy (Ctrl+C)">
                   {renderMarkdown(current.content, true)}
                 </div>
               )}
