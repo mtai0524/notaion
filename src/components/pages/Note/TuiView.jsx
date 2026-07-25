@@ -5,8 +5,7 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
-// eslint-disable-next-line no-unused-vars -- clampSizes has no consumer yet
-import { DEFAULT_SIZES, loadSizes, saveSizes, clampSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
+import { DEFAULT_SIZES, loadSizes, saveSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
@@ -334,7 +333,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (dragRef.current === null) return;
     dragRef.current = null;
     setDragging(false);
-    e.currentTarget.releasePointerCapture?.(e.pointerId);
+    // Có thể capture đã mất rồi (vd. sau khi effect bên dưới dọn dẹp state
+    // giữa chừng drag) — releasePointerCapture ném lỗi nếu element không giữ
+    // capture, nên kiểm tra trước khi gọi.
+    const target = e?.currentTarget;
+    if (target?.hasPointerCapture?.(e.pointerId)) {
+      try {
+        target.releasePointerCapture(e.pointerId);
+      } catch {
+        // Capture đã bị trình duyệt thu hồi giữa hai lệnh gọi ở trên — bỏ qua.
+      }
+    }
   };
 
   // Debounce: kéo chuột bắn setSizes mỗi frame, không đập vào storage từng lần.
@@ -345,8 +354,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   // Zen bật hay cửa sổ co xuống mobile giữa lúc đang RESIZE → không còn biên
   // nào để chỉnh, thoát về NORMAL kẻo kẹt trong mode vô nghĩa.
+  // Cùng lúc, nếu đang giữ chuột kéo splitter mà sizingOn tắt giữa chừng thì
+  // {sizingOn && (...)} unmount luôn element đang giữ pointer capture — nó
+  // biến mất khỏi DOM nên pointerup không bao giờ bắn tới, endDrag không
+  // chạy. Dọn dragRef/dragging thủ công ở đây để .tui-body không kẹt class
+  // tui-dragging và không còn resize theo di chuột khi không giữ nút nào.
   useEffect(() => {
-    if (!sizingOn && mode === 'resize') setMode('normal');
+    if (!sizingOn) {
+      if (mode === 'resize') setMode('normal');
+      dragRef.current = null;
+      setDragging(false);
+    }
   }, [sizingOn, mode]);
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
@@ -2209,7 +2227,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
            }}
            onPointerMove={(e) => dragMove(e.clientX)}
            onPointerUp={endDrag}
-           onPointerCancel={endDrag}>
+           onPointerCancel={endDrag}
+           onLostPointerCapture={endDrag}>
         {/* FOLDERS */}
         <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`} style={panelStyle(0)}>
           <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
@@ -2297,9 +2316,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         {sizingOn && (
           <div className="tui-resizer" role="separator" aria-orientation="vertical"
                aria-label="Resize folders panel"
-               onPointerDown={(e) => startDrag(0, e)}
+               onPointerDown={(e) => { e.stopPropagation(); startDrag(0, e); }}
                onPointerMove={(e) => dragMove(e.clientX)}
-               onPointerUp={endDrag} onPointerCancel={endDrag} />
+               onPointerUp={endDrag} onPointerCancel={endDrag}
+               onLostPointerCapture={endDrag} />
         )}
 
         {/* NOTES */}
@@ -2389,9 +2409,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         {sizingOn && (
           <div className="tui-resizer" role="separator" aria-orientation="vertical"
                aria-label="Resize notes panel"
-               onPointerDown={(e) => startDrag(1, e)}
+               onPointerDown={(e) => { e.stopPropagation(); startDrag(1, e); }}
                onPointerMove={(e) => dragMove(e.clientX)}
-               onPointerUp={endDrag} onPointerCancel={endDrag} />
+               onPointerUp={endDrag} onPointerCancel={endDrag}
+               onLostPointerCapture={endDrag} />
         )}
 
         {/* PREVIEW */}
