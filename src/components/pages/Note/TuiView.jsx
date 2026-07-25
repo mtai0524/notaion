@@ -5,6 +5,8 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
+// eslint-disable-next-line no-unused-vars -- DEFAULT_SIZES/clampSizes/applyDelta/sizesFromDrag/STEP/BIG_STEP land in Tasks 5-7
+import { DEFAULT_SIZES, loadSizes, saveSizes, clampSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
 import { CALLOUT_KINDS } from './noteFormat';
@@ -276,6 +278,31 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [optSel, setOptSel] = useState(0); // keyboard row selection in the tab
   const [fontDraft, setFontDraft] = useState(null); // custom font input value (null = not editing)
   const [zen, setZen] = useState(() => lsGet(TUI_ZEN_KEY, false)); // notes-only layout
+  // eslint-disable-next-line no-unused-vars -- setSizes is wired up by Task 5 (drag/keyboard resize handlers)
+  const [sizes, setSizes] = useState(loadSizes); // [folders, notes, preview] — % of .tui-body
+
+  // Bề rộng thôi, KHÔNG dùng touchUi: touchUi cần cả pointer:coarse, nên cửa
+  // sổ desktop hẹp <768px sẽ lọt qua trong khi CSS mobile đã áp — inline
+  // flex khi đó sẽ đè lên layout mobile và phá nó.
+  const [narrow, setNarrow] = useState(() =>
+    window.matchMedia?.('(max-width: 768px)')?.matches ?? false);
+  useEffect(() => {
+    const mq = window.matchMedia?.('(max-width: 768px)');
+    if (!mq?.addEventListener) return undefined;
+    const onChange = (e) => setNarrow(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Chỉ ba-panel-desktop mới nhận inline flex; zen và mobile để CSS lo.
+  const sizingOn = !zen && !narrow;
+  const panelStyle = (i) => (sizingOn ? { flex: `0 0 ${sizes[i]}%` } : undefined);
+
+  // Debounce: kéo chuột bắn setSizes mỗi frame, không đập vào storage từng lần.
+  useEffect(() => {
+    const t = setTimeout(() => saveSizes(sizes), 300);
+    return () => clearTimeout(t);
+  }, [sizes]);
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
   const [count, setCount] = useState(''); // vim count prefix
@@ -2087,7 +2114,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       </div>
       <div className="tui-body" onTouchStart={bodySwipeStart} onTouchEnd={bodySwipeEnd}>
         {/* FOLDERS */}
-        <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`}>
+        <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`} style={panelStyle(0)}>
           <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
           <div className="tui-scroll">
             {folders.map((f, i) => (
@@ -2171,7 +2198,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         </div>
 
         {/* NOTES */}
-        <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`}>
+        <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`} style={panelStyle(1)}>
           <span className="tui-panel-title">
             <kbd>2</kbd>{`NOTES · ${dateLabel}`}
             {loading && <Spinner label="loading" className="tui-title-spinner" />}
@@ -2255,7 +2282,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         </div>
 
         {/* PREVIEW */}
-        <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`}>
+        <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`} style={panelStyle(2)}>
           <span className="tui-panel-title"><kbd>3</kbd>PREVIEW</span>
           {current ? (
             <div className="tui-scroll" ref={previewRef}>

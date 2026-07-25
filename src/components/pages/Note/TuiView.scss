@@ -96,7 +96,10 @@
     }
   }
 
-  .tui-folders { width: 200px; flex-shrink: 0; }
+  /* Fallback khi JS chưa hydrate hoặc khi sizing tắt (zen/mobile). Inline
+     `flex: 0 0 X%` từ TuiView sẽ thắng các dòng này khi sizing bật.
+     `width` phải bỏ: nó không bị `flex` ghi đè nên FOLDERS sẽ kẹt ở 200px. */
+  .tui-folders { flex: 0 0 200px; min-width: 0; }
   .tui-notes { flex: 1; }
   .tui-preview { flex: 1.4; }
 
