@@ -5,7 +5,7 @@ import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadT
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
-// eslint-disable-next-line no-unused-vars -- DEFAULT_SIZES/clampSizes/sizesFromDrag land in Tasks 6-7
+// eslint-disable-next-line no-unused-vars -- clampSizes/sizesFromDrag land in Task 7
 import { DEFAULT_SIZES, loadSizes, saveSizes, clampSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
@@ -65,6 +65,9 @@ const FOCUS_TIME_KEY = 'daily-note-focus-time';    // { noteId: seconds focused 
 const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
 const TUI_THEME_KEY = 'daily-note-tui-theme';
 const TUI_ZEN_KEY = 'daily-note-tui-zen';
+// Phải khớp `gap` của .tui-body trong TuiView.scss — panelStyle trừ phần gap
+// này ra khỏi bề rộng %, nếu lệch thì panel cuối tràn ra hoặc hụt lại.
+const TUI_GAP_PX = 12;
 const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
 const NVIM_KEY = 'daily-note-nvim';                // 'on' | 'off'
 const VIM_LINENO_KEY = 'daily-note-vim-lineno';   // 'on' | 'off'
@@ -295,7 +298,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   // Chỉ ba-panel-desktop mới nhận inline flex; zen và mobile để CSS lo.
   const sizingOn = !zen && !narrow;
-  const panelStyle = (i) => (sizingOn ? { flex: `0 0 ${sizes[i]}%` } : undefined);
+  /* `%` tính theo TOÀN BỘ chiều rộng .tui-body, nhưng hai khe `gap: 12px` cũng
+     ăn chỗ — cộng lại thành 100% + 24px và panel cuối bị đẩy tràn ra ngoài
+     (mất viền phải). Trừ đi phần gap tương ứng với tỉ lệ của từng panel để
+     tổng khớp đúng khung mà tỉ lệ vẫn giữ nguyên. */
+  const panelStyle = (i) => (sizingOn
+    ? { flex: `0 0 calc(${sizes[i]}% - ${(TUI_GAP_PX * 2 * sizes[i]) / 100}px)` }
+    : undefined);
 
   // Debounce: kéo chuột bắn setSizes mỗi frame, không đập vào storage từng lần.
   useEffect(() => {
@@ -1655,6 +1664,21 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       if (!ownChord) return;
     }
 
+    // RESIZE mode nuốt hẳn phím NORMAL: h/l/L/1/2/3 ở đây mang nghĩa resize
+    // dù chúng đã có nghĩa khác ở NORMAL (vd L = focus preview, dòng ~1709).
+    if (mode === 'resize') {
+      e.preventDefault();
+      if (k === 'Escape' || k === 'Enter') { setMode('normal'); return; }
+      if (k === '=') { setSizes([...DEFAULT_SIZES]); return; }
+      if (k === '1') { setFocus('folders'); return; }
+      if (k === '2') { setFocus('notes'); return; }
+      if (k === '3') { setFocus('preview'); return; }
+      const dir = (k === 'l' || k === 'L' || k === 'ArrowRight') ? 1
+        : (k === 'h' || k === 'H' || k === 'ArrowLeft') ? -1 : 0;
+      if (dir) setSizes((s) => applyDelta(s, focus, dir * (k === 'H' || k === 'L' ? BIG_STEP : STEP)));
+      return;
+    }
+
     // Alt+h/l resize panel đang focus (kiểu Hyprland; Super bị compositor
     // nuốt nên không dùng được trong trình duyệt). PHẢI đứng trước switch(k):
     // guard trên chỉ chặn Ctrl/Meta, nên Alt+h/l sẽ rơi xuống case 'h'/'l'
@@ -1687,6 +1711,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case '1': setFocus('folders'); e.preventDefault(); return;
       case '2': setFocus('notes'); e.preventDefault(); return;
       case '3': setFocus('preview'); e.preventDefault(); return;
+      case 'R': if (sizingOn) { setMode('resize'); e.preventDefault(); } return;
       case '?': setMode('help'); e.preventDefault(); return;
       case '/': setMode('search'); e.preventDefault(); return;
       case ':': setCmd(''); setMode('command'); e.preventDefault(); return;
@@ -1922,6 +1947,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       rows: [
         ['1 / 2 / 3', 'folders · notes · preview'],
         ['Tab · h / l', 'cycle · panel left / right'],
+        ['Alt+h/l · R', 'resize panel · RESIZE mode'],
         ['j / k · g / G', 'move · first / last'],
         ['f / F', 'folder filter next / prev'],
         ['Esc', 'clear search / back to notes'],
@@ -2015,7 +2041,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     });
   }
   const hints = {
-    normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  A:arch  c:calendar  W:week  ;/\':marks  :cmd  .:pomodoro  ?:help',
+    normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  R:resize  A:arch  c:calendar  W:week  ;/\':marks  :cmd  .:pomodoro  ?:help',
     category: '',
     move: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
@@ -2027,6 +2053,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     archive: '',
     markset: 'mark: press a letter (a-z) to tag this note',
     markjump: "jump: press a mark letter (a-z)",
+    resize: '── RESIZE ──  h/l:±2%  H/L:±8%  1/2/3:panel  =:reset  Esc:done',
   };
 
   /* Month heatmap for the FOLDERS panel — GitHub-style activity levels. */

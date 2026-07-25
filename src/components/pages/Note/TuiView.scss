@@ -792,7 +792,7 @@
       color: var(--container-bg, #fff);
 
       /* edit modes: outlined chip so the change of state is obvious */
-      &.mode-title, &.mode-body {
+      &.mode-title, &.mode-body, &.mode-resize {
         background: transparent;
         color: var(--text-color, #111827);
         border: 1.5px solid var(--border-color, #111827);
