@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom';
+import { beforeEach } from 'vitest';
 
 // Ensure localStorage is available in test environment
 if (typeof window !== 'undefined' && !window.localStorage) {
@@ -11,4 +12,6 @@ if (typeof window !== 'undefined' && !window.localStorage) {
     key(index) { return Object.keys(store)[index] ?? null; },
     get length() { return Object.keys(store).length; },
   };
+  // Reset localStorage before each test to prevent cross-test contamination
+  beforeEach(() => { window.localStorage.clear(); });
 }
