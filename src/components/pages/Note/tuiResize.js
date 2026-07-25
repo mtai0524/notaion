@@ -81,3 +81,27 @@ export function sizesFromDrag(sizes, boundary, ratio) {
   }
   return out.map((n) => Math.round(n * 1e6) / 1e6);
 }
+
+export const SIZES_KEY = 'tui:panelSizes';
+
+/* Read persisted sizes. Anything we can't fully trust — wrong shape, NaN,
+   below the floor, total far off 100 — falls back to the default rather
+   than being silently "fixed" into a layout the user never chose. */
+export function loadSizes() {
+  try {
+    const raw = localStorage.getItem(SIZES_KEY);
+    if (raw === null) return [...DEFAULT_SIZES];
+    const parsed = JSON.parse(raw);
+    if (!valid(parsed)) return [...DEFAULT_SIZES];
+    if (parsed.some((n) => n < MIN)) return [...DEFAULT_SIZES];
+    const total = parsed.reduce((a, b) => a + b, 0);
+    if (Math.abs(total - 100) > 0.5) return [...DEFAULT_SIZES];
+    return clampSizes(parsed);
+  } catch {
+    return [...DEFAULT_SIZES];
+  }
+}
+
+export function saveSizes(sizes) {
+  try { localStorage.setItem(SIZES_KEY, JSON.stringify(sizes)); } catch { /* quota — ignore */ }
+}

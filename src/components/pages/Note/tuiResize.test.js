@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { DEFAULT_SIZES, MIN, clampSizes, applyDelta, sizesFromDrag } from './tuiResize';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { DEFAULT_SIZES, MIN, clampSizes, applyDelta, sizesFromDrag, SIZES_KEY, loadSizes, saveSizes } from './tuiResize';
 
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
@@ -93,5 +93,41 @@ describe('sizesFromDrag', () => {
   it('biên lạ hoặc ratio hỏng → giữ nguyên', () => {
     expect(sizesFromDrag([16, 35, 49], 9, 0.5)).toEqual([16, 35, 49]);
     expect(sizesFromDrag([16, 35, 49], 0, NaN)).toEqual([16, 35, 49]);
+  });
+});
+
+describe('loadSizes / saveSizes', () => {
+  beforeEach(() => { localStorage.clear(); });
+
+  it('chưa có gì → mặc định', () => {
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('lưu rồi đọc lại đúng', () => {
+    saveSizes([20, 30, 50]);
+    expect(loadSizes()).toEqual([20, 30, 50]);
+  });
+  it('JSON hỏng → mặc định', () => {
+    localStorage.setItem(SIZES_KEY, '{nope');
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('sai độ dài → mặc định', () => {
+    localStorage.setItem(SIZES_KEY, JSON.stringify([50, 50]));
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('có NaN / không phải số → mặc định', () => {
+    localStorage.setItem(SIZES_KEY, JSON.stringify([null, 35, 49]));
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('tổng lệch quá → mặc định', () => {
+    localStorage.setItem(SIZES_KEY, JSON.stringify([10, 10, 10]));
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('dưới sàn → mặc định', () => {
+    localStorage.setItem(SIZES_KEY, JSON.stringify([2, 49, 49]));
+    expect(loadSizes()).toEqual(DEFAULT_SIZES);
+  });
+  it('lệch trong sai số ±0.5 vẫn nhận (và được chuẩn hoá)', () => {
+    localStorage.setItem(SIZES_KEY, JSON.stringify([16.2, 35, 49]));
+    expect(sum(loadSizes())).toBeCloseTo(100);
   });
 });
