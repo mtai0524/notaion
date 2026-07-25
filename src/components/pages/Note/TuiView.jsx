@@ -65,9 +65,6 @@ const FOCUS_TIME_KEY = 'daily-note-focus-time';    // { noteId: seconds focused 
 const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
 const TUI_THEME_KEY = 'daily-note-tui-theme';
 const TUI_ZEN_KEY = 'daily-note-tui-zen';
-// Phải khớp `gap` của .tui-body trong TuiView.scss — panelStyle trừ phần gap
-// này ra khỏi bề rộng %, nếu lệch thì panel cuối tràn ra hoặc hụt lại.
-const TUI_GAP_PX = 12;
 const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
 const NVIM_KEY = 'daily-note-nvim';                // 'on' | 'off'
 const VIM_LINENO_KEY = 'daily-note-vim-lineno';   // 'on' | 'off'
@@ -298,12 +295,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   // Chỉ ba-panel-desktop mới nhận inline flex; zen và mobile để CSS lo.
   const sizingOn = !zen && !narrow;
-  /* `%` tính theo TOÀN BỘ chiều rộng .tui-body, nhưng hai khe `gap: 12px` cũng
-     ăn chỗ — cộng lại thành 100% + 24px và panel cuối bị đẩy tràn ra ngoài
-     (mất viền phải). Trừ đi phần gap tương ứng với tỉ lệ của từng panel để
-     tổng khớp đúng khung mà tỉ lệ vẫn giữ nguyên. */
+  /* `%` tính theo TOÀN BỘ chiều rộng .tui-body, nhưng hai khe gap cũng ăn chỗ —
+     cộng lại thành 100% + 2*gap và panel cuối bị đẩy tràn ra ngoài (mất viền
+     phải). Trừ đi phần gap tương ứng tỉ lệ từng panel: tổng khớp đúng khung mà
+     tỉ lệ giữ nguyên. Dùng var(--tui-gap) do .tui-body đặt nên chỉ có MỘT nơi
+     khai báo khe — đổi trong SCSS là JS tự theo. */
   const panelStyle = (i) => (sizingOn
-    ? { flex: `0 0 calc(${sizes[i]}% - ${(TUI_GAP_PX * 2 * sizes[i]) / 100}px)` }
+    ? { flex: `0 0 calc(${sizes[i]}% - var(--tui-gap) * 2 * ${sizes[i]} / 100)` }
     : undefined);
 
   // Debounce: kéo chuột bắn setSizes mỗi frame, không đập vào storage từng lần.

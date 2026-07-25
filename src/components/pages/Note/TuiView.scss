@@ -30,7 +30,11 @@
     flex: 1;
     min-height: 0;
     display: flex;
-    gap: 12px;
+    /* Nguồn sự thật duy nhất cho khe giữa các panel: panelStyle trong
+       TuiView.jsx đọc lại var này để trừ phần gap ra khỏi bề rộng %.
+       Sửa số ở đây là đủ — JS tự theo, không cần sửa hai nơi. */
+    --tui-gap: 12px;
+    gap: var(--tui-gap);
   }
 
   /* ----- bordered panel with a title chip on the top border ----- */
