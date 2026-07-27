@@ -1,4 +1,5 @@
 import axiosInstance from '../axiosConfig';
+import { splitByDestination } from './uploadError';
 
 /**
  * @typedef {Object} FileMetadata
@@ -37,12 +38,22 @@ export const uploadFiles = async (files, onProgress) => {
 };
 
 /**
- * Upload files to Cloudinary (via backend)
- * @param {File[]} files
- * @param {Function} onProgress
- * @returns {Promise<FileMetadata[]>}
+ * URL xem/tải một file đã upload, dùng được cho cả hai nơi lưu.
+ * File Cloudinary có `cloudUrl`; file lưu trên server thì không, phải trỏ về
+ * endpoint download của backend theo `savedName`.
+ * @param {FileMetadata} meta
+ * @returns {string}
  */
-export const uploadFilesToCloudinary = async (files, onProgress) => {
+export const fileUrlOf = (meta) => {
+  if (!meta) return '';
+  if (meta.cloudUrl) return meta.cloudUrl;
+  if (!meta.savedName) return '';
+  const base = (axiosInstance.defaults.baseURL || '').replace(/\/$/, '');
+  return `${base}/api/files/download/${encodeURIComponent(meta.savedName)}`;
+};
+
+/** Gửi thẳng lên Cloudinary (qua backend), không định tuyến. Dùng nội bộ. */
+const postToCloudinary = async (files, onProgress) => {
   const formData = new FormData();
   files.forEach(file => {
     formData.append('files', file);
@@ -60,6 +71,46 @@ export const uploadFilesToCloudinary = async (files, onProgress) => {
     }
   });
   return response.data;
+};
+
+/**
+ * Upload files, tự chọn nơi lưu theo dung lượng.
+ *
+ * Gói Cloudinary Free chặn cứng ở 10MB cho ảnh và raw file (xlsx/pdf/zip…) —
+ * giới hạn của tài khoản nên đi qua backend cũng không lách được, và
+ * upload_large/chunked cũng vô ích vì giới hạn tính trên file hoàn chỉnh.
+ * File vượt trần được lưu vào server của mình (`/api/files/upload`) thay vì
+ * để thất bại; file nhỏ vẫn lên Cloudinary như cũ để hưởng CDN.
+ *
+ * Giữ nguyên tên hàm và hình dạng kết quả để các nơi gọi không phải đổi.
+ * @param {File[]} files
+ * @param {Function} onProgress
+ * @returns {Promise<FileMetadata[]>}
+ */
+export const uploadFilesToCloudinary = async (files, onProgress) => {
+  const list = Array.from(files || []);
+  const { cloud, local } = splitByDestination(list);
+
+  // Đường thường: mọi file đều vừa trần — giữ nguyên hành vi cũ hoàn toàn.
+  if (!local.length) return postToCloudinary(list, onProgress);
+
+  // Có file quá lớn. Chạy song song rồi ghép lại theo đúng thứ tự đầu vào,
+  // để nơi gọi (vốn hay map 1-1 với `files`) không bị lệch thứ tự.
+  const [cloudRes, localRes] = await Promise.all([
+    cloud.length ? postToCloudinary(cloud, onProgress) : Promise.resolve([]),
+    uploadFiles(local, cloud.length ? undefined : onProgress),
+  ]);
+
+  const byName = new Map();
+  [...(cloudRes || []), ...(localRes || [])].forEach((r) => {
+    if (r?.originalName && !byName.has(r.originalName)) byName.set(r.originalName, r);
+  });
+  const ordered = list.map((f) => byName.get(f.name)).filter(Boolean);
+  // Nếu backend không trả originalName như mong đợi thì đừng làm mất dữ liệu —
+  // rơi về nối đơn giản.
+  return ordered.length === (cloudRes.length + localRes.length)
+    ? ordered
+    : [...(cloudRes || []), ...(localRes || [])];
 };
 
 /**

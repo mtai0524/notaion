@@ -2048,6 +2048,20 @@ body.dn-fullscreen .container-nav { display: none; }
         color: var(--text-color);
 
         .att-icon { color: var(--accent-color); flex-shrink: 0; }
+
+        /* File vượt 10MB nên lưu trên server ứng dụng thay vì CDN — có thể mất
+           khi deploy lại. Badge đỏ vuông để nhìn là thấy ngay. */
+        .att-local-tag {
+          flex-shrink: 0;
+          padding: 1px 5px;
+          background: #dc2626;
+          color: #fff;
+          font-size: 0.58rem;
+          font-weight: 800;
+          letter-spacing: 0.6px;
+          border-radius: 0;
+          cursor: help;
+        }
         .att-name {
           flex: 1;
           overflow: hidden;

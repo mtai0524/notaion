@@ -12,7 +12,8 @@ import {
 import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "../../../axiosConfig";
-import { downloadFile } from "../../../services/fileService";
+import { downloadFile, uploadFilesToCloudinary, fileUrlOf } from "../../../services/fileService";
+import { shortUploadError, isLocalStored } from "../../../services/uploadError";
 import debounce from "lodash.debounce";
 import { Rnd } from "react-rnd";
 import NotionBlock, { LazyBlock, SLASH_COMMANDS } from "./NotionBlock";
@@ -1037,15 +1038,17 @@ const Notion = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append("files", file);
-
     try {
-      const response = await axiosInstance.post("/api/files/upload/cloudinary", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      const fileData = response.data[0];
-      const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
+      // Qua service để file >10MB tự chuyển sang lưu trên server thay vì bị
+      // Cloudinary từ chối (trần raw/image của gói Free).
+      const uploaded = await uploadFilesToCloudinary([file]);
+      const fileData = uploaded[0];
+      const fileUrl = withName(fileUrlOf(fileData), fileData.originalName);
+      // Toast ở đây cắt còn 60 ký tự nên dùng câu ngắn; chi tiết rủi ro nằm ở
+      // tooltip của badge LOCAL trên khối file.
+      if (uploaded.some(isLocalStored)) {
+        toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+      }
       if (id) {
         if (file.type.startsWith("image/")) {
           responseDataImage({ data: { url: fileUrl } }, e, id);
@@ -1069,7 +1072,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading file:", error);
       setLoadingImage(null);
-      toast.error("Failed to upload file");
+      toast.error(shortUploadError(error, [file]), 8);
     }
   };
 
@@ -1098,8 +1101,6 @@ const Notion = () => {
     if (files && files.length > 0) {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const formData = new FormData();
-        formData.append("files", file);
         const newBlockId = generateRandomId();
         setItems((prev) => [
           ...prev,
@@ -1107,9 +1108,12 @@ const Notion = () => {
         ]);
         setLoadingImage(newBlockId);
         try {
-          const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
-          const fileData = response.data[0];
-          const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
+          const uploaded = await uploadFilesToCloudinary([file]);
+          const fileData = uploaded[0];
+          const fileUrl = withName(fileUrlOf(fileData), fileData.originalName);
+          if (uploaded.some(isLocalStored)) {
+            toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+          }
           setItems((prevItems) => {
             const updated = prevItems.map((item) =>
               item.id === newBlockId ? { ...item, content: fileUrl } : item
@@ -1120,7 +1124,7 @@ const Notion = () => {
         } catch (error) {
           console.error("Error uploading dropped file:", error);
           setItems((prev) => prev.filter((item) => item.id !== newBlockId));
-          toast.error("Failed to upload dropped file");
+          toast.error(shortUploadError(error, [file]), 8);
         } finally {
           setLoadingImage(null);
         }
@@ -1348,12 +1352,15 @@ const Notion = () => {
 
   const uploadFileAndInsert = async (file, targetId, isNewBlock) => {
     setLoadingImage(targetId);
-    const formData = new FormData();
-    formData.append("files", file);
     try {
-      const response = await axiosInstance.post("/api/files/upload/cloudinary", formData);
-      const fileData = response.data[0];
-      const fileUrl = withName(fileData.cloudUrl, fileData.originalName);
+      const uploaded = await uploadFilesToCloudinary([file]);
+      const fileData = uploaded[0];
+      const fileUrl = withName(fileUrlOf(fileData), fileData.originalName);
+      // Toast ở đây cắt còn 60 ký tự nên dùng câu ngắn; chi tiết rủi ro nằm ở
+      // tooltip của badge LOCAL trên khối file.
+      if (uploaded.some(isLocalStored)) {
+        toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+      }
       setItems((prevItems) => {
         const updated = prevItems.map((it) =>
           it.id === targetId ? { ...it, content: fileUrl } : it
@@ -1364,7 +1371,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading pasted file:", error);
       if (isNewBlock) setItems((prev) => prev.filter((it) => it.id !== targetId));
-      toast.error("Failed to upload pasted file");
+      toast.error(shortUploadError(error, [file]), 8);
     } finally {
       setLoadingImage(null);
     }

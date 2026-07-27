@@ -58,7 +58,8 @@ import Cookies from 'js-cookie';
 import jwt_decode from 'jwt-decode';
 import config from '../../../config';
 import axiosInstance from '../../../axiosConfig';
-import { uploadFilesToCloudinary } from '../../../services/fileService';
+import { uploadFilesToCloudinary, fileUrlOf } from '../../../services/fileService';
+import { describeUploadError, isLocalStored, localStorageWarning } from '../../../services/uploadError';
 import debounce from 'lodash.debounce';
 import TuiView from './TuiView';
 import './DailyNoteApp.scss';
@@ -395,15 +396,20 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
       const uploaded = await uploadFilesToCloudinary(list);
       const newAttachments = uploaded.map(f => ({
         type: (f.contentType || '').startsWith('image/') ? 'image' : 'file',
-        url: f.cloudUrl,
+        url: fileUrlOf(f),
         name: f.originalName,
         size: f.sizeInBytes,
         contentType: f.contentType,
+        // Đánh dấu file nằm trên server ứng dụng (không phải CDN) để UI cảnh
+        // báo được — loại này có thể mất khi deploy lại hoặc dọn ổ đĩa.
+        local: isLocalStored(f),
       }));
+      const warn = localStorageWarning(uploaded);
+      if (warn) alert(warn);
       onUpdate(note.id, { attachments: [...(note.attachments || []), ...newAttachments] });
     } catch (err) {
       console.error('[NOTE-UPLOAD-ERROR]', err);
-      alert('Failed to upload attachment');
+      alert(describeUploadError(err, list));
     } finally {
       setUploading(false);
     }
@@ -1140,10 +1146,16 @@ const Note = ({ note, onUpdate, onDelete, onFocus, onDuplicate, onSendToBack, ap
             {fileAttachments.length > 0 && (
               <div className="note-file-attachments">
                 {fileAttachments.map(att => (
-                  <div className="att-chip" key={att.url} onClick={(e) => e.stopPropagation()}>
+                  <div className={`att-chip ${att.local ? 'is-local' : ''}`} key={att.url} onClick={(e) => e.stopPropagation()}>
                     <FaFileAlt className="att-icon" />
                     <span className="att-name" title={att.name}>{att.name}</span>
                     {att.size != null && <span className="att-size">{formatFileSize(att.size)}</span>}
+                    {att.local && (
+                      <span className="att-local-tag"
+                            title="Quá 10MB nên lưu trên server ứng dụng thay vì CDN. File có thể mất khi server được cập nhật — hãy giữ một bản sao riêng.">
+                        LOCAL
+                      </span>
+                    )}
                     <a href={att.url} target="_blank" rel="noopener noreferrer" download={att.name} className="att-action" title="Download">
                       <FaDownload />
                     </a>
