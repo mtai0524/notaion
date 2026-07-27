@@ -54,22 +54,6 @@ export function splitByDestination(files = []) {
   return { cloud, local };
 }
 
-/* Bản rút gọn cho toast/pill hẹp (Notion cắt còn ~60 ký tự). Giữ phần đắt giá
-   nhất — tầng nào chặn — thay vì để câu dài bị cắt cụt mất ý. */
-export function shortUploadError(error, files = []) {
-  const status = error?.response?.status;
-  if (status === 413) return 'Server chặn: file quá lớn (413)';
-  if (status === 401 || status === 403) return `Không có quyền upload (${status})`;
-  if (!error?.response) {
-    if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
-      return 'Upload quá thời gian chờ';
-    }
-    return 'Không gửi được lên server';
-  }
-  const full = describeUploadError(error, files);
-  return full.length <= 58 ? full : `${full.slice(0, 57)}…`;
-}
-
 /* File này lưu ở server mình hay trên Cloudinary?
    Cloudinary trả `cloudUrl`; file lưu nội bộ thì không có. */
 export function isLocalStored(meta) {

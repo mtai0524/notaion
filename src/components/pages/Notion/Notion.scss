@@ -1467,10 +1467,17 @@
   background: var(--accent-color) !important;
 }
 
+/* Toast neo bên trái để né sidebar. Phải kèm `right` + `width:auto`: antd mặc
+   định đặt `width:100%`, nên chỉ ghim `left` thôi sẽ khiến toast dài tràn khỏi
+   mép phải rồi bị căn giữa đẩy ngược ra ngoài mép trái (chữ bị cắt cụt đầu câu).
+   `text-align:left` giữ pill dính mép trái thay vì nhảy theo độ dài nội dung. */
 .ant-message {
   position: fixed;
   left: 70px !important;
+  right: 16px !important;
   top: 10px !important;
+  width: auto !important;
+  text-align: left !important;
   z-index: 9999;
 }
 
@@ -1777,11 +1784,11 @@
     min-width: 0;
     color: var(--text-color, #111827) !important;
 
-    /* the text node antd renders after the icon */
+    /* the text node antd renders after the icon — wrap onto a second line
+       instead of clipping, so a warning stays readable to its last word */
     > span:last-child {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      min-width: 0;
+      overflow-wrap: anywhere;
       color: var(--text-color, #111827) !important;
     }
   }

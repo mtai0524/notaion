@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { describeUploadError, formatBytes, MB,
          cloudinaryKind, exceedsCloudinary, splitByDestination,
-         isLocalStored, localStorageWarning, shortUploadError } from './uploadError';
+         isLocalStored, localStorageWarning } from './uploadError';
 
 const mk = (size, type) => ({ size, type, name: `f-${size}` });
 
@@ -76,27 +76,6 @@ describe('formatBytes', () => {
     expect(formatBytes(undefined)).toBe('?');
     expect(formatBytes(NaN)).toBe('?');
     expect(formatBytes(-1)).toBe('?');
-  });
-});
-
-describe('shortUploadError', () => {
-  it('luôn vừa toast 60 ký tự của Notion', () => {
-    const cases = [
-      axiosErr(413, ''), axiosErr(401, {}), axiosErr(500, { message: 'x'.repeat(200) }),
-      axiosErr(400, { error: { message: 'y'.repeat(200) } }),
-      { code: 'ECONNABORTED', message: 'timeout' }, { message: 'Network Error' }, undefined,
-    ];
-    for (const c of cases) {
-      expect(shortUploadError(c, [{ size: 19 * MB }]).length).toBeLessThanOrEqual(60);
-    }
-  });
-  it('413 giữ được ý "server chặn" chứ không bị cắt cụt', () => {
-    const msg = shortUploadError(axiosErr(413, ''), [{ size: 19 * MB }]);
-    expect(msg).toContain('413');
-    expect(msg).toMatch(/Server chặn/);
-  });
-  it('gọi được describeUploadError dù khai báo sau (hoisting)', () => {
-    expect(typeof shortUploadError(axiosErr(404, {}))).toBe('string');
   });
 });
 

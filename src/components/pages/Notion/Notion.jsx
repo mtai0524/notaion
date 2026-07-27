@@ -13,7 +13,7 @@ import "./Notion.scss";
 import { v4 as uuidv4 } from "uuid";
 import axiosInstance from "../../../axiosConfig";
 import { downloadFile, uploadFilesToCloudinary, fileUrlOf } from "../../../services/fileService";
-import { shortUploadError, isLocalStored } from "../../../services/uploadError";
+import { describeUploadError, isLocalStored, localStorageWarning } from "../../../services/uploadError";
 import debounce from "lodash.debounce";
 import { Rnd } from "react-rnd";
 import NotionBlock, { LazyBlock, SLASH_COMMANDS } from "./NotionBlock";
@@ -32,9 +32,10 @@ const generateRandomId = () => uuidv4();
 const PAGE_SIZE = 15;
 
 // Notaion-styled toast. Wraps antd's message so every notification shares the
-// same compact pill look (see .notaion-toast in Notion.scss) and never grows so
-// wide it gets clipped — long text is truncated with an ellipsis.
-const TOAST_MAX = 60;
+// same compact pill look (see .notaion-toast in Notion.scss). The pill wraps
+// onto a second line rather than clipping, so this cap only exists to stop a
+// pathologically long server error — normal messages are never truncated.
+const TOAST_MAX = 160;
 const notify = (type, text, duration = 2) => {
   const content = String(text);
   message[type]({
@@ -1047,7 +1048,7 @@ const Notion = () => {
       // Toast ở đây cắt còn 60 ký tự nên dùng câu ngắn; chi tiết rủi ro nằm ở
       // tooltip của badge LOCAL trên khối file.
       if (uploaded.some(isLocalStored)) {
-        toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+        toast.warning(localStorageWarning(uploaded), 10);
       }
       if (id) {
         if (file.type.startsWith("image/")) {
@@ -1072,7 +1073,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading file:", error);
       setLoadingImage(null);
-      toast.error(shortUploadError(error, [file]), 8);
+      toast.error(describeUploadError(error, [file]), 10);
     }
   };
 
@@ -1112,7 +1113,7 @@ const Notion = () => {
           const fileData = uploaded[0];
           const fileUrl = withName(fileUrlOf(fileData), fileData.originalName);
           if (uploaded.some(isLocalStored)) {
-            toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+            toast.warning(localStorageWarning(uploaded), 10);
           }
           setItems((prevItems) => {
             const updated = prevItems.map((item) =>
@@ -1124,7 +1125,7 @@ const Notion = () => {
         } catch (error) {
           console.error("Error uploading dropped file:", error);
           setItems((prev) => prev.filter((item) => item.id !== newBlockId));
-          toast.error(shortUploadError(error, [file]), 8);
+          toast.error(describeUploadError(error, [file]), 10);
         } finally {
           setLoadingImage(null);
         }
@@ -1359,7 +1360,7 @@ const Notion = () => {
       // Toast ở đây cắt còn 60 ký tự nên dùng câu ngắn; chi tiết rủi ro nằm ở
       // tooltip của badge LOCAL trên khối file.
       if (uploaded.some(isLocalStored)) {
-        toast.warning('>10MB — lưu trên server, có thể mất khi cập nhật', 8);
+        toast.warning(localStorageWarning(uploaded), 10);
       }
       setItems((prevItems) => {
         const updated = prevItems.map((it) =>
@@ -1371,7 +1372,7 @@ const Notion = () => {
     } catch (error) {
       console.error("Error uploading pasted file:", error);
       if (isNewBlock) setItems((prev) => prev.filter((it) => it.id !== targetId));
-      toast.error(shortUploadError(error, [file]), 8);
+      toast.error(describeUploadError(error, [file]), 10);
     } finally {
       setLoadingImage(null);
     }
