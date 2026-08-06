@@ -45,7 +45,7 @@
         "@use-gesture/react": "^10.3.1",
         "@vitejs/plugin-react": "^4.3.1",
         "antd": "^5.19.2",
-        "axios": "^1.16.0",
+        "axios": "^1.18.1",
         "date-fns": "^3.6.0",
         "dayjs": "^1.11.21",
         "highlight.js": "^11.10.0",
