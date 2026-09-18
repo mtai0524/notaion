@@ -1321,7 +1321,11 @@ const DailyNoteApp = () => {
   }, [urlDateStr]);
 
   const [notesByDate, setNotesByDate] = useState({});
+  // History index (every note, all days). It powers telescope, weekly review and
+  // ALL-scope search; none of that is on the first paint, so the request is
+  // deferred (see fetchAllNotes below) and the heatmap runs off cached counts.
   const [allNotesIndex, setAllNotesIndex] = useState([]);
+  const [cachedDayCounts, setCachedDayCounts] = useState(loadDayCountsCache);
   const [topZIndex, setTopZIndex] = useState(10);
   const [selectedColor, setSelectedColor] = useState(() => localStorage.getItem('daily-note-color') || 'cyan');
   const [loading, setLoading] = useState(false);
@@ -1358,43 +1362,17 @@ const DailyNoteApp = () => {
   const [showCalendar, setShowCalendar] = useState(false);
   const isAllTimeSearch = searchScope === 'all';
 
-  // Sidebar States
-  const [showSidebar, setShowSidebar] = useState(() => localStorage.getItem('daily-note-sidebar') === 'true');
-  const [sidebarQuery, setSidebarQuery] = useState('');
-  const [sidebarFilterCat, setSidebarFilterCat] = useState('ALL');
-
   // Custom (user-created) categories, persisted. Effective list = built-in + custom.
-  const [customCategories, setCustomCategories] = useState(loadCustomCategories);
+  // Labels are created per note via the CUSTOM_LABEL input on a card; this list
+  // just keeps the previously used ones available in the filters.
+  const [customCategories] = useState(loadCustomCategories);
   const allCategories = useMemo(
     () => [...CATEGORIES, ...customCategories.filter(c => !CATEGORIES.includes(c))],
     [customCategories]
   );
-  const [newCatInput, setNewCatInput] = useState('');
   const [searchCatFilter, setSearchCatFilter] = useState('ALL'); // category filter for the search bar
   const [searchDateFrom, setSearchDateFrom] = useState(''); // 'yyyy-MM-dd' or ''
   const [searchDateTo, setSearchDateTo] = useState('');
-
-  const addCustomCategory = (raw) => {
-    const cat = String(raw || '').trim().toUpperCase().replace(/\s+/g, '_').slice(0, 16);
-    if (!cat) return;
-    if (allCategories.includes(cat)) { setNewCatInput(''); return; }
-    setCustomCategories(prev => {
-      const next = [...prev, cat];
-      localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(next));
-      return next;
-    });
-    setNewCatInput('');
-  };
-
-  const removeCustomCategory = (cat) => {
-    setCustomCategories(prev => {
-      const next = prev.filter(c => c !== cat);
-      localStorage.setItem(CUSTOM_CATS_KEY, JSON.stringify(next));
-      return next;
-    });
-    if (sidebarFilterCat === cat) setSidebarFilterCat('ALL');
-    if (searchCatFilter === cat) setSearchCatFilter('ALL');
-  };
 
   // Persist view-preference options so they survive a reload.
   useEffect(() => { localStorage.setItem('daily-note-view-mode', viewMode); }, [viewMode]);
@@ -1420,23 +1398,6 @@ const DailyNoteApp = () => {
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
   useEffect(() => { localStorage.setItem('daily-note-color', selectedColor); }, [selectedColor]);
-
-  const filteredSidebarNotes = allCurrentNotes.filter(n => {
-    if (n.isDeleted) return false;
-    const queryMatch = sidebarQuery.trim() === '' || 
-      n.title?.toLowerCase().includes(sidebarQuery.toLowerCase()) ||
-      n.content?.toLowerCase().includes(sidebarQuery.toLowerCase());
-    const catMatch = sidebarFilterCat === 'ALL' || (n.customCategory || n.category) === sidebarFilterCat;
-    return queryMatch && catMatch;
-  });
-
-  const toggleSidebar = () => {
-    setShowSidebar(v => {
-      const next = !v;
-      localStorage.setItem('daily-note-sidebar', String(next));
-      return next;
-    });
-  };
 
   // Default text color based on current app theme
   const defaultTextColor = (t) => t === 'light' ? '#0f172a' : '#a6accd';
@@ -1616,31 +1577,55 @@ const DailyNoteApp = () => {
     fetchNotes(dateKey);
   }, [dateKey]);
 
-  const fetchAllNotes = useCallback(async () => {
-    try {
-      const response = await axiosInstance.get('/api/DailyNote/all');
-      setAllNotesIndex(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error('[ERROR] Failed to fetch all notes:', error);
-    }
+  // The history index is fetched at most once per mount, and never before the
+  // page is interactive. `allNotesPending` de-dupes the concurrent callers
+  // (idle timer, calendar, ALL-scope search) onto a single request.
+  const allNotesPending = useRef(null);
+
+  const fetchAllNotes = useCallback(() => {
+    if (allNotesPending.current) return allNotesPending.current;
+    const p = axiosInstance
+      .get('/api/DailyNote/all')
+      .then((response) => {
+        const notes = Array.isArray(response.data) ? response.data : [];
+        setAllNotesIndex(notes);
+        const counts = {};
+        notes.forEach((n) => { if (!n.isDeleted && n.date) counts[n.date] = (counts[n.date] || 0) + 1; });
+        setCachedDayCounts(counts);
+        saveDayCountsCache(counts);
+      })
+      .catch((error) => {
+        console.error('[ERROR] Failed to fetch all notes:', error);
+        allNotesPending.current = null; // let a later trigger retry
+      });
+    allNotesPending.current = p;
+    return p;
   }, []);
 
+  // Kick it off once the browser is idle so it never competes with the day's
+  // notes for bandwidth or main-thread time on the way to the first paint.
   useEffect(() => {
-    fetchAllNotes();
+    const idle = window.requestIdleCallback
+      ? window.requestIdleCallback(() => fetchAllNotes(), { timeout: 3000 })
+      : window.setTimeout(() => fetchAllNotes(), 1200);
+    return () => {
+      if (window.requestIdleCallback) window.cancelIdleCallback(idle);
+      else window.clearTimeout(idle);
+    };
   }, [fetchAllNotes]);
 
   // 'yyyy-MM-dd' -> live note count, for the calendar dots and the
-  // "no entry today" nudge. allNotesIndex covers history; notesByDate wins
-  // for any day already loaded this session (it's fresher).
+  // "no entry today" nudge. Cached counts render instantly on load and are
+  // replaced by allNotesIndex once it arrives; notesByDate always wins for any
+  // day already loaded this session (it's fresher).
   const markedDates = useMemo(() => {
-    const m = {};
-    allNotesIndex.forEach(n => { if (!n.isDeleted && n.date) m[n.date] = (m[n.date] || 0) + 1; });
+    const m = { ...cachedDayCounts };
     Object.entries(notesByDate).forEach(([d, arr]) => {
       m[d] = (arr || []).filter(n => !n.isDeleted).length;
     });
     Object.keys(m).forEach(k => { if (!m[k]) delete m[k]; });
     return m;
-  }, [allNotesIndex, notesByDate]);
+  }, [cachedDayCounts, notesByDate]);
 
   const todayKey = format(new Date(), 'yyyy-MM-dd');
   const todayHasNotes = (markedDates[todayKey] || 0) > 0;
@@ -1714,6 +1699,7 @@ const DailyNoteApp = () => {
   };
 
   const handleSearchScopeChange = (scope) => {
+    if (scope === 'all') fetchAllNotes(); // no-op if the idle fetch already ran
     setSearchScope(scope);
     localStorage.setItem('daily-note-search-scope', scope);
     setShowGlobalSearchResults(false);
@@ -1761,7 +1747,6 @@ const DailyNoteApp = () => {
         g: () => r.setShowGrid(v => !v),
         r: () => r.setShowTrash(v => !v),
         c: () => r.setShowToolsMenu(v => !v),
-        s: () => r.toggleSidebar(),
         '?': () => r.setShowHotkeyHelp(v => !v),
         '/': () => {
           const el = document.querySelector('.search-box-cyber input');
@@ -2194,7 +2179,6 @@ const DailyNoteApp = () => {
     setShowNewMenu,
     setShowHotkeyHelp,
     setCtxMenu,
-    toggleSidebar,
     viewMode,
   };
 
@@ -2301,7 +2285,7 @@ const DailyNoteApp = () => {
         <div className="date-navigator">
           <button className="nav-btn" onClick={() => navigateDate(-1)}><FaChevronLeft /></button>
           <div className="current-date-display">
-            <h2 className="date-title-btn" onClick={() => setShowCalendar(v => !v)}
+            <h2 className="date-title-btn" onClick={() => { fetchAllNotes(); setShowCalendar(v => !v); }}
                 title="Open calendar — jump to any day">
               {format(currentDate, 'yyyy_MM_dd')}
               <FaChevronDown className="date-caret" />
@@ -2341,7 +2325,7 @@ const DailyNoteApp = () => {
           {streakStats.streak > 0 && (
             <button
               className="nav-btn today-reminder-chip streak-chip"
-              onClick={() => setShowCalendar(true)}
+              onClick={() => { fetchAllNotes(); setShowCalendar(true); }}
               title={`Chuỗi ${streakStats.streak} ngày viết liên tục · ${streakStats.monthNotes} note tháng này · ${streakStats.totalDays} ngày có ghi chú`}
             >
               🔥 {streakStats.streak}
@@ -2372,20 +2356,12 @@ const DailyNoteApp = () => {
               <FaLayerGroup />
             </button>
             <span className="vs-divider" />
-            {/* theme + sidebar live in the same cluster — one tidy group */}
             <button
               className="theme-toggle-btn"
               onClick={toggleTheme}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme (D)`}
             >
               {theme === 'dark' ? <FaSun /> : <FaMoon />}
-            </button>
-            <button
-              className={`sidebar-toggle-btn ${showSidebar ? 'active' : ''}`}
-              onClick={toggleSidebar}
-              title="Toggle Sidebar Index (S)"
-            >
-              <FaListUl />
             </button>
           </div>
 
@@ -2782,7 +2758,6 @@ const DailyNoteApp = () => {
               <div className="hk-group">
                 <div className="hk-group-title">Navigation</div>
                 <div className="hk-row"><kbd>/</kbd><span>Focus search</span></div>
-                <div className="hk-row"><kbd>S</kbd><span>Toggle Sidebar Index</span></div>
                 <div className="hk-row"><kbd>R</kbd><span>Open trash</span></div>
                 <div className="hk-row"><kbd>Right-click</kbd><span>Canvas quick menu</span></div>
                 <div className="hk-row"><kbd>?</kbd><span>Open this help</span></div>
@@ -2829,122 +2804,6 @@ const DailyNoteApp = () => {
       )}
 
       <div className="daily-note-main-content-layout" style={{ display: 'flex', flex: 1, overflow: 'hidden', position: 'relative' }}>
-        {showSidebar && (
-          <aside className="note-sidebar-cyber">
-            <div className="sidebar-header">
-              <span>NOTE INDEX</span>
-              <button className="close-sidebar-btn" onClick={() => setShowSidebar(false)}><FaTimes /></button>
-            </div>
-            
-            <div className="sidebar-search">
-              <input 
-                type="text" 
-                placeholder="Filter index..." 
-                value={sidebarQuery} 
-                onChange={(e) => setSidebarQuery(e.target.value)} 
-              />
-              {sidebarQuery && <FaTimes className="clear-search" onClick={() => setSidebarQuery('')} />}
-            </div>
-
-            <div className="sidebar-filters">
-              <button className={`filter-cat-btn ${sidebarFilterCat === 'ALL' ? 'active' : ''}`} onClick={() => setSidebarFilterCat('ALL')}>ALL</button>
-              {allCategories.map(cat => {
-                const isCustom = !CATEGORIES.includes(cat);
-                return (
-                  <button
-                    key={cat}
-                    className={`filter-cat-btn ${sidebarFilterCat === cat ? 'active' : ''} ${isCustom ? 'is-custom' : ''}`}
-                    style={isCustom ? { '--cat-accent': getCategoryAccent(cat).color } : undefined}
-                    onClick={() => setSidebarFilterCat(cat)}
-                    title={isCustom ? `Custom category — Alt+click to remove` : cat}
-                    onMouseDown={(e) => {
-                      if (isCustom && e.altKey) {
-                        e.preventDefault();
-                        removeCustomCategory(cat);
-                      }
-                    }}
-                  >
-                    {cat}
-                  </button>
-                );
-              })}
-            </div>
-
-            <form
-              className="sidebar-add-cat"
-              onSubmit={(e) => { e.preventDefault(); addCustomCategory(newCatInput); }}
-            >
-              <input
-                className="add-cat-input"
-                value={newCatInput}
-                onChange={(e) => setNewCatInput(e.target.value)}
-                placeholder="NEW_CATEGORY..."
-                maxLength={16}
-              />
-              <button type="submit" className="add-cat-btn" title="Create category">
-                <FaPlus />
-              </button>
-            </form>
-
-            <div className="sidebar-notes-list">
-              {filteredSidebarNotes.length === 0 ? (
-                <div className="sidebar-empty">No entries found</div>
-              ) : (
-                filteredSidebarNotes.map(n => {
-                  const nTheme = COLORS.find(c => c.id === n.color) || COLORS[0];
-                  const accent = n.customColor || nTheme.color;
-                  return (
-                    <div 
-                      key={n.id} 
-                      className={`sidebar-note-item ${n.isFocused ? 'active' : ''} ${n.isCompleted ? 'completed' : ''}`}
-                      onClick={() => locateNote(n.id)}
-                      style={{ '--accent-color': accent }}
-                    >
-                      <div className="note-item-meta">
-                        <span className="note-item-cat">{n.customCategory || n.category || 'MEMO'}</span>
-                        <span className="note-item-time">{n.timestamp}</span>
-                      </div>
-                      <div className="note-item-title">{n.title || 'Untitled Entry'}</div>
-                      <div className="note-item-snippet">{n.content ? (n.content.length > 60 ? n.content.substring(0, 60) + '...' : n.content) : '(Empty content)'}</div>
-                      
-                      <div className="note-item-actions" onClick={(e) => e.stopPropagation()}>
-                        <button 
-                          className={`item-action-btn ${n.pinned ? 'active' : ''}`}
-                          onClick={() => updateNote(n.id, { pinned: !n.pinned, locked: !n.locked })}
-                          title={n.pinned ? 'Unpin note' : 'Pin note'}
-                        >
-                          <FaDrawPolygon />
-                        </button>
-                        <button 
-                          className={`item-action-btn ${n.isMinimized ? 'active' : ''}`}
-                          onClick={() => updateNote(n.id, { isMinimized: !n.isMinimized })}
-                          title={n.isMinimized ? 'Maximize note' : 'Minimize note'}
-                        >
-                          {n.isMinimized ? <FaWindowMaximize /> : <FaWindowMinimize />}
-                        </button>
-                        <button 
-                          className={`item-action-btn ${n.isCompleted ? 'active' : ''}`}
-                          onClick={() => updateNote(n.id, { isCompleted: !n.isCompleted })}
-                          title={n.isCompleted ? 'Mark incomplete' : 'Mark complete'}
-                        >
-                          <FaCheckCircle />
-                        </button>
-                        <button 
-                          className="item-action-btn danger" 
-                          onClick={() => deleteNote(n.id)}
-                          title="Delete note"
-                        >
-                          <FaTrashAlt />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </aside>
-        )}
-
         <main
           className={`note-canvas-cyber ${canvasBg ? 'has-custom-bg' : ''}`}
           ref={canvasRef}
@@ -3076,6 +2935,29 @@ const loadCustomCategories = () => {
     return Array.isArray(arr) ? arr.filter((c) => typeof c === 'string') : [];
   } catch {
     return [];
+  }
+};
+
+// `/api/DailyNote/all` is ~150KB and slow on the hosted backend. The only thing
+// that needs it on the first paint is the per-day note count (activity heatmap +
+// streak), so we cache just that map and let the full payload land later.
+const DAY_COUNTS_CACHE_KEY = 'daily-note-day-counts-v1';
+
+const loadDayCountsCache = () => {
+  try {
+    const raw = localStorage.getItem(DAY_COUNTS_CACHE_KEY);
+    const obj = raw ? JSON.parse(raw) : null;
+    return obj && typeof obj === 'object' && !Array.isArray(obj) ? obj : {};
+  } catch {
+    return {};
+  }
+};
+
+const saveDayCountsCache = (counts) => {
+  try {
+    localStorage.setItem(DAY_COUNTS_CACHE_KEY, JSON.stringify(counts));
+  } catch {
+    // quota exceeded / private mode — the in-memory index still works
   }
 };
 
