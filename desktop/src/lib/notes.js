@@ -96,13 +96,20 @@ export function searchNotes(notes, query, limit = 50) {
 }
 
 /** First non-empty content line, trimmed of markdown markers — list preview. */
+// A line that is only an inline image `![alt](url)` or file `[label](url)`.
+const MEDIA_LINE = /^!?\[[^\]]*\]\([^)]+\)$/;
+
 export const previewLine = (content) => {
   const line = String(content || "")
     .split("\n")
     .map((l) => l.trim())
-    .find(Boolean);
+    .find((l) => l && !MEDIA_LINE.test(l));
   return line ? line.replace(/^([-*]\s*\[[ xX]\]\s*|[#>*-]+\s*)/, "").slice(0, 120) : "";
 };
+
+/** Inline images/files in the content (web block format). */
+export const mediaCount = (content) =>
+  String(content || "").split("\n").filter((l) => MEDIA_LINE.test(l.trim())).length;
 
 export const wordCount = (text) => (String(text || "").trim().match(/\S+/g) || []).length;
 

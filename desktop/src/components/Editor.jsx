@@ -3,14 +3,15 @@ import { QUICK_HINTS } from "../lib/shortcuts.js";
 import { CATEGORIES, checklistProgress, wordCount } from "../lib/notes.js";
 import { formatSize } from "../lib/attachments.js";
 import { openExternal } from "../lib/native.js";
-import { applyEdit, continueList, insertTimeStamp, toggleTodo } from "../lib/editing.js";
+import { BlockEditor } from "./BlockEditor.jsx";
 
-export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack, onAttach, onRemoveAttachment, uploading }) {
+export function Editor({
+  note, contentRef, onChange, onCommit, onDelete, onBack,
+  onUpload, onUploadError, onOrphanUpload, onRemoveAttachment,
+}) {
   const [armDelete, setArmDelete] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef();
 
-  useEffect(() => setArmDelete(false), [note?.id]);
   useEffect(() => {
     if (!armDelete) return;
     const t = setTimeout(() => setArmDelete(false), 3000);
@@ -30,58 +31,14 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
     );
   }
 
-  const onKeyDown = (e) => {
-    const el = e.currentTarget;
-    const caret = el.selectionStart;
-    const collapsed = caret === el.selectionEnd;
-    let r = null;
-    if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && collapsed) r = continueList(el.value, caret);
-    else if (e.ctrlKey && (e.key === "l" || e.key === "L")) r = toggleTodo(el.value, caret);
-    else if (e.ctrlKey && e.key === ";") r = insertTimeStamp(el.value, caret);
-    else if (e.key === "Tab" && !e.shiftKey && collapsed) r = { text: el.value.slice(0, caret) + "  " + el.value.slice(caret), caret: caret + 2 };
-    if (r) {
-      e.preventDefault();
-      applyEdit(el, r);
-    }
-  };
-
-  // Screenshots / copied images -> upload. Skip when the clipboard also has
-  // plain text (e.g. copying from Word/Excel), so normal text paste still works.
-  const onPaste = (e) => {
-    const items = [...(e.clipboardData?.items || [])];
-    if (items.some((i) => i.type === "text/plain")) return;
-    const files = items.filter((i) => i.kind === "file").map((i) => i.getAsFile()).filter(Boolean);
-    if (files.length) {
-      e.preventDefault();
-      onAttach(files);
-    }
-  };
-  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
-  const dropProps = {
-    onDragOver: (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      setDragOver(true);
-    },
-    onDragLeave: (e) => {
-      if (!e.currentTarget.contains(e.relatedTarget)) setDragOver(false);
-    },
-    onDrop: (e) => {
-      if (!hasFiles(e)) return;
-      e.preventDefault();
-      setDragOver(false);
-      onAttach([...e.dataTransfer.files]);
-    },
-  };
-
-  const attachments = note.attachments || [];
-  const images = attachments.filter((a) => a.type === "image");
-  const others = attachments.filter((a) => a.type !== "image");
+  // Canvas attachments added on the web (note.attachments). New uploads from
+  // desktop go inline into the content instead, at the caret / drop line.
+  const legacy = note.attachments || [];
   const progress = checklistProgress(note.content);
   const category = note.customCategory || note.category || "LOG";
 
   return (
-    <div class={`editor${dragOver ? " drag-over" : ""}`} onPaste={onPaste} {...dropProps}>
+    <div class="editor">
       <div class="editor-head">
         {onBack && (
           <button class="icon-btn back" onClick={onBack} title="Quay lại danh sách">‹</button>
@@ -94,7 +51,7 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === "ArrowDown") {
               e.preventDefault();
-              textareaRef.current?.focus();
+              contentRef.current?.focus();
             }
           }}
           onBlur={onCommit}
@@ -105,17 +62,13 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
           <input
             type="checkbox"
             checked={!!note.isCompleted}
-            onChange={(e) => {
-              onChange({ isCompleted: e.currentTarget.checked }, true);
-            }}
+            onChange={(e) => onChange({ isCompleted: e.currentTarget.checked }, true)}
           />
           Xong
         </label>
         <select
           value={note.customCategory ? "" : category}
-          onChange={(e) => {
-            onChange({ category: e.currentTarget.value, customCategory: null }, true);
-          }}
+          onChange={(e) => onChange({ category: e.currentTarget.value, customCategory: null }, true)}
         >
           {note.customCategory && <option value="">{note.customCategory}</option>}
           {CATEGORIES.map((c) => (
@@ -124,8 +77,12 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
         </select>
         <span class="muted">{note.timestamp?.slice(0, 5)}</span>
         <span class="spacer" />
-        {uploading > 0 && <span class="muted uploading">Đang tải lên…</span>}
-        <button class="btn small ghost" title="Đính kèm ảnh / file (hoặc dán Ctrl+V, kéo thả)" onClick={() => fileInputRef.current?.click()}>
+        <button
+          class="btn small ghost"
+          title="Chèn ảnh / file tại con trỏ (hoặc Ctrl+V, kéo thả)"
+          onMouseDown={(e) => e.preventDefault() /* keep the caret where it is */}
+          onClick={() => fileInputRef.current?.click()}
+        >
           📎 Đính kèm
         </button>
         <input
@@ -136,7 +93,7 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
           onChange={(e) => {
             const files = [...e.currentTarget.files];
             e.currentTarget.value = "";
-            if (files.length) onAttach(files);
+            if (files.length) contentRef.current?.insertFiles(files);
           }}
         />
         <button
@@ -146,37 +103,38 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
           {armDelete ? "Nhấn lần nữa để xoá" : "Xoá"}
         </button>
       </div>
-      {attachments.length > 0 && (
+
+      {legacy.length > 0 && (
         <div class="attachments">
-          {images.map((a) => (
-            <div class="att-image" key={a.url}>
-              <img src={a.url} alt={a.name} title={`${a.name} — click để mở`} onClick={() => openExternal(a.url)} />
-              <button class="att-remove" title="Gỡ" onClick={() => onRemoveAttachment(a.url)}>×</button>
-            </div>
-          ))}
-          {others.map((a) => (
-            <div class="att-chip" key={a.url}>
-              <button class="link att-name" title={`Mở ${a.name}`} onClick={() => openExternal(a.url)}>📄 {a.name}</button>
-              <span class="muted">{formatSize(a.size)}</span>
-              {a.local && (
-                <span class="att-local" title="Quá 10MB nên lưu trên server ứng dụng thay vì CDN — có thể mất khi server cập nhật.">LOCAL</span>
-              )}
-              <button class="att-remove inline" title="Gỡ" onClick={() => onRemoveAttachment(a.url)}>×</button>
-            </div>
-          ))}
+          {legacy.map((a) =>
+            a.type === "image" ? (
+              <div class="att-image" key={a.url}>
+                <img src={a.url} alt={a.name} title={`${a.name} — click để mở`} onClick={() => openExternal(a.url)} />
+                <button class="att-remove" title="Gỡ" onClick={() => onRemoveAttachment(a.url)}>×</button>
+              </div>
+            ) : (
+              <div class="att-chip" key={a.url}>
+                <button class="link att-name" title={`Mở ${a.name}`} onClick={() => openExternal(a.url)}>📄 {a.name}</button>
+                <span class="muted">{formatSize(a.size)}</span>
+                {a.local && <span class="att-local" title="Lưu trên server ứng dụng thay vì CDN — có thể mất khi server cập nhật.">LOCAL</span>}
+                <button class="att-remove inline" title="Gỡ" onClick={() => onRemoveAttachment(a.url)}>×</button>
+              </div>
+            )
+          )}
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        class="content-input"
-        value={note.content || ""}
-        placeholder={"Viết gì đó…\n\n- [ ] việc cần làm   (Ctrl+L)\n[09:30] ghi log      (Ctrl+;)"}
-        spellcheck={false}
-        onInput={(e) => onChange({ content: e.currentTarget.value })}
-        onKeyDown={onKeyDown}
-        onBlur={onCommit}
-      />
-      {dragOver && <div class="drop-hint">Thả file để đính kèm</div>}
+
+      <div class="editor-scroll">
+        <BlockEditor
+          content={note.content || ""}
+          apiRef={contentRef}
+          onChange={(content) => onChange({ content })}
+          onCommit={onCommit}
+          onUpload={onUpload}
+          onUploadError={onUploadError}
+          onOrphanUpload={(atts) => onOrphanUpload(note, atts)}
+        />
+      </div>
       <div class="editor-foot muted">
         {wordCount(note.content)} từ
         {progress && ` · ${progress.done}/${progress.total} việc xong`}

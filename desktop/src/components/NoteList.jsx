@@ -1,4 +1,4 @@
-import { checklistProgress, previewLine } from "../lib/notes.js";
+import { checklistProgress, mediaCount, previewLine } from "../lib/notes.js";
 
 export function NoteList({ notes, selectedId, onSelect, onToggleDone }) {
   if (!notes.length) {
@@ -33,7 +33,9 @@ export function NoteList({ notes, selectedId, onSelect, onToggleDone }) {
                 </span>
                 {n.timestamp && <span>{n.timestamp.slice(0, 5)}</span>}
                 {progress && <span>☑ {progress.done}/{progress.total}</span>}
-                {n.attachments?.length > 0 && <span>📎 {n.attachments.length}</span>}
+                {(n.attachments?.length || 0) + mediaCount(n.content) > 0 && (
+                  <span>📎 {(n.attachments?.length || 0) + mediaCount(n.content)}</span>
+                )}
               </div>
             </div>
           </li>

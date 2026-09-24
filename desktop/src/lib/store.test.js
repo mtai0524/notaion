@@ -79,3 +79,24 @@ describe("store", () => {
     expect(onAuthError).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("store: stale reads", () => {
+  it("a GET that started before a write finished does not revert that write", async () => {
+    const storage = memStorage();
+    let releaseGet;
+    const api = vi.fn(async (method) => {
+      if (method === "GET") return new Promise((r) => (releaseGet = r));
+      return null; // POST succeeds immediately
+    });
+    const s = createStore({ api, storage });
+    const fetching = s.fetchDay("2026-09-24"); // GET in flight
+    await Promise.resolve();
+    s.save(note("a", { content: "new text" }));
+    await s.flush(); // POST done, outbox empty
+    expect(s.getStatus().pending).toBe(0);
+    releaseGet([note("a", { content: "old text" })]); // server copy from before the POST
+    const out = await fetching;
+    expect(out[0].content).toBe("new text");
+    expect(s.peekDay("2026-09-24")[0].content).toBe("new text");
+  });
+});

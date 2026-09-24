@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { buildNote } from "../lib/notes.js";
-import { describeUploadError, nameClipboardFile } from "../lib/attachments.js";
+import { describeUploadError } from "../lib/attachments.js";
+import { attachmentsToMarkdown } from "../lib/blocks.js";
 import { formatDayLabel, shiftDay, todayKey } from "../lib/dates.js";
 import { tokenUserName } from "../lib/jwt.js";
 import { hideWindow, onQuickCapture } from "../lib/native.js";
@@ -22,7 +23,6 @@ export function DailyView({ store, token, onSignOut }) {
   const [loadError, setLoadError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-  const [uploading, setUploading] = useState(0);
   const [toast, setToast] = useState("");
   const [sync, setSync] = useState(store.getStatus);
   const [capture, setCapture] = useState("");
@@ -152,27 +152,24 @@ export function DailyView({ store, token, onSignOut }) {
     store.remove(note);
   };
 
-  // Upload, then append to the note's attachments (same shape as the web).
-  // The note may have left the view meanwhile (day switch): fall back to the store copy.
-  const attach = async (note, files) => {
-    const list = files.map((f) => nameClipboardFile(f));
-    setUploading((n) => n + 1);
-    try {
-      const added = await store.upload(list);
-      const inView = notesRef.current.find((n) => n.id === note.id);
-      const cur = inView || store.peekDay(note.date).find((n) => n.id === note.id);
-      if (!cur) return;
-      const next = { attachments: [...(cur.attachments || []), ...added] };
-      if (inView) update(note.id, next, true);
-      else store.save({ ...cur, ...next });
-      if (added.some((a) => a.local)) {
-        setToast("File > 10MB được lưu trên server ứng dụng (không phải CDN) — có thể mất khi server cập nhật, hãy giữ bản sao.");
-      }
-    } catch (err) {
-      setToast(describeUploadError(err));
-    } finally {
-      setUploading((n) => n - 1);
+  // Uploads are placed inline by the block editor; these handle the network
+  // part, warnings, and the case where the note was closed mid-upload.
+  const upload = async (files) => {
+    const added = await store.upload(files);
+    if (added.some((a) => a.local)) {
+      setToast("File > 10MB được lưu trên server ứng dụng (không phải CDN) — có thể mất khi server cập nhật, hãy giữ bản sao.");
     }
+    return added;
+  };
+  const appendUploads = (note, atts) => {
+    const inView = notesRef.current.find((n) => n.id === note.id);
+    const cur = inView || store.peekDay(note.date).find((n) => n.id === note.id);
+    if (!cur) return;
+    const md = attachmentsToMarkdown(atts);
+    const content = cur.content ? `${cur.content}
+${md}` : md;
+    if (inView) update(note.id, { content }, true);
+    else store.save({ ...cur, content });
   };
 
   useEffect(() => {
@@ -323,14 +320,16 @@ export function DailyView({ store, token, onSignOut }) {
 
         <main class="editor-pane">
           <Editor
+            key={selected?.id}
             note={selected}
-            textareaRef={contentRef}
+            contentRef={contentRef}
             onChange={(patch, immediate) => selected && update(selected.id, patch, immediate)}
             onCommit={() => selected && dirty.current.has(selected.id) && commit(selected.id)}
             onDelete={() => selected && remove(selected)}
             onBack={isNarrow ? () => setSelectedId(null) : null}
-            uploading={uploading}
-            onAttach={(files) => selected && attach(selected, files)}
+            onUpload={upload}
+            onUploadError={(err) => setToast(describeUploadError(err))}
+            onOrphanUpload={appendUploads}
             onRemoveAttachment={(url) =>
               selected &&
               update(selected.id, { attachments: (selected.attachments || []).filter((a) => a.url !== url) }, true)

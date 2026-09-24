@@ -26,6 +26,12 @@ export function createStore({ api, storage = globalThis.localStorage, onAuthErro
   let lastError = "";
   let flushing = null;
   let retryTimer = null;
+  // Every local write gets a sequence number. A GET that was in flight while
+  // a write happened may return the pre-write server copy (the write's POST
+  // can finish and leave the outbox before the GET response lands), so those
+  // writes are re-applied over the response instead of being reverted.
+  let writeSeq = 0;
+  const recentWrites = new Map(); // id -> { seq, entry }
 
   const read = (key, fallback) => {
     try {
@@ -72,8 +78,20 @@ export function createStore({ api, storage = globalThis.localStorage, onAuthErro
       throw err;
     });
 
+  // Re-apply local writes made after `sinceSeq` onto a server list for `date`.
+  function overlayRecent(notes, date, sinceSeq) {
+    const byId = new Map(notes.map((n) => [n.id, n]));
+    for (const [id, { seq, entry }] of recentWrites) {
+      if (seq <= sinceSeq) continue;
+      if (entry.op === "delete" || entry.note.date !== date) byId.delete(id);
+      else byId.set(id, entry.note);
+    }
+    return [...byId.values()];
+  }
+
   async function fetchDay(date) {
-    const notes = (await get(`/api/DailyNote/${date}`)) || [];
+    const since = writeSeq;
+    const notes = overlayRecent((await get(`/api/DailyNote/${date}`)) || [], date, since);
     cacheDay(date, notes);
     return mergeDay(notes, outbox(), date);
   }
@@ -100,8 +118,12 @@ export function createStore({ api, storage = globalThis.localStorage, onAuthErro
   }
 
   function enqueue(entry) {
+    const id = entry.note?.id ?? entry.id;
+    recentWrites.delete(id);
+    recentWrites.set(id, { seq: ++writeSeq, entry });
+    if (recentWrites.size > 200) recentWrites.delete(recentWrites.keys().next().value);
     const box = outbox();
-    box[entry.note?.id ?? entry.id] = entry;
+    box[id] = entry;
     write(K.outbox, box);
     emit();
     scheduleFlush(0);
