@@ -18,7 +18,8 @@
         "height": 680,
         "minWidth": 380,
         "minHeight": 360,
-        "center": true
+        "center": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
@@ -27,12 +28,18 @@
   },
   "plugins": {
     "deep-link": {
-      "desktop": { "schemes": ["notaion"] }
+      "desktop": {
+        "schemes": [
+          "notaion"
+        ]
+      }
     }
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "publisher": "Notaion",
     "shortDescription": "Notaion Daily — ghi chú hằng ngày",
     "icon": [
@@ -45,10 +52,15 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "languages": ["Vietnamese", "English"],
+        "languages": [
+          "Vietnamese",
+          "English"
+        ],
         "displayLanguageSelector": false
       },
-      "webviewInstallMode": { "type": "downloadBootstrapper" }
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      }
     }
   }
 }

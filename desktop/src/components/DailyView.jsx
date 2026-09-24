@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { buildNote } from "../lib/notes.js";
+import { describeUploadError, nameClipboardFile } from "../lib/attachments.js";
 import { formatDayLabel, shiftDay, todayKey } from "../lib/dates.js";
 import { tokenUserName } from "../lib/jwt.js";
 import { hideWindow, onQuickCapture } from "../lib/native.js";
@@ -21,6 +22,8 @@ export function DailyView({ store, token, onSignOut }) {
   const [loadError, setLoadError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const [toast, setToast] = useState("");
   const [sync, setSync] = useState(store.getStatus);
   const [capture, setCapture] = useState("");
   const [isNarrow, setIsNarrow] = useState(NARROW_MQ.matches);
@@ -148,6 +151,35 @@ export function DailyView({ store, token, onSignOut }) {
     setSelectedId(rest[Math.min(idx, rest.length - 1)]?.id ?? null);
     store.remove(note);
   };
+
+  // Upload, then append to the note's attachments (same shape as the web).
+  // The note may have left the view meanwhile (day switch): fall back to the store copy.
+  const attach = async (note, files) => {
+    const list = files.map((f) => nameClipboardFile(f));
+    setUploading((n) => n + 1);
+    try {
+      const added = await store.upload(list);
+      const inView = notesRef.current.find((n) => n.id === note.id);
+      const cur = inView || store.peekDay(note.date).find((n) => n.id === note.id);
+      if (!cur) return;
+      const next = { attachments: [...(cur.attachments || []), ...added] };
+      if (inView) update(note.id, next, true);
+      else store.save({ ...cur, ...next });
+      if (added.some((a) => a.local)) {
+        setToast("File > 10MB được lưu trên server ứng dụng (không phải CDN) — có thể mất khi server cập nhật, hãy giữ bản sao.");
+      }
+    } catch (err) {
+      setToast(describeUploadError(err));
+    } finally {
+      setUploading((n) => n - 1);
+    }
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 7000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const moveSelection = (delta) => {
     const list = notesRef.current;
@@ -297,6 +329,12 @@ export function DailyView({ store, token, onSignOut }) {
             onCommit={() => selected && dirty.current.has(selected.id) && commit(selected.id)}
             onDelete={() => selected && remove(selected)}
             onBack={isNarrow ? () => setSelectedId(null) : null}
+            uploading={uploading}
+            onAttach={(files) => selected && attach(selected, files)}
+            onRemoveAttachment={(url) =>
+              selected &&
+              update(selected.id, { attachments: (selected.attachments || []).filter((a) => a.url !== url) }, true)
+            }
           />
         </main>
       </div>
@@ -310,6 +348,9 @@ export function DailyView({ store, token, onSignOut }) {
         <button class="link" onClick={onSignOut}>Đăng xuất</button>
       </footer>
 
+      {toast && (
+        <div class="toast" role="status" onClick={() => setToast("")}>{toast}</div>
+      )}
       {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {searchOpen && (
         <SearchPalette store={store} onPick={pickSearch} onClose={() => setSearchOpen(false)} />

@@ -296,3 +296,74 @@ kbd {
 .dot.ok { background: var(--ok); }
 .dot.warn { background: var(--warn); }
 .dot.bad { background: var(--danger); }
+
+/* ---- attachments ---- */
+.editor { position: relative; }
+.editor.drag-over { outline: 2px dashed var(--accent); outline-offset: -6px; }
+.drop-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(37 99 235 / 0.06);
+  color: var(--accent);
+  font-weight: 600;
+  pointer-events: none;
+}
+.uploading { font-size: 11px; }
+.attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0 0; align-items: flex-start; }
+.att-image { position: relative; }
+.att-image img {
+  display: block;
+  height: 88px;
+  max-width: 200px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  cursor: zoom-in;
+}
+.att-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: 12px;
+  background: var(--panel);
+  max-width: 100%;
+}
+.att-name { color: var(--ink); text-decoration: none; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.att-name:hover { text-decoration: underline; }
+.att-local { font: 600 9px var(--mono); color: var(--warn); border: 1px solid currentColor; border-radius: 3px; padding: 0 3px; }
+.att-remove {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: none;
+}
+.att-image:hover .att-remove { display: block; }
+.att-remove.inline { position: static; display: inline-block; border: 0; background: none; }
+.toast {
+  position: fixed;
+  right: 14px;
+  bottom: 34px;
+  max-width: min(420px, 90vw);
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+  z-index: 20;
+  cursor: pointer;
+}

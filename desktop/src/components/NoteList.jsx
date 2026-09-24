@@ -33,6 +33,7 @@ export function NoteList({ notes, selectedId, onSelect, onToggleDone }) {
                 </span>
                 {n.timestamp && <span>{n.timestamp.slice(0, 5)}</span>}
                 {progress && <span>☑ {progress.done}/{progress.total}</span>}
+                {n.attachments?.length > 0 && <span>📎 {n.attachments.length}</span>}
               </div>
             </div>
           </li>

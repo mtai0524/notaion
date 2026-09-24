@@ -4,6 +4,7 @@
 //    flusher drains it to the API in order.
 import { AuthError } from "./api.js";
 import { mergeDay } from "./notes.js";
+import { uploadAttachments } from "./attachments.js";
 
 const K = {
   day: (d) => `nd:day:${d}`,
@@ -181,6 +182,14 @@ export function createStore({ api, storage = globalThis.localStorage, onAuthErro
       const notes = ((await get("/api/DailyNote/all")) || []).filter((n) => !n.isDeleted);
       write(K.all, notes.map(slim));
       return this.peekAll();
+    },
+
+    /** Upload files (online only) → web-compatible attachment entries. */
+    upload(files) {
+      return uploadAttachments(api, files).catch((err) => {
+        if (err instanceof AuthError) onAuthError(err);
+        throw err;
+      });
     },
 
     clear() {

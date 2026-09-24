@@ -37,6 +37,14 @@ export const SHORTCUT_GROUPS = [
       ["Ctrl+Z", "Hoàn tác (kể cả các thao tác trên)"],
     ],
   },
+  {
+    title: "Ảnh & file",
+    items: [
+      ["Ctrl+V", "Dán ảnh (ảnh chụp màn hình, ảnh đã copy) → đính kèm vào ghi chú"],
+      ["Kéo thả", "Thả file từ Explorer vào khung soạn thảo"],
+      ["📎 Đính kèm", "Chọn file từ máy; click ảnh/file để mở, × để gỡ"],
+    ],
+  },
 ];
 
 /** Short subset shown when no note is selected. */

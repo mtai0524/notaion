@@ -33,18 +33,34 @@ export async function signIn(login, password, fetchImpl) {
  * instead of silently writing to the server's "anonymous" user.
  */
 export function createApi(getToken, fetchImpl) {
-  return async function api(method, path, body) {
+  async function request(method, path, body, headers = {}) {
     const token = getToken();
     if (isTokenExpired(token)) throw new AuthError("Phiên đăng nhập đã hết hạn");
     const f = fetchImpl || (await getFetch());
     const res = await f(`${API_URL}${path}`, {
       method,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      headers: { ...headers, Authorization: `Bearer ${token}` },
+      ...(body !== undefined ? { body } : {}),
     });
     if (res.status === 401) throw new AuthError("Phiên đăng nhập đã hết hạn");
     const text = await res.text().catch(() => "");
-    if (!res.ok) throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
+    if (!res.ok) throw new HttpError(res.status, text);
     return text ? JSON.parse(text) : null;
-  };
+  }
+
+  const api = (method, path, body) =>
+    request(method, path, body !== undefined ? JSON.stringify(body) : undefined, {
+      "Content-Type": "application/json",
+    });
+  // Multipart: no Content-Type header — fetch sets it with the boundary.
+  api.postForm = (path, formData) => request("POST", path, formData);
+  return api;
+}
+
+export class HttpError extends Error {
+  constructor(status, body) {
+    super(`HTTP ${status}: ${String(body || "").slice(0, 200)}`);
+    this.status = status;
+    this.body = body;
+  }
 }
