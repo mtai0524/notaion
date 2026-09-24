@@ -1,4 +1,5 @@
 import { useEffect, useState } from "preact/hooks";
+import { QUICK_HINTS } from "../lib/shortcuts.js";
 import { CATEGORIES, checklistProgress, wordCount } from "../lib/notes.js";
 import { applyEdit, continueList, insertTimeStamp, toggleTodo } from "../lib/editing.js";
 
@@ -17,11 +18,9 @@ export function Editor({ note, textareaRef, onChange, onCommit, onDelete, onBack
       <div class="editor empty">
         <p>Chọn một ghi chú, hoặc gõ vào ô <kbd>Ghi nhanh</kbd> rồi <kbd>Enter</kbd>.</p>
         <ul class="hints">
-          <li><kbd>Ctrl+Alt+N</kbd> mở app & ghi nhanh từ bất kỳ đâu</li>
-          <li><kbd>Ctrl+K</kbd> tìm kiếm mọi ngày</li>
-          <li><kbd>Alt+←/→</kbd> đổi ngày · <kbd>Alt+Home</kbd> hôm nay</li>
-          <li><kbd>Alt+↑/↓</kbd> chuyển ghi chú</li>
-          <li><kbd>Ctrl+L</kbd> checkbox · <kbd>Ctrl+;</kbd> chèn giờ</li>
+          {QUICK_HINTS.map(([k, desc]) => (
+            <li key={k}><kbd>{k}</kbd> {desc}</li>
+          ))}
         </ul>
       </div>
     );

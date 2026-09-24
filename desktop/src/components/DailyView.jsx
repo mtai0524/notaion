@@ -6,6 +6,7 @@ import { hideWindow, onQuickCapture } from "../lib/native.js";
 import { Editor } from "./Editor.jsx";
 import { NoteList } from "./NoteList.jsx";
 import { SearchPalette } from "./SearchPalette.jsx";
+import { HelpPanel } from "./HelpPanel.jsx";
 import { Mark } from "./Mark.jsx";
 
 const SAVE_DEBOUNCE_MS = 500;
@@ -19,6 +20,7 @@ export function DailyView({ store, token, onSignOut }) {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [sync, setSync] = useState(store.getStatus);
   const [capture, setCapture] = useState("");
   const [isNarrow, setIsNarrow] = useState(NARROW_MQ.matches);
@@ -167,8 +169,13 @@ export function DailyView({ store, token, onSignOut }) {
   useEffect(() => {
     const onKey = (e) => {
       const k = e.key;
-      if (e.ctrlKey && !e.altKey && (k === "k" || k === "K" || k === "p" || k === "P")) {
+      if (k === "F1" || (e.ctrlKey && k === "/")) {
         e.preventDefault();
+        setSearchOpen(false);
+        setHelpOpen((v) => !v);
+      } else if (e.ctrlKey && !e.altKey && (k === "k" || k === "K" || k === "p" || k === "P")) {
+        e.preventDefault();
+        setHelpOpen(false);
         setSearchOpen(true);
       } else if (e.ctrlKey && !e.altKey && (k === "n" || k === "N")) {
         e.preventDefault();
@@ -245,6 +252,7 @@ export function DailyView({ store, token, onSignOut }) {
         <button class="btn small ghost" onClick={() => setSearchOpen(true)} title="Tìm kiếm (Ctrl+K)">
           Tìm <kbd>Ctrl K</kbd>
         </button>
+        <button class="icon-btn help-btn" onClick={() => setHelpOpen(true)} title="Trợ giúp & phím tắt (F1)">?</button>
       </header>
 
       <div class="main">
@@ -302,6 +310,7 @@ export function DailyView({ store, token, onSignOut }) {
         <button class="link" onClick={onSignOut}>Đăng xuất</button>
       </footer>
 
+      {helpOpen && <HelpPanel onClose={() => setHelpOpen(false)} />}
       {searchOpen && (
         <SearchPalette store={store} onPick={pickSearch} onClose={() => setSearchOpen(false)} />
       )}

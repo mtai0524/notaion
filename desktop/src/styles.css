@@ -270,3 +270,29 @@ kbd {
   .app.editor-only .editor-pane { display: flex; }
   .editor { padding: 10px 12px 4px; }
 }
+
+/* ---- help ---- */
+.help-btn { font-size: 14px; font-weight: 700; border: 1px solid var(--line); width: 24px; height: 24px; border-radius: 50%; margin-left: 4px; }
+.help {
+  width: min(640px, 94vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.2);
+  overflow: hidden;
+}
+.help-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.help-body { overflow-y: auto; padding: 4px 18px 12px; user-select: text; }
+.help-body h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 16px 0 6px; }
+.help-body dl { display: grid; grid-template-columns: 180px 1fr; gap: 5px 12px; margin: 0; font-size: 13px; }
+.help-body dt { white-space: nowrap; }
+.help-body dd { margin: 0; }
+.help-notes { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; }
+.help-foot { display: flex; gap: 16px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; background: var(--panel); }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; vertical-align: middle; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--danger); }
