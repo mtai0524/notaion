@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useRef } from "preact/hooks";
 import { QUICK_HINTS } from "../lib/shortcuts.js";
 import { CATEGORIES, checklistProgress, wordCount } from "../lib/notes.js";
 import { formatSize } from "../lib/attachments.js";
@@ -6,22 +6,15 @@ import { openExternal } from "../lib/native.js";
 import { BlockEditor } from "./BlockEditor.jsx";
 
 export function Editor({
-  note, contentRef, onChange, onCommit, onDelete, onBack,
+  note, contentRef, onChange, onCommit, onDelete,
   onUpload, onUploadError, onOrphanUpload, onRemoveAttachment,
 }) {
-  const [armDelete, setArmDelete] = useState(false);
   const fileInputRef = useRef();
-
-  useEffect(() => {
-    if (!armDelete) return;
-    const t = setTimeout(() => setArmDelete(false), 3000);
-    return () => clearTimeout(t);
-  }, [armDelete]);
 
   if (!note) {
     return (
       <div class="editor empty">
-        <p>Chọn một ghi chú, hoặc gõ vào ô <kbd>Ghi nhanh</kbd> rồi <kbd>Enter</kbd>.</p>
+        <pre class="empty-art">{"┌──────────────────────────┐\n│   no note selected       │\n└──────────────────────────┘"}</pre>
         <ul class="hints">
           {QUICK_HINTS.map(([k, desc]) => (
             <li key={k}><kbd>{k}</kbd> {desc}</li>
@@ -35,55 +28,54 @@ export function Editor({
   // desktop go inline into the content instead, at the caret / drop line.
   const legacy = note.attachments || [];
   const progress = checklistProgress(note.content);
+  const words = wordCount(note.content);
   const category = note.customCategory || note.category || "LOG";
 
   return (
     <div class="editor">
-      <div class="editor-head">
-        {onBack && (
-          <button class="icon-btn back" onClick={onBack} title="Quay lại danh sách">‹</button>
-        )}
-        <input
-          class="title-input"
-          value={note.title || ""}
-          placeholder="Tiêu đề"
-          onInput={(e) => onChange({ title: e.currentTarget.value })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === "ArrowDown") {
-              e.preventDefault();
-              contentRef.current?.focus();
-            }
-          }}
-          onBlur={onCommit}
-        />
-      </div>
-      <div class="editor-meta">
-        <label class="check">
-          <input
-            type="checkbox"
-            checked={!!note.isCompleted}
-            onChange={(e) => onChange({ isCompleted: e.currentTarget.checked }, true)}
-          />
-          Xong
+      <input
+        class="title-input"
+        value={note.title || ""}
+        placeholder="(không tiêu đề)"
+        onInput={(e) => onChange({ title: e.currentTarget.value })}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "ArrowDown") {
+            e.preventDefault();
+            contentRef.current?.focus();
+          }
+        }}
+        onBlur={onCommit}
+      />
+      <div class="meta">
+        <label class="tag" title="Đổi loại">
+          <select
+            value={note.customCategory ? "" : category}
+            onChange={(e) => onChange({ category: e.currentTarget.value, customCategory: null }, true)}
+          >
+            {note.customCategory && <option value="">{note.customCategory}</option>}
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
         </label>
-        <select
-          value={note.customCategory ? "" : category}
-          onChange={(e) => onChange({ category: e.currentTarget.value, customCategory: null }, true)}
+        <span>· {note.timestamp || "--:--"} ·</span>
+        <button
+          class={`meta-btn${note.isCompleted ? " ok" : ""}`}
+          title="Đánh dấu xong (x)"
+          onClick={() => onChange({ isCompleted: !note.isCompleted }, true)}
         >
-          {note.customCategory && <option value="">{note.customCategory}</option>}
-          {CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <span class="muted">{note.timestamp?.slice(0, 5)}</span>
+          {note.isCompleted ? "[x] done" : "[ ] open"}
+        </button>
+        <span>· {words}w · ~{Math.max(1, Math.ceil(words / 200))}m read</span>
+        {progress && <span class={progress.done === progress.total ? "ok" : ""}>· ▣ {progress.done}/{progress.total}</span>}
         <span class="spacer" />
         <button
-          class="btn small ghost"
+          class="chip"
           title="Chèn ảnh / file tại con trỏ (hoặc Ctrl+V, kéo thả)"
           onMouseDown={(e) => e.preventDefault() /* keep the caret where it is */}
           onClick={() => fileInputRef.current?.click()}
         >
-          📎 Đính kèm
+          📎 attach
         </button>
         <input
           ref={fileInputRef}
@@ -96,12 +88,7 @@ export function Editor({
             if (files.length) contentRef.current?.insertFiles(files);
           }}
         />
-        <button
-          class={`btn small ${armDelete ? "danger" : "ghost"}`}
-          onClick={() => (armDelete ? onDelete() : setArmDelete(true))}
-        >
-          {armDelete ? "Nhấn lần nữa để xoá" : "Xoá"}
-        </button>
+        <button class="chip danger-hover" title="Xoá ghi chú (d)" onClick={onDelete}>✕ del</button>
       </div>
 
       {legacy.length > 0 && (
@@ -114,8 +101,8 @@ export function Editor({
               </div>
             ) : (
               <div class="att-chip" key={a.url}>
-                <button class="link att-name" title={`Mở ${a.name}`} onClick={() => openExternal(a.url)}>📄 {a.name}</button>
-                <span class="muted">{formatSize(a.size)}</span>
+                <button class="att-name" title={`Mở ${a.name}`} onClick={() => openExternal(a.url)}>📄 {a.name}</button>
+                <span class="dim">{formatSize(a.size)}</span>
                 {a.local && <span class="att-local" title="Lưu trên server ứng dụng thay vì CDN — có thể mất khi server cập nhật.">LOCAL</span>}
                 <button class="att-remove inline" title="Gỡ" onClick={() => onRemoveAttachment(a.url)}>×</button>
               </div>
@@ -134,10 +121,6 @@ export function Editor({
           onUploadError={onUploadError}
           onOrphanUpload={(atts) => onOrphanUpload(note, atts)}
         />
-      </div>
-      <div class="editor-foot muted">
-        {wordCount(note.content)} từ
-        {progress && ` · ${progress.done}/${progress.total} việc xong`}
       </div>
     </div>
   );

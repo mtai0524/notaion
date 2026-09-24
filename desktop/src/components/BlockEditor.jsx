@@ -337,7 +337,14 @@ export function BlockEditor({ content, onChange, onCommit, onUpload, onUploadErr
         if (b.type === "bullet") prefix = <span class="blk-prefix">•</span>;
         else if (b.type === "todo")
           prefix = (
-            <input type="checkbox" class="blk-check" checked={!!b.checked} onChange={() => toggleTodo(i)} tabIndex={-1} />
+            <button
+              class="blk-check"
+              tabIndex={-1}
+              onMouseDown={(e) => e.preventDefault() /* keep the caret */}
+              onClick={() => toggleTodo(i)}
+            >
+              {b.checked ? "[x]" : "[ ]"}
+            </button>
           );
         else if (b.type === "callout") prefix = <span class="blk-prefix">{CALLOUT_KINDS[b.kind]?.icon || "💡"}</span>;
         return (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { searchNotes, previewLine } from "../lib/notes.js";
 import { formatDayLabel } from "../lib/dates.js";
 
@@ -10,6 +10,10 @@ export function SearchPalette({ store, onPick, onClose }) {
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(false);
   const listRef = useRef();
+  const inputRef = useRef();
+  // Preact does not emulate React's autoFocus for elements mounted later.
+  // Layout effect: focus before paint so keys typed right after "/" land here.
+  useLayoutEffect(() => inputRef.current?.focus(), []);
 
   // Search the local index immediately; refresh it at most once a minute.
   useEffect(() => {
@@ -44,15 +48,19 @@ export function SearchPalette({ store, onPick, onClose }) {
 
   return (
     <div class="palette-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div class="palette">
+      <div class="palette pane focused">
+        <span class="pane-title"><kbd>/</kbd>SEARCH · {results.length}/{corpus.length}{loading ? " · loading…" : ""}</span>
+        <label class="palette-line">
+        <span class="prompt">/</span>
         <input
+          ref={inputRef}
           class="palette-input"
-          autoFocus
-          placeholder={`Tìm trong ${corpus.length} ghi chú…${loading ? " (đang tải)" : ""}`}
+          placeholder="tìm mọi ngày… (không phân biệt dấu)"
           value={query}
           onInput={(e) => setQuery(e.currentTarget.value)}
           onKeyDown={onKeyDown}
         />
+        </label>
         <ul class="palette-list" ref={listRef}>
           {results.map((n, i) => (
             <li
@@ -62,12 +70,12 @@ export function SearchPalette({ store, onPick, onClose }) {
               onMouseDown={() => onPick(n)}
             >
               <div class="palette-title">{n.title || "(không tiêu đề)"}</div>
-              <div class="palette-sub muted">
+              <div class="palette-sub">
                 {formatDayLabel(n.date)} · {previewLine(n.content)}
               </div>
             </li>
           ))}
-          {query && !results.length && <li class="muted palette-none">Không tìm thấy</li>}
+          {query && !results.length && <li class="palette-none">~ không tìm thấy</li>}
         </ul>
       </div>
     </div>

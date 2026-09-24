@@ -3,7 +3,6 @@ import { useEffect, useState } from "preact/hooks";
 import { SHORTCUT_GROUPS } from "../lib/shortcuts.js";
 import { IS_TAURI, WEB_URL } from "../lib/config.js";
 import { openExternal } from "../lib/native.js";
-import { Mark } from "./Mark.jsx";
 
 export function HelpPanel({ onClose }) {
   const [version, setVersion] = useState("");
@@ -22,16 +21,9 @@ export function HelpPanel({ onClose }) {
 
   return (
     <div class="palette-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div class="help" role="dialog" aria-label="Trợ giúp">
-        <div class="help-head">
-          <Mark size={22} />
-          <div>
-            <strong>Notaion Daily</strong>
-            {version && <span class="muted"> v{version}</span>}
-          </div>
-          <span class="spacer" />
-          <button class="icon-btn" onClick={onClose} title="Đóng (Esc)">×</button>
-        </div>
+      <div class="help pane focused" role="dialog" aria-label="Trợ giúp">
+        <span class="pane-title"><kbd>?</kbd>HELP · NOTAION DAILY{version && ` v${version}`}</span>
+        <button class="help-close chip" onClick={onClose} title="Đóng (Esc)">esc ✕</button>
 
         <div class="help-body">
           {SHORTCUT_GROUPS.map((g) => (

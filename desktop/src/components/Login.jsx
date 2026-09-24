@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useLayoutEffect, useRef, useState } from "preact/hooks";
 import { signIn } from "../lib/api.js";
 import { WEB_URL } from "../lib/config.js";
 import { openExternal } from "../lib/native.js";
@@ -9,6 +9,10 @@ export function Login({ onSignIn, notice }) {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const loginRef = useRef();
+  const passwordRef = useRef();
+  // Preact has no autoFocus emulation — focus the first empty field ourselves.
+  useLayoutEffect(() => (login ? passwordRef : loginRef).current?.focus(), []);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -28,12 +32,13 @@ export function Login({ onSignIn, notice }) {
 
   return (
     <div class="login">
-      <form class="login-card" onSubmit={submit}>
+      <form class="login-card pane focused" onSubmit={submit}>
+        <span class="pane-title"><kbd>⏻</kbd>LOGIN</span>
         <div class="login-brand">
           <Mark size={36} />
           <div>
             <h1>Notaion Daily</h1>
-            <p>Ghi chú hằng ngày — nhanh, gọn.</p>
+            <p>$ daily notes — nhanh, gọn_</p>
           </div>
         </div>
         {notice && <div class="login-notice">{notice}</div>}
@@ -42,7 +47,7 @@ export function Login({ onSignIn, notice }) {
           <input
             value={login}
             onInput={(e) => setLogin(e.currentTarget.value)}
-            autoFocus={!login}
+            ref={loginRef}
             autoComplete="username"
           />
         </label>
@@ -52,7 +57,7 @@ export function Login({ onSignIn, notice }) {
             type="password"
             value={password}
             onInput={(e) => setPassword(e.currentTarget.value)}
-            autoFocus={!!login}
+            ref={passwordRef}
             autoComplete="current-password"
           />
         </label>
