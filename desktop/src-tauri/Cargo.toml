@@ -1,0 +1,31 @@
+[package]
+name = "notaion-desktop"
+version = "0.1.0"
+description = "Notaion Daily â€” desktop daily notes"
+edition = "2021"
+
+[lib]
+name = "notaion_desktop_lib"
+# Desktop-only app: no mobile cdylib/staticlib needed.
+crate-type = ["rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-http = "~2.6" # keep minor in sync with @tauri-apps/plugin-http
+tauri-plugin-opener = "2"
+tauri-plugin-deep-link = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+tauri-plugin-global-shortcut = "2"
+serde_json = "1"
+
+# Small, fast release binary.
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

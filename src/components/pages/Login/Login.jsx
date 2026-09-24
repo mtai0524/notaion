@@ -13,6 +13,7 @@ import { HubConnectionBuilder } from "@microsoft/signalr";
 import * as signalR from "@microsoft/signalr";
 import jwt_decode from "jwt-decode";
 import config from "../../../config";
+import { consumeAfterLoginPath } from "../../../utils/afterLogin";
 
 const Login = () => {
   const [emailOrUsername, setEmailOrUsername] = useState("");
@@ -82,7 +83,7 @@ const Login = () => {
     } catch (err) {
       console.error("SignalR connection error: ", err);
     }
-    navigate("/daily-note");
+    navigate(consumeAfterLoginPath());
   };
 
   const handleSignIn = async (event) => {

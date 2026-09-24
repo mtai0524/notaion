@@ -20,6 +20,7 @@ import {
   faComment,
   faTrashCan,
   faGamepad,
+  faDesktop,
   faClock,
   faBookOpen,
 } from "@fortawesome/free-solid-svg-icons";
@@ -365,6 +366,9 @@ const Header = () => {
       case "game":
         navigate("/game");
         break;
+      case "desktop":
+        navigate("/desktop");
+        break;
 
       default:
         break;
@@ -464,6 +468,15 @@ const Header = () => {
             }}
           >
             Mini Game
+          </Menu.Item>
+          <Menu.Item
+            key="desktop"
+            icon={<FontAwesomeIcon icon={faDesktop} />}
+            style={{
+              backgroundColor: location.pathname === "/desktop" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Desktop App
           </Menu.Item>
 
 

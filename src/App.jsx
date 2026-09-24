@@ -28,6 +28,7 @@ import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
 import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
 import MiniGame from "./components/pages/MiniGame/MiniGame";
 import PixelGame from "./components/pages/PixelGame/PixelGame";
+import DesktopApp from "./components/pages/DesktopApp/DesktopApp";
 import { applyGlobalSettings } from "./utils/applyGlobalSettings";
 import { useDeadlineReminders } from "./hooks/useDeadlineReminders";
 import { registerReminderSW } from "./utils/notifyBrowser";
@@ -164,6 +165,8 @@ const MainApp = () => {
         <Route path="/files" element={<FilesPage />} />
         <Route path="/game" element={<MiniGame />} />
         <Route path="/pixel-game" element={<PixelGame />} />
+        <Route path="/desktop" element={<DesktopApp />} />
+        <Route path="/desktop-auth" element={<DesktopApp />} />
 
         <Route path="*" element={<NotFound />}></Route>
       </Routes>

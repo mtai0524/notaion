@@ -6,6 +6,7 @@ import { message, Spin } from "antd";
 import jwt_decode from "jwt-decode";
 import * as signalR from "@microsoft/signalr";
 import config from "../../../config";
+import { consumeAfterLoginPath } from "../../../utils/afterLogin";
 
 const LoginSuccess = () => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const LoginSuccess = () => {
       // Trigger SignalR registration similar to manual login
       handleSignalRRegistration(token);
 
-      navigate("/daily-note");
+      navigate(consumeAfterLoginPath());
     } else {
       message.error("Login failed. No token received.");
       navigate("/login");

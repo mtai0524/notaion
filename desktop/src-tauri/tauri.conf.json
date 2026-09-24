@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Notaion Daily",
+  "version": "0.1.0",
+  "identifier": "app.notaion.daily",
+  "build": {
+    "devUrl": "http://localhost:2406",
+    "frontendDist": "../dist",
+    "beforeDevCommand": "npm run dev:web",
+    "beforeBuildCommand": "npm run build:web"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Notaion Daily",
+        "width": 980,
+        "height": 680,
+        "minWidth": 380,
+        "minHeight": 360,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'"
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": { "schemes": ["notaion"] }
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Notaion",
+    "shortDescription": "Notaion Daily — ghi chú hằng ngày",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["Vietnamese", "English"],
+        "displayLanguageSelector": false
+      },
+      "webviewInstallMode": { "type": "downloadBootstrapper" }
+    }
+  }
+}
