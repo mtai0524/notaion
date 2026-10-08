@@ -7,7 +7,7 @@ export class AuthError extends Error {}
 // no CORS preflight and no webview origin quirks. In a plain browser (vite dev
 // without Tauri) fall back to window.fetch.
 let fetchPromise;
-const getFetch = () =>
+export const getFetch = () =>
   (fetchPromise ??= IS_TAURI
     ? import("@tauri-apps/plugin-http").then((m) => m.fetch)
     : Promise.resolve(window.fetch.bind(window)));

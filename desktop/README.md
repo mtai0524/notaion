@@ -9,6 +9,11 @@ Người dùng tải bộ cài từ trang web `/desktop` (menu **Desktop App**).
 - **Ghi nhanh toàn hệ thống:** `Ctrl+Alt+N` gọi app lên và focus ô *Ghi nhanh*. `Enter` lưu, `Shift+Enter` lưu rồi viết tiếp nội dung, `Esc` (khi ô trống) ẩn app xuống khay.
 - Chạy nền ở khay hệ thống, nút X chỉ ẩn cửa sổ. Chỉ chạy một bản (mở lần hai sẽ focus bản đang chạy).
 - Tìm mọi ngày bằng `Ctrl+K`, không phân biệt dấu (gõ `hop du an` vẫn ra "Họp dự án").
+- **Export** (`E`): toàn bộ ghi chú ở mọi ngày, lưu thẳng vào thư mục Downloads.
+  - `1` Markdown (`.md`): mọi ngày trong một file.
+  - `2` Backup (`.json`): đầy đủ mọi trường để lưu trữ và nhập lại.
+  - `3` Zip (`.zip`): `notes/<ngày>.md` + `notes.json` + thư mục `attachments/` chứa ảnh và file đã tải về. Link trong Markdown được đổi sang bản local; file nào không tải được thì giữ link gốc và được ghi vào `download-errors.txt`.
+  - Web có cùng chức năng: menu Tools hoặc lệnh `:export all | json | zip` trong TUI.
 - Soạn thảo: `Ctrl+L` bật/tắt checkbox, `Ctrl+;` chèn `[HH:MM]`, `Enter` tự nối danh sách.
 - Điều hướng: `Alt+←/→` đổi ngày, `Alt+Home` về hôm nay, `Alt+↑/↓` chuyển ghi chú, `Ctrl+R` tải lại.
 - Đăng nhập bằng email/mật khẩu, hoặc **qua trình duyệt** (GitHub/Discord). Cách thứ hai dùng deep-link `notaion://auth?token=…` từ trang web `/desktop-auth`.
@@ -47,6 +52,7 @@ Giữ minor version của các crate `tauri-plugin-*` khớp với package npm `
 | `src/lib/store.js` | Cache theo ngày, outbox, đồng bộ |
 | `src/lib/api.js` | Client HTTP (đi qua `plugin-http` phía Rust, nên không bị CORS), kiểm tra hạn JWT |
 | `src/lib/notes.js`, `editing.js` | Logic thuần: merge, search, phím tắt soạn thảo |
+| `../shared/exportNotes.js` | Logic export (md / json / zip) dùng chung với web, không phụ thuộc thư viện nào. Test ở `src/lib/exportNotes.test.js` |
 | `src/components/` | UI Preact |
 | `src-tauri/src/lib.rs` | Tray, hotkey toàn cục, single-instance, deep-link |
 

@@ -24,6 +24,7 @@ import { ensureNotificationPermission } from '../../../utils/notifyBrowser';
 import { clearFiredForNote } from '../../../utils/deadlineReminders';
 import CalendarPopup from './CalendarPopup';
 import { wordStats, notesToMarkdown, downloadTextFile, CHECKBOX_RE, toggleChecklistLine } from './noteUtils';
+import { exportAllNotes, describeExport } from './exportAll';
 
 // ReactMarkdown component map that turns `- [ ]` lines into clickable
 // checkboxes (no remark-gfm in this project, so we parse the source line via
@@ -1651,6 +1652,21 @@ const DailyNoteApp = () => {
     downloadTextFile(`daily-note-${dateKey}.md`, notesToMarkdown(dateKey, currentNotes));
   };
 
+  // Export every day: 'md' (one file), 'json' (full backup) or 'zip' (notes + images/files).
+  const [exporting, setExporting] = useState(false);
+  const exportEverything = async (format) => {
+    if (exporting) return;
+    setExporting(true);
+    try {
+      const r = await exportAllNotes(format);
+      if (r.stats.failed.length) alert(describeExport(r));
+    } catch (err) {
+      alert(`Export failed: ${err.message}`);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
   const searchPool = isAllTimeSearch ? allNotesIndex : currentNotes;
   const searchCatActive = searchCatFilter !== 'ALL';
@@ -2715,6 +2731,31 @@ const DailyNoteApp = () => {
                   title={currentNotes.length === 0 ? 'No notes to export for this day' : `Export ${dateKey} as Markdown`}
                 >
                   <FaDownload /> Export Day (.md)
+                </button>
+
+                <button
+                  className="tools-menu-item"
+                  onClick={() => { setShowToolsMenu(false); exportEverything('md'); }}
+                  disabled={exporting}
+                  title="Every day in one Markdown file"
+                >
+                  <FaDownload /> Export All (.md)
+                </button>
+                <button
+                  className="tools-menu-item"
+                  onClick={() => { setShowToolsMenu(false); exportEverything('json'); }}
+                  disabled={exporting}
+                  title="Full backup of every field"
+                >
+                  <FaDownload /> Backup All (.json)
+                </button>
+                <button
+                  className="tools-menu-item"
+                  onClick={() => { setShowToolsMenu(false); exportEverything('zip'); }}
+                  disabled={exporting}
+                  title="Notes per day + all images and files, in one zip"
+                >
+                  <FaDownload /> Export All + Files (.zip)
                 </button>
 
                 <button

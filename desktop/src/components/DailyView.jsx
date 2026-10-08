@@ -10,13 +10,14 @@ import { Editor } from "./Editor.jsx";
 import { NoteList } from "./NoteList.jsx";
 import { SearchPalette } from "./SearchPalette.jsx";
 import { HelpPanel } from "./HelpPanel.jsx";
+import { ExportPanel } from "./ExportPanel.jsx";
 
 const SAVE_DEBOUNCE_MS = 500;
 const FOCUS_REFRESH_MS = 15_000;
 const NARROW_MQ = window.matchMedia("(max-width: 640px)");
 
 const HINTS = {
-  list: "j/k:move  enter:edit  e:title  n:new  x:done  d:delete  [/]:day  t:today  c:calendar  /:search  T:theme  q:hide  ?:help",
+  list: "j/k:move  enter:edit  e:title  n:new  x:done  d:delete  [/]:day  t:today  c:calendar  /:search  E:export  T:theme  q:hide  ?:help",
   editor: "── INSERT ──  esc:normal  enter:new block  ctrl+v:paste image  ctrl+l:todo  ctrl+;:time  #/-/[]:format",
   capture: "── CAPTURE ──  enter:save  shift+enter:save & write  esc:clear/hide",
 };
@@ -31,6 +32,7 @@ export function DailyView({ store, token, onSignOut }) {
   const [loadError, setLoadError] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const [flash, setFlash] = useState("");
   const [sync, setSync] = useState(store.getStatus);
   const [capture, setCapture] = useState("");
@@ -266,11 +268,13 @@ export function DailyView({ store, token, onSignOut }) {
       if (k === "F1" || (e.ctrlKey && k === "/")) {
         e.preventDefault();
         setSearchOpen(false);
+        setExportOpen(false);
         return setHelpOpen((v) => !v);
       }
       if (e.ctrlKey && !e.altKey && /^[kKpP]$/.test(k)) {
         e.preventDefault();
         setHelpOpen(false);
+        setExportOpen(false);
         return setSearchOpen(true);
       }
       if (e.ctrlKey && !e.altKey && /^[nN]$/.test(k)) {
@@ -293,7 +297,7 @@ export function DailyView({ store, token, onSignOut }) {
         e.preventDefault();
         return moveSelection(k === "ArrowUp" ? -1 : 1);
       }
-      if (searchOpen || helpOpen) return;
+      if (searchOpen || helpOpen || exportOpen) return;
 
       const active = document.activeElement;
       // INSERT → NORMAL
@@ -336,6 +340,7 @@ export function DailyView({ store, token, onSignOut }) {
         "/": () => setSearchOpen(true),
         "?": () => setHelpOpen(true),
         T: cycleTheme,
+        E: () => setExportOpen(true),
         r: () => load(dateRef.current),
         q: () => hideWindow(),
       }[k];
@@ -478,11 +483,13 @@ export function DailyView({ store, token, onSignOut }) {
         )}
         <span class="dim">{notes.length} notes · {doneCount} done</span>
         <span class={`sync ${sync.status}${sync.pending ? " pending" : ""}`} title={sync.lastError || ""}>● {syncLabel}</span>
+        <button class="chip" title="Export toàn bộ ghi chú (E)" onClick={() => setExportOpen(true)}>⇩ export</button>
         <button class="chip" title="Đổi theme (T)" onClick={cycleTheme}>◐ {theme}</button>
         <button class="chip" title="Trợ giúp (?)" onClick={() => setHelpOpen(true)}>?</button>
         <button class="chip" title="Đăng xuất" onClick={onSignOut}>{tokenUserName(token) || "user"} ⏻</button>
       </footer>
 
+      {exportOpen && <ExportPanel store={store} onClose={() => { setExportOpen(false); focusList(); }} />}
       {helpOpen && <HelpPanel onClose={() => { setHelpOpen(false); focusList(); }} />}
       {searchOpen && (
         <SearchPalette store={store} onPick={pickSearch} onClose={() => { setSearchOpen(false); focusList(); }} />

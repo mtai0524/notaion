@@ -15,6 +15,7 @@ export const SHORTCUT_GROUPS = [
       ["/", "Tìm kiếm mọi ngày"],
       ["1 / 2", "Chuyển khung NOTES / EDITOR"],
       ["T", "Đổi theme (default, dark, catppuccin, gruvbox, nord, dracula)"],
+      ["E", "Export toàn bộ ghi chú (.md / .json / .zip kèm ảnh)"],
       ["r", "Tải lại ngày hiện tại"],
       ["q", "Ẩn app xuống khay"],
       ["?", "Trợ giúp"],

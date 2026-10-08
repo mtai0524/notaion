@@ -206,6 +206,19 @@ export function createStore({ api, storage = globalThis.localStorage, onAuthErro
       return this.peekAll();
     },
 
+    /**
+     * Every note with all fields (for export), merged with pending local writes.
+     * Online only — an export must not silently miss notes that were never cached.
+     */
+    async fetchAllFull() {
+      const notes = new Map(((await get("/api/DailyNote/all")) || []).filter((n) => !n.isDeleted).map((n) => [n.id, n]));
+      for (const e of Object.values(outbox())) {
+        if (e.op === "delete") notes.delete(e.id);
+        else notes.set(e.note.id, e.note);
+      }
+      return [...notes.values()];
+    },
+
     /** Upload files (online only) → web-compatible attachment entries. */
     upload(files) {
       return uploadAttachments(api, files).catch((err) => {

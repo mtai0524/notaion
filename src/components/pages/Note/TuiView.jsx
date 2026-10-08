@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { format, addDays, addMonths, subMonths, startOfMonth, startOfWeek, isSameDay, isSameMonth } from 'date-fns';
 import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadTextFile } from './noteUtils';
+import { exportAllNotes, describeExport } from './exportAll';
 import { uploadFilesToCloudinary } from '../../../services/fileService';
 import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
@@ -1043,6 +1044,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       flashMsg(`exported daily-note-${dateLabel}.md`);
     }
   };
+  // Every day, not just the viewed one: 'md' | 'json' | 'zip' (zip also downloads images/files).
+  const exportAllData = async (format) => {
+    flashMsg(format === 'zip' ? 'exporting… downloading files' : 'exporting…');
+    try {
+      const r = await exportAllNotes(format, {
+        onProgress: (p) => { if (p.phase === 'files' && p.total > 0) flashMsg(`exporting… files ${p.done}/${p.total}`); },
+      });
+      flashMsg(describeExport(r));
+    } catch (err) {
+      flashMsg(`export failed — ${err.message}`);
+    }
+  };
   const weekDays = useMemo(() => {
     // the 7 days ending on the viewed date, oldest first
     const end = new Date(`${dateLabel}T00:00:00`);
@@ -1144,7 +1157,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const [name, ...args] = raw.trim().split(/\s+/);
     const arg = args[0];
     switch ((name || '').toLowerCase()) {
-      case 'export': arg === 'week' ? exportWeek() : exportDay(arg === 'clip'); break;
+      case 'export':
+        if (arg === 'week') exportWeek();
+        else if (arg === 'all' || arg === 'md') exportAllData('md');
+        else if (arg === 'json') exportAllData('json');
+        else if (arg === 'zip') exportAllData('zip');
+        else exportDay(arg === 'clip');
+        break;
       case 'week': setShowWeek(true); break;
       case 'cal':
       case 'calendar': setShowCal(true); return; // keep mode; the overlay owns keys
@@ -2067,6 +2086,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         [':due 14:30 10', 'deadline + remind'],
         [':recur daily', 'repeating note'],
         [':export | week', 'markdown out'],
+        [':export all | json | zip', 'every day · backup · + files'],
       ],
     },
   ];
@@ -2136,6 +2156,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const noteItems = (allNotes || []).filter((n) => !n.isDeleted);
     const cmdItems = [
       { id: 'export', label: 'export markdown', run: () => exportDay(false) },
+      { id: 'export-all', label: 'export all days (.md)', run: () => exportAllData('md') },
+      { id: 'export-json', label: 'backup all (.json)', run: () => exportAllData('json') },
+      { id: 'export-zip', label: 'export all + files (.zip)', run: () => exportAllData('zip') },
       { id: 'week', label: 'weekly review', run: () => setShowWeek(true) },
       { id: 'calendar', label: 'calendar', run: () => setShowCal(true) },
       { id: 'theme', label: 'cycle theme', run: () => setTheme('next') },

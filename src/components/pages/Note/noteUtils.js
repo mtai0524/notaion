@@ -7,21 +7,8 @@ export const wordStats = (text) => {
   return { words, minutes: Math.max(1, Math.ceil(words / 200)) };
 };
 
-/** Serialize one day's notes into a single Markdown document. */
-export const notesToMarkdown = (dateKey, notes) => {
-  const lines = [`# Daily Note — ${dateKey}`, ''];
-  (notes || []).forEach((n) => {
-    const cat = n.customCategory || n.category || 'MEMO';
-    const check = n.isCompleted ? 'x' : ' ';
-    lines.push(`## [${check}] ${n.title || '(untitled)'}`);
-    lines.push(`*${cat}${n.timestamp ? ` · ${n.timestamp}` : ''}*`, '');
-    if (n.content) lines.push(n.content, '');
-    lines.push('---', '');
-  });
-  const { words, minutes } = wordStats((notes || []).map((n) => n.content).join(' '));
-  lines.push(`_${(notes || []).length} notes · ${words} words · ~${minutes} min read_`);
-  return lines.join('\n');
-};
+/** Serialize one day's notes into a single Markdown document (shared with the desktop app). */
+export { notesToMarkdown } from '../../../../shared/exportNotes';
 
 /** Matches a markdown task line: `- [ ] thing` / `* [x] thing`. */
 export const CHECKBOX_RE = /^(\s*[-*]\s*\[)( |x|X)(\])\s?(.*)$/;
@@ -38,9 +25,10 @@ export const toggleChecklistLine = (content, lineIndex) => {
   return lines.join('\n');
 };
 
-/** Trigger a client-side download of a text file. */
-export const downloadTextFile = (filename, content, mime = 'text/markdown') => {
-  const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+/** Trigger a client-side download. `data` is a string or bytes (Uint8Array). */
+export const downloadFile = (filename, data, mime = 'application/octet-stream') => {
+  const text = typeof data === 'string';
+  const blob = new Blob([data], { type: text ? `${mime};charset=utf-8` : mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -50,3 +38,6 @@ export const downloadTextFile = (filename, content, mime = 'text/markdown') => {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 };
+
+/** Trigger a client-side download of a text file. */
+export const downloadTextFile = (filename, content, mime = 'text/markdown') => downloadFile(filename, content, mime);

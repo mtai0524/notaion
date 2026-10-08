@@ -7,7 +7,8 @@ export default defineConfig({
   clearScreen: false,
   // Stand-alone: do not inherit the web app's postcss/tailwind config.
   css: { postcss: {} },
-  server: { port: 2406, strictPort: true },
+  // `..` so dev can import ../shared (export logic shared with the web app).
+  server: { port: 2406, strictPort: true, fs: { allow: [".."] } },
   build: {
     target: "chrome110", // WebView2 is evergreen Chromium
     cssMinify: true,

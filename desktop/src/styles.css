@@ -492,3 +492,16 @@ kbd {
   .tui.editor-only .pane-editor { display: flex; }
   .tui-status .chip:not(:last-child), .tui-status .dim { display: none; }
 }
+
+/* ---- export panel ---- */
+.palette-backdrop:has(.export) { align-items: center; padding-top: 0; }
+.export { width: min(680px, 94vw); padding: 22px 6px 8px; }
+.export-list { list-style: none; margin: 0; padding: 4px 6px; }
+.export-item { display: grid; grid-template-columns: 1.6em 15em 1fr; align-items: baseline; gap: 8px; padding: 4px 8px; border-left: 3px solid transparent; cursor: pointer; }
+.export-item.sel { background: var(--sel); border-left-color: var(--accent); }
+.export-name { font-weight: 700; }
+.export-desc { font-size: 0.75rem; }
+.export-status { min-height: 2.6em; padding: 8px 14px 4px; border-top: 1.5px dashed var(--border); font-size: 0.78rem; line-height: 1.6; user-select: text; }
+.export-status b { word-break: break-all; }
+.export-status .flash { color: var(--accent); }
+.danger-text { color: var(--danger); }

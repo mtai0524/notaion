@@ -10,7 +10,10 @@ const memStorage = () => {
     removeItem: (k) => m.delete(k),
   };
 };
-const note = (id, extra = {}) => ({ id, date: "2026-09-24", title: id, content: "", timestamp: "09:00", ...extra });
+const note = (id, a = {}, b = {}) => {
+  const [date, extra] = typeof a === "string" ? [a, b] : ["2026-09-24", a];
+  return { id, date, title: id, content: "", timestamp: "09:00", ...extra };
+};
 
 describe("store", () => {
   it("serves cached day instantly, then revalidates from the API", async () => {
@@ -98,5 +101,28 @@ describe("store: stale reads", () => {
     const out = await fetching;
     expect(out[0].content).toBe("new text");
     expect(s.peekDay("2026-09-24")[0].content).toBe("new text");
+  });
+});
+
+describe("store: fetchAllFull (export)", () => {
+  it("returns full notes across days, minus deleted, merged with pending writes", async () => {
+    const storage = memStorage();
+    const api = vi.fn(async (method, path) => {
+      if (method === "GET" && path === "/api/DailyNote/all") {
+        return [
+          note("a", "2026-09-01", { x: 60, drawingData: "keep-me" }),
+          note("b", "2026-09-02"),
+          note("gone", "2026-09-02", { isDeleted: true }),
+        ];
+      }
+      throw new Error("offline"); // pending writes can't flush
+    });
+    const s = createStore({ api, storage });
+    s.save({ ...note("c", "2026-09-03"), title: "unsynced" }); // local only
+    s.remove(note("b", "2026-09-02")); // local delete not yet sent
+    const all = await s.fetchAllFull();
+    expect(all.map((n) => n.id).sort()).toEqual(["a", "c"]);
+    expect(all.find((n) => n.id === "a")).toMatchObject({ x: 60, drawingData: "keep-me" });
+    expect(all.find((n) => n.id === "c").title).toBe("unsynced");
   });
 });

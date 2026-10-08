@@ -34,6 +34,34 @@ export async function openExternal(url) {
   await openUrl(url);
 }
 
+/**
+ * Save an export. In the app: straight into the Downloads folder (no dialog) and
+ * returns the full path. In a plain browser (dev): a normal download.
+ */
+export async function saveDownload(filename, data, mime = "application/octet-stream") {
+  const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
+  if (!IS_TAURI) {
+    const url = URL.createObjectURL(new Blob([bytes], { type: mime }));
+    const a = Object.assign(document.createElement("a"), { href: url, download: filename });
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    return { name: filename, path: null };
+  }
+  const { writeFile, BaseDirectory } = await import("@tauri-apps/plugin-fs");
+  const { downloadDir, join } = await import("@tauri-apps/api/path");
+  await writeFile(filename, bytes, { baseDir: BaseDirectory.Download });
+  return { name: filename, path: await join(await downloadDir(), filename) };
+}
+
+/** Show a saved file in Explorer. */
+export async function revealInFolder(path) {
+  if (!IS_TAURI || !path) return;
+  const { revealItemInDir } = await import("@tauri-apps/plugin-opener");
+  await revealItemInDir(path);
+}
+
 export async function hideWindow() {
   if (!IS_TAURI) return;
   const { getCurrentWindow } = await import("@tauri-apps/api/window");

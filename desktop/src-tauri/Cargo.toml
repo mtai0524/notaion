@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-http = "~2.6" # keep minor in sync with @tauri-apps/plugin-http
+tauri-plugin-fs = "~2.6" # keep minor in sync with @tauri-apps/plugin-fs (export → Downloads)
 tauri-plugin-opener = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-window-state = "2"
