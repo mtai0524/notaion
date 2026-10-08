@@ -17,7 +17,11 @@ const ARROW_TO_HJKL = { ArrowLeft: 'h', ArrowRight: 'l', ArrowDown: 'j', ArrowUp
 
 // Push an undo snapshot (cap the stack).
 const withUndo = (state) => {
-  const undo = [...(state.undo || []), { text: state.text, pos: state.pos }].slice(-100);
+  const prev = state.undo || [];
+  // Entering INSERT twice without typing (i, Esc, i) must not stack identical
+  // snapshots — each `u` would otherwise appear to do nothing.
+  if (prev.length && prev[prev.length - 1].text === state.text) return { undo: prev, redo: [] };
+  const undo = [...prev, { text: state.text, pos: state.pos }].slice(-100);
   return { undo, redo: [] };
 };
 
@@ -258,9 +262,9 @@ export const vimTextareaKey = (state, e) => {
 
   switch (key) {
     // enter INSERT
-    case 'i': return { ...state, mode: 'insert', pending: null, count: '' };
-    case 'a': return { ...state, pos: clamp(pos + 1, 0, text.length), mode: 'insert', pending: null, count: '' };
-    case 'A': return { ...state, pos: lineEnd(text, pos), mode: 'insert', pending: null, count: '' };
+    case 'i': return { ...state, ...withUndo(state), mode: 'insert', pending: null, count: '' };
+    case 'a': return { ...state, ...withUndo(state), pos: clamp(pos + 1, 0, text.length), mode: 'insert', pending: null, count: '' };
+    case 'A': return { ...state, ...withUndo(state), pos: lineEnd(text, pos), mode: 'insert', pending: null, count: '' };
     // o/O trên dòng danh sách kế thừa đầu dòng (bullet/checkbox/số thứ tự)
     case 'o': {
       const u = withUndo(state);

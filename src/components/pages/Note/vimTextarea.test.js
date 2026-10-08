@@ -157,6 +157,37 @@ describe('vimTextarea — undo / redo', () => {
   });
 });
 
+describe('vimTextarea — undoing an INSERT session', () => {
+  // The textarea owns typing in INSERT, so the caller feeds the typed text back
+  // in as the new state (this is what TuiView does via setDraft).
+  const type = (state, text) => ({ ...state, text, pos: text.length });
+
+  it.each([['i'], ['a'], ['A']])('%s opens an undo step: u reverts what was typed', (enter) => {
+    const entered = run({ text: 'abc', pos: 0, mode: 'normal' }, enter);
+    expect(entered.mode).toBe('insert');
+    const typed = type(entered, 'abcXYZ');
+    const back = run({ ...typed, mode: 'normal' }, 'u');
+    expect(back.text).toBe('abc');
+  });
+
+  it('i, Esc, i without typing does not stack empty undo steps', () => {
+    let s = run({ text: 'abc', pos: 0, mode: 'normal' }, 'i');
+    s = run(s, 'Escape');
+    s = run(s, 'i');
+    expect(s.undo).toHaveLength(1);
+  });
+
+  it('undo steps stay separate: typing after x is undone before the x', () => {
+    let s = run({ text: 'abc', pos: 0, mode: 'normal' }, 'x'); // "bc"
+    s = run(s, 'i');
+    s = { ...s, mode: 'normal', text: 'Qbc' };                  // typed Q
+    s = run(s, 'u');
+    expect(s.text).toBe('bc');
+    s = run(s, 'u');
+    expect(s.text).toBe('abc');
+  });
+});
+
 describe('vimTextarea — visual mode', () => {
   it('v + l + d deletes the charwise selection', () => {
     const r = seq({ text: 'hello', pos: 0, mode: 'normal' }, ['v', 'l', 'd']);
