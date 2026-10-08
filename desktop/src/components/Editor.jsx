@@ -6,7 +6,7 @@ import { openExternal } from "../lib/native.js";
 import { BlockEditor } from "./BlockEditor.jsx";
 
 export function Editor({
-  note, contentRef, onChange, onCommit, onDelete,
+  note, contentRef, onChange, onCommit, onDelete, nvim, onVimMode,
   onUpload, onUploadError, onOrphanUpload, onRemoveAttachment,
 }) {
   const fileInputRef = useRef();
@@ -41,7 +41,7 @@ export function Editor({
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === "ArrowDown") {
             e.preventDefault();
-            contentRef.current?.focus();
+            contentRef.current?.focus({ insert: true }); // typing the title flows into the body
           }
         }}
         onBlur={onCommit}
@@ -115,6 +115,8 @@ export function Editor({
         <BlockEditor
           content={note.content || ""}
           apiRef={contentRef}
+          nvim={nvim}
+          onVimMode={onVimMode}
           onChange={(content) => onChange({ content })}
           onCommit={onCommit}
           onUpload={onUpload}

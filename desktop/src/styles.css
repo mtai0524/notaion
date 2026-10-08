@@ -505,3 +505,8 @@ kbd {
 .export-status b { word-break: break-all; }
 .export-status .flash { color: var(--accent); }
 .danger-text { color: var(--danger); }
+
+/* ---- nvim NORMAL mode in the block editor ---- */
+.blocks.vim-normal .blk-text { caret-shape: block; caret-color: var(--accent); }
+.blocks.vim-normal .blk-text:focus { background: var(--sel); border-radius: 3px; }
+.chip.on { background: var(--text); color: var(--panel); border-color: var(--text); }

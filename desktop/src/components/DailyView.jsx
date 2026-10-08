@@ -17,12 +17,17 @@ const FOCUS_REFRESH_MS = 15_000;
 const NARROW_MQ = window.matchMedia("(max-width: 640px)");
 
 const HINTS = {
-  list: "j/k:move  enter:edit  e:title  n:new  x:done  d:delete  [/]:day  t:today  c:calendar  /:search  E:export  T:theme  q:hide  ?:help",
+  list: "j/k:move  enter:edit  e:title  n:new  x:done  d:delete  [/]:day  t:today  c:calendar  /:search  E:export  V:nvim  T:theme  q:hide  ?:help",
   editor: "── INSERT ──  esc:normal  enter:new block  ctrl+v:paste image  ctrl+l:todo  ctrl+;:time  #/-/[]:format",
   capture: "── CAPTURE ──  enter:save  shift+enter:save & write  esc:clear/hide",
+  vim: "── NORMAL (nvim) ──  i a o:insert  h j k l w b e 0 $ gg G  x dd yy p u  esc:back to list",
 };
 
-const isTyping = (el) => el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable);
+// A textarea in nvim NORMAL mode is focused but not "typing" (BlockEditor marks it data-vim="normal").
+const isTyping = (el) =>
+  el &&
+  (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT" || el.isContentEditable) &&
+  el.dataset?.vim !== "normal";
 
 export function DailyView({ store, token, onSignOut }) {
   const [date, setDate] = useState(todayKey);
@@ -37,9 +42,11 @@ export function DailyView({ store, token, onSignOut }) {
   const [sync, setSync] = useState(store.getStatus);
   const [capture, setCapture] = useState("");
   const [isNarrow, setIsNarrow] = useState(NARROW_MQ.matches);
-  const [focus, setFocus] = useState({ pane: "list", insert: false, capture: false });
+  const [focus, setFocus] = useState({ pane: "list", insert: false, capture: false, block: false });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [theme, setTheme] = useState(loadTheme);
+  const [nvim, setNvim] = useState(() => localStorage.getItem("nd:nvim") === "1"); // modal editing inside notes
+  const [edVim, setEdVim] = useState("insert"); // BlockEditor mode: insert | normal
 
   const captureRef = useRef();
   const contentRef = useRef();
@@ -71,6 +78,7 @@ export function DailyView({ store, token, onSignOut }) {
         pane: editorPaneRef.current?.contains(a) ? "editor" : "list",
         insert: isTyping(a),
         capture: a === captureRef.current,
+        block: !!a?.dataset?.bid, // a note-body textarea (vs. title / capture input)
       });
     };
     // focusout fires before the next element gains focus — read it a tick later.
@@ -183,7 +191,7 @@ export function DailyView({ store, token, onSignOut }) {
     setNotes(notesRef.current);
     store.save(n);
     setSelectedId(n.id);
-    if (openEditor) requestAnimationFrame(() => contentRef.current?.focus());
+    if (openEditor) requestAnimationFrame(() => contentRef.current?.focus({ insert: true }));
   };
 
   const remove = (note) => {
@@ -232,6 +240,13 @@ export function DailyView({ store, token, onSignOut }) {
     if (n.date === dateRef.current) setSelectedId(n.id);
     else goDate(n.date);
     focusList(); // synchronously — a deferred focus could steal it from a newly opened overlay
+  };
+
+  const toggleNvim = () => {
+    const on = !nvim;
+    localStorage.setItem("nd:nvim", on ? "1" : "0");
+    setNvim(on);
+    setFlash(`nvim mode: ${on ? "on — Enter/i opens a note in NORMAL, i/a/o to type" : "off"}`);
   };
 
   const cycleTheme = () => {
@@ -340,6 +355,7 @@ export function DailyView({ store, token, onSignOut }) {
         "/": () => setSearchOpen(true),
         "?": () => setHelpOpen(true),
         T: cycleTheme,
+        V: toggleNvim,
         E: () => setExportOpen(true),
         r: () => load(dateRef.current),
         q: () => hideWindow(),
@@ -364,8 +380,16 @@ export function DailyView({ store, token, onSignOut }) {
   const isToday = date === todayKey();
   const showEditorOnly = isNarrow && selected;
   const doneCount = notes.filter((n) => n.isCompleted).length;
-  const mode = focus.insert ? "INSERT" : "NORMAL";
-  const hint = focus.capture ? HINTS.capture : focus.pane === "editor" && focus.insert ? HINTS.editor : HINTS.list;
+  // In a note body with nvim on, the editor's own mode wins (the DOM can't tell NORMAL from INSERT there).
+  const inBody = nvim && focus.pane === "editor" && focus.block;
+  const mode = inBody ? (edVim === "normal" ? "NORMAL" : "INSERT") : focus.insert ? "INSERT" : "NORMAL";
+  const hint = focus.capture
+    ? HINTS.capture
+    : inBody && edVim === "normal"
+      ? HINTS.vim
+      : focus.pane === "editor" && (focus.insert || inBody)
+        ? HINTS.editor
+        : HINTS.list;
 
   let syncLabel = "synced";
   if (sync.status === "syncing") syncLabel = "syncing…";
@@ -456,6 +480,8 @@ export function DailyView({ store, token, onSignOut }) {
             onChange={(patch, immediate) => selected && update(selected.id, patch, immediate)}
             onCommit={() => selected && dirty.current.has(selected.id) && commit(selected.id)}
             onDelete={() => selected && askDelete()}
+            nvim={nvim}
+            onVimMode={setEdVim}
             onUpload={upload}
             onUploadError={(err) => setFlash(describeUploadError(err))}
             onOrphanUpload={appendUploads}
@@ -484,6 +510,7 @@ export function DailyView({ store, token, onSignOut }) {
         <span class="dim">{notes.length} notes · {doneCount} done</span>
         <span class={`sync ${sync.status}${sync.pending ? " pending" : ""}`} title={sync.lastError || ""}>● {syncLabel}</span>
         <button class="chip" title="Export toàn bộ ghi chú (E)" onClick={() => setExportOpen(true)}>⇩ export</button>
+        <button class={`chip${nvim ? " on" : ""}`} title="Chế độ nvim trong ghi chú (V)" onClick={toggleNvim}>⌨ nvim {nvim ? "on" : "off"}</button>
         <button class="chip" title="Đổi theme (T)" onClick={cycleTheme}>◐ {theme}</button>
         <button class="chip" title="Trợ giúp (?)" onClick={() => setHelpOpen(true)}>?</button>
         <button class="chip" title="Đăng xuất" onClick={onSignOut}>{tokenUserName(token) || "user"} ⏻</button>
