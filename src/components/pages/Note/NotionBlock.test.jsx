@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import NotionBlock from './NotionBlock';
+import { VimNormalContext } from './vimContext';
 
 describe('NotionBlock', () => {
   it('renders a heading with its text and level class', () => {
@@ -49,14 +50,16 @@ describe('NotionBlock', () => {
 
   it('disables contentEditable in vim NORMAL mode', () => {
     const { container } = render(
-      <NotionBlock block={{ id: 'b0', type: 'paragraph', text: 'hi' }} vimNormal onChange={() => {}} />,
+      <VimNormalContext.Provider value>
+        <NotionBlock block={{ id: 'b0', type: 'paragraph', text: 'hi' }} onChange={() => {}} />
+      </VimNormalContext.Provider>,
     );
     const el = container.querySelector('.nb-text');
     expect(el.getAttribute('contenteditable')).toBe('false');
     expect(el.classList.contains('nb-vim-normal')).toBe(true);
   });
 
-  it('keeps contentEditable when vimNormal is false', () => {
+  it('keeps contentEditable outside vim NORMAL mode', () => {
     const { container } = render(
       <NotionBlock block={{ id: 'b0', type: 'paragraph', text: 'hi' }} onChange={() => {}} />,
     );

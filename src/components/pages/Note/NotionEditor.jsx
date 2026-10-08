@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import PropTypes from 'prop-types';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { parseMarkdown, serializeBlocks, reorder } from './noteFormat';
 import { wordForward, wordBackward, lineStart, lineEnd, deleteCharAt } from './vimEditor';
 import NotionBlock from './NotionBlock';
+import { VimNormalContext } from './vimContext';
 import './NotionEditor.scss';
 
 // Slash / "turn into" menu — visual block picker (no raw markdown shown).
@@ -27,6 +28,88 @@ const SLASH_MENU = [
 
 // The visible text of a block regardless of its type (toggle uses `title`).
 const blockText = (b) => (b.type === 'toggle' ? (b.title || '') : (b.text || ''));
+
+// One draggable row. Memoised on purpose: every <Draggable> scans all drag
+// handles when it renders (react-beautiful-dnd findDragHandle), so re-rendering
+// all N rows on each NORMAL↔INSERT switch or keystroke cost O(N²) — about a
+// second for a 1500-line note. Props are primitives/stable objects only, and
+// `api` is one object whose methods always point at the latest handlers, so a
+// row re-renders only when something about *that* row changed.
+const Row = memo(function Row({ b, i, selected, vimCur, focus, collapsed, slashOpen, slashSel, api }) {
+  return (
+    <Draggable draggableId={String(b.id)} index={i}>
+      {(dr, snapshot) => (
+        <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''} ${selected ? 'selected' : ''}`}
+             ref={dr.innerRef} {...dr.draggableProps}
+             onMouseEnter={() => api.extendSweep(i)}>
+          <span className="ne-gutter" title="Hold and drag to select multiple blocks, then Delete"
+                onMouseDown={(e) => { e.preventDefault(); api.startSweep(i); }} />
+          <span className="ne-handle" title="Drag to reorder" {...dr.dragHandleProps}>⠿</span>
+          <button type="button" className="ne-add" title="Insert / turn into block"
+                  onClick={() => api.openSlash(i)}>+</button>
+          <button type="button" className="ne-del" title="Delete this block"
+                  onClick={() => api.removeAt(i)}>🗑</button>
+          <div className={`ne-block ${vimCur ? 'vim-cur' : ''}`} data-vi={i}>
+            <NotionBlock
+              block={b}
+              focus={focus}
+              collapsed={collapsed}
+              onChange={(t) => api.setText(i, t)}
+              onEnter={() => api.addAfter(i)}
+              onBackspaceEmpty={() => api.removeAt(i)}
+              onSlash={() => api.openSlash(i)}
+              onArrowUp={() => api.moveFocus(i, -1)}
+              onArrowDown={() => api.moveFocus(i, 1)}
+              onToggleCheck={() => api.patch(i, { checked: !b.checked })}
+              onToggleCollapse={() => api.toggleCollapse(b.id)}
+            />
+            {slashOpen && (
+              // React's autoFocus only works on form controls, not a
+              // <div> — focus the popup imperatively so it owns the
+              // arrow keys instead of the block behind it.
+              <div className="ne-slash" tabIndex={0}
+                   ref={(el) => el?.focus()}
+                   onKeyDown={(e) => {
+                     if (e.key === 'ArrowDown') { e.preventDefault(); api.setSlashSel((s) => (s + 1) % SLASH_MENU.length); }
+                     else if (e.key === 'ArrowUp') { e.preventDefault(); api.setSlashSel((s) => (s - 1 + SLASH_MENU.length) % SLASH_MENU.length); }
+                     else if (e.key === 'Enter') { e.preventDefault(); api.setType(i, SLASH_MENU[slashSel]); }
+                     else if (e.key === 'Escape') { e.preventDefault(); api.closeSlash(i); }
+                   }}>
+                {SLASH_MENU.map((it, si) => (
+                  <button key={it.key} type="button"
+                          // Keep the arrow-selected row scrolled into view.
+                          ref={si === slashSel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
+                          className={`ne-slash-item ${si === slashSel ? 'sel' : ''}`}
+                          onMouseEnter={() => api.setSlashSel(si)}
+                          onMouseDown={(e) => { e.preventDefault(); api.setType(i, it); }}>
+                    <span className="ne-slash-icon">{it.icon}</span>
+                    <span>{it.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </Draggable>
+  );
+});
+
+Row.propTypes = {
+  b: PropTypes.shape({ id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]), checked: PropTypes.bool }).isRequired,
+  i: PropTypes.number.isRequired,
+  selected: PropTypes.bool,
+  vimCur: PropTypes.bool,
+  focus: PropTypes.bool,
+  collapsed: PropTypes.bool,
+  slashOpen: PropTypes.bool,
+  slashSel: PropTypes.number,
+  api: PropTypes.shape({
+    extendSweep: PropTypes.func, startSweep: PropTypes.func, openSlash: PropTypes.func, removeAt: PropTypes.func,
+    setText: PropTypes.func, addAfter: PropTypes.func, moveFocus: PropTypes.func, patch: PropTypes.func,
+    setType: PropTypes.func, toggleCollapse: PropTypes.func, setSlashSel: PropTypes.func, closeSlash: PropTypes.func,
+  }).isRequired,
+};
 
 // Block-based Notion-mode editor. The source of truth stays the markdown
 // `content` string: we parse it into blocks, edit blocks, then re-serialize
@@ -288,84 +371,49 @@ const NotionEditor = ({ content, onChange, nvim = false, onEx }) => {
   // Always render at least one editable paragraph so an empty note is writable.
   const view = blocks.length ? blocks : [{ id: 'empty', type: 'paragraph', text: '' }];
 
+  // Stable handler bag for the memoised rows: same object every render, with
+  // methods re-pointed at this render's closures (so they never go stale).
+  const apiRef = useRef({});
+  Object.assign(apiRef.current, {
+    extendSweep, startSweep, openSlash, removeAt, setText, addAfter, moveFocus, patch, setType,
+    toggleCollapse: (id) => setCollapsed((m) => ({ ...m, [id]: !m[id] })),
+    setSlashSel,
+    closeSlash: (i) => { setSlashFor(null); setFocusIndex(i); },
+  });
+  const api = apiRef.current;
+
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <Droppable droppableId="notion-editor">
-        {(dp) => (
-          <div className={`notion-editor ${nvim ? `vim vim-${vimMode}` : ''}`}
-               ref={(el) => {
-                 dp.innerRef(el);
-                 rootElRef.current = el;
-               }} {...dp.droppableProps}
-               tabIndex={nvim ? 0 : undefined}
-               onMouseUp={endSweep} onMouseLeave={endSweep}
-               onKeyDownCapture={onVimKeyDown}>
-            {nvim && (
-              <div className={`ne-vim-badge ${vimMode}`}>-- {vimMode.toUpperCase()} --</div>
-            )}
-            {view.map((b, i) => (
-              <Draggable key={b.id} draggableId={String(b.id)} index={i}>
-                {(dr, snapshot) => (
-                  <div className={`ne-row ${snapshot.isDragging ? 'dragging' : ''} ${selected.has(b.id) ? 'selected' : ''}`}
-                       ref={dr.innerRef} {...dr.draggableProps}
-                       onMouseEnter={() => extendSweep(i)}>
-                    <span className="ne-gutter" title="Hold and drag to select multiple blocks, then Delete"
-                          onMouseDown={(e) => { e.preventDefault(); startSweep(i); }} />
-                    <span className="ne-handle" title="Drag to reorder" {...dr.dragHandleProps}>⠿</span>
-                    <button type="button" className="ne-add" title="Insert / turn into block"
-                            onClick={() => openSlash(i)}>+</button>
-                    <button type="button" className="ne-del" title="Delete this block"
-                            onClick={() => removeAt(i)}>🗑</button>
-                    <div className={`ne-block ${nvim && vimIndex === i ? 'vim-cur' : ''}`} data-vi={i}>
-                      <NotionBlock
-                        block={b}
-                        focus={focusIndex === i}
-                        vimNormal={nvim && vimMode === 'normal'}
-                        collapsed={!!collapsed[b.id]}
-                        onChange={(t) => setText(i, t)}
-                        onEnter={() => addAfter(i)}
-                        onBackspaceEmpty={() => removeAt(i)}
-                        onSlash={() => openSlash(i)}
-                        onArrowUp={() => moveFocus(i, -1)}
-                        onArrowDown={() => moveFocus(i, 1)}
-                        onToggleCheck={() => patch(i, { checked: !b.checked })}
-                        onToggleCollapse={() => setCollapsed((m) => ({ ...m, [b.id]: !m[b.id] }))}
-                      />
-                      {slashFor === i && (
-                        // React's autoFocus only works on form controls, not a
-                        // <div> — focus the popup imperatively so it owns the
-                        // arrow keys instead of the block behind it.
-                        <div className="ne-slash" tabIndex={0}
-                             ref={(el) => el?.focus()}
-                             onKeyDown={(e) => {
-                               if (e.key === 'ArrowDown') { e.preventDefault(); setSlashSel((s) => (s + 1) % SLASH_MENU.length); }
-                               else if (e.key === 'ArrowUp') { e.preventDefault(); setSlashSel((s) => (s - 1 + SLASH_MENU.length) % SLASH_MENU.length); }
-                               else if (e.key === 'Enter') { e.preventDefault(); setType(i, SLASH_MENU[slashSel]); }
-                               else if (e.key === 'Escape') { e.preventDefault(); setSlashFor(null); setFocusIndex(i); }
-                             }}>
-                          {SLASH_MENU.map((it, si) => (
-                            <button key={it.key} type="button"
-                                    // Keep the arrow-selected row scrolled into view.
-                                    ref={si === slashSel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
-                                    className={`ne-slash-item ${si === slashSel ? 'sel' : ''}`}
-                                    onMouseEnter={() => setSlashSel(si)}
-                                    onMouseDown={(e) => { e.preventDefault(); setType(i, it); }}>
-                              <span className="ne-slash-icon">{it.icon}</span>
-                              <span>{it.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {dp.placeholder}
-          </div>
-        )}
-      </Droppable>
-    </DragDropContext>
+    <VimNormalContext.Provider value={nvim && vimMode === 'normal'}>
+      <DragDropContext onDragEnd={onDragEnd}>
+        <Droppable droppableId="notion-editor">
+          {(dp) => (
+            <div className={`notion-editor ${nvim ? `vim vim-${vimMode}` : ''}`}
+                 ref={(el) => {
+                   dp.innerRef(el);
+                   rootElRef.current = el;
+                 }} {...dp.droppableProps}
+                 tabIndex={nvim ? 0 : undefined}
+                 onMouseUp={endSweep} onMouseLeave={endSweep}
+                 onKeyDownCapture={onVimKeyDown}>
+              {nvim && (
+                <div className={`ne-vim-badge ${vimMode}`}>-- {vimMode.toUpperCase()} --</div>
+              )}
+              {view.map((b, i) => (
+                <Row key={b.id} b={b} i={i}
+                     selected={selected.has(b.id)}
+                     vimCur={nvim && vimIndex === i}
+                     focus={focusIndex === i}
+                     collapsed={!!collapsed[b.id]}
+                     slashOpen={slashFor === i}
+                     slashSel={slashFor === i ? slashSel : 0}
+                     api={api} />
+              ))}
+              {dp.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+    </VimNormalContext.Provider>
   );
 };
 

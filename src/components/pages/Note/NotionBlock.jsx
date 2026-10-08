@@ -1,6 +1,7 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useContext } from 'react';
 import PropTypes from 'prop-types';
 import { CALLOUT_KINDS } from './noteFormat';
+import { VimNormalContext } from './vimContext';
 import './NotionBlock.scss';
 
 // One block, rendered visually (never showing raw markdown syntax) and
@@ -11,7 +12,8 @@ import './NotionBlock.scss';
 // writes textContent during typing — writing it is what collapses the caret to
 // the start. A genuine external change (note switch / block type change)
 // remounts this via its React key, so fresh text is picked up naturally.
-const Editable = ({ value, className, focus, multiline, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
+const Editable = ({ value, className, focus, multiline, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown }) => {
+  const vimNormal = useContext(VimNormalContext);
   const ref = useRef(null);
   const seeded = useRef(false);
   // Runs once per mount; the guard means later re-renders never touch the DOM.
@@ -74,7 +76,6 @@ Editable.propTypes = {
   className: PropTypes.string,
   focus: PropTypes.bool,
   multiline: PropTypes.bool,
-  vimNormal: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
@@ -83,9 +84,9 @@ Editable.propTypes = {
   onArrowDown: PropTypes.func,
 };
 
-const NotionBlock = ({ block, focus, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown, onToggleCheck, onToggleCollapse, collapsed }) => {
+const NotionBlock = ({ block, focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown, onToggleCheck, onToggleCollapse, collapsed }) => {
   const b = block;
-  const common = { focus, vimNormal, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown };
+  const common = { focus, onChange, onEnter, onBackspaceEmpty, onSlash, onArrowUp, onArrowDown };
 
   if (b.type === 'divider') return <hr className="nb-hr" />;
 
@@ -146,7 +147,6 @@ const NotionBlock = ({ block, focus, vimNormal, onChange, onEnter, onBackspaceEm
 NotionBlock.propTypes = {
   block: PropTypes.object.isRequired,
   focus: PropTypes.bool,
-  vimNormal: PropTypes.bool,
   onChange: PropTypes.func,
   onEnter: PropTypes.func,
   onBackspaceEmpty: PropTypes.func,
