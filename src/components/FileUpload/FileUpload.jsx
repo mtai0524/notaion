@@ -75,7 +75,11 @@ const FileUpload = ({ onUploadSuccess }) => {
       }
     } catch (error) {
       console.error('Upload failed:', error);
-      antdMessage.error('Upload failed. Please try again.');
+      antdMessage.error(
+        error?.response?.status === 401
+          ? 'Bạn cần đăng nhập để upload file.'
+          : 'Upload failed. Please try again.'
+      );
     } finally {
       setUploading(false);
     }

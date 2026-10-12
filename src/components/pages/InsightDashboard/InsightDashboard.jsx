@@ -57,8 +57,10 @@ const InsightDashboard = () => {
       const notes = notesRes.data;
       setAllNotes(notes);
 
-      const filesRes = await axiosInstance.get('/api/files');
-      setRecentFiles(filesRes.data.slice(0, 5));
+      // /api/files giờ yêu cầu đăng nhập và chỉ trả file của chính mình. Khách
+      // vãng lai chỉ mất widget này — đừng để nó chặn luôn heatmap bên dưới.
+      const filesRes = await axiosInstance.get('/api/files').catch(() => null);
+      setRecentFiles(filesRes ? filesRes.data.slice(0, 5) : []);
 
       // Fetch Heatmap Data
       const heatmapRes = await axiosInstance.get('/api/Analytics/heatmap');

@@ -23,7 +23,12 @@ const FilesPage = () => {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch files:', err);
-      setError('Failed to load files. Please make sure the backend is running.');
+      setFiles([]);
+      setError(
+        err?.response?.status === 401
+          ? 'Bạn cần đăng nhập để xem file của mình.'
+          : 'Failed to load files. Please make sure the backend is running.'
+      );
     } finally {
       setLoading(false);
     }
