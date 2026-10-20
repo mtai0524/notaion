@@ -1,37 +1,43 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { AuthProvider } from "../src/contexts/AuthContext";
 import Header from "./components/layouts/Header/Header";
 import { BrowserRouter, Navigate } from "react-router-dom";
 import { Route, Routes } from "react-router-dom";
-import Realtime from "./components/pages/Signal/Signal";
-import Notion from "./components/pages/Notion/Notion";
-import Login from "./components/pages/Login/Login";
-import LoginSuccess from "./components/pages/Login/LoginSuccess";
-import Home from "./components/pages/Home/Home";
-import Register from "./components/pages/Register/Register";
-import Profile from "./components/pages/Profile/Profile";
-import Note from "./components/pages/Note/Note";
-import Page from "./components/pages/Page/Page";
-import Content from "./components/pages/Content/Content";
-import Setting from "./components/pages/Setting/Setting";
 import { SignalRProvider, useSignalR } from "./contexts/SignalRContext";
-import FloatingButton from "./components/pages/ChatBox/FloatingButton";
-import ChatBox from "./components/pages/ChatBox/ChatBox";
 import { ChatProvider, useChat } from "./contexts/ChatContext";
 import Cookies from "js-cookie";
 import jwt_decode from "jwt-decode";
-import NotFound from "./components/pages/NotFound/NotFound";
 import { useSignalRConnection } from "./hooks/useSignalRConnection";
 import useTracking from "./hooks/useTracking";
-import FilesPage from "./pages/FilesPage";
-import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
-import InsightDashboard from "./components/pages/InsightDashboard/InsightDashboard";
-import MiniGame from "./components/pages/MiniGame/MiniGame";
-import PixelGame from "./components/pages/PixelGame/PixelGame";
-import DesktopApp from "./components/pages/DesktopApp/DesktopApp";
 import { applyGlobalSettings } from "./utils/applyGlobalSettings";
 import { useDeadlineReminders } from "./hooks/useDeadlineReminders";
 import { registerReminderSW } from "./utils/notifyBrowser";
+// The landing page ("/" redirects here) ships with the entry so the first
+// visit doesn't wait for a second round-trip.
+import DailyNoteApp from "./components/pages/Note/DailyNoteApp";
+
+// Pages load on demand so a visit to one route doesn't download the others
+// (three.js games, tiptap editor, antd dashboards…).
+const Realtime = lazy(() => import("./components/pages/Signal/Signal"));
+const Notion = lazy(() => import("./components/pages/Notion/Notion"));
+const Login = lazy(() => import("./components/pages/Login/Login"));
+const LoginSuccess = lazy(() => import("./components/pages/Login/LoginSuccess"));
+const Register = lazy(() => import("./components/pages/Register/Register"));
+const Profile = lazy(() => import("./components/pages/Profile/Profile"));
+const Note = lazy(() => import("./components/pages/Note/Note"));
+const Page = lazy(() => import("./components/pages/Page/Page"));
+const Content = lazy(() => import("./components/pages/Content/Content"));
+const Setting = lazy(() => import("./components/pages/Setting/Setting"));
+const ChatBox = lazy(() => import("./components/pages/ChatBox/ChatBox"));
+// The floating chat button pulls in the whole chat drawer (markdown, gestures…),
+// so it loads after the page instead of blocking it.
+const FloatingButton = lazy(() => import("./components/pages/ChatBox/FloatingButton"));
+const NotFound = lazy(() => import("./components/pages/NotFound/NotFound"));
+const FilesPage = lazy(() => import("./pages/FilesPage"));
+const InsightDashboard = lazy(() => import("./components/pages/InsightDashboard/InsightDashboard"));
+const MiniGame = lazy(() => import("./components/pages/MiniGame/MiniGame"));
+const PixelGame = lazy(() => import("./components/pages/PixelGame/PixelGame"));
+const DesktopApp = lazy(() => import("./components/pages/DesktopApp/DesktopApp"));
 
 
 const App = () => {
@@ -146,6 +152,7 @@ const MainApp = () => {
   return (
     <>
       <Header />
+      <Suspense fallback={<div className="route-loading" aria-busy="true" />}>
       <Routes>
         <Route path="/" element={<Navigate to="/daily-note" />} />
         <Route path="/signal" element={<Realtime />} />
@@ -170,11 +177,18 @@ const MainApp = () => {
 
         <Route path="*" element={<NotFound />}></Route>
       </Routes>
-      <FloatingButton
-        onClick={handleFloatingButtonClick}
-        newMessagesCount={newMessagesCount}
-      />
-      {showChatBox && <ChatBox onClose={handleFloatingButtonClick} />}
+      </Suspense>
+      <Suspense fallback={null}>
+        <FloatingButton
+          onClick={handleFloatingButtonClick}
+          newMessagesCount={newMessagesCount}
+        />
+      </Suspense>
+      {showChatBox && (
+        <Suspense fallback={null}>
+          <ChatBox onClose={handleFloatingButtonClick} />
+        </Suspense>
+      )}
     </>
   );
 };

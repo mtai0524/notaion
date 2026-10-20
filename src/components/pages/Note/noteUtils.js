@@ -41,3 +41,30 @@ export const downloadFile = (filename, data, mime = 'application/octet-stream') 
 
 /** Trigger a client-side download of a text file. */
 export const downloadTextFile = (filename, content, mime = 'text/markdown') => downloadFile(filename, content, mime);
+
+const DAY_COUNTS_KEY = 'daily-note-day-counts-v1';
+
+/** Cached 'yyyy-MM-dd' -> note count map, so calendar dots render before /all loads. */
+export const loadDayCounts = () => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(DAY_COUNTS_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+};
+
+export const saveDayCounts = (counts) => {
+  try {
+    localStorage.setItem(DAY_COUNTS_KEY, JSON.stringify(counts));
+  } catch (err) {
+    console.warn('[DAILY-NOTE] Could not cache day counts:', err);
+  }
+};
+
+/* Answer to the editor's "Save changes?" prompt. Vietnamese IMEs (Unikey,
+   Telex…) report letter keys as `Process` while composing, so fall back to
+   the physical key (`e.code`). Returns 'save' | 'discard' | 'keep' | null. */
+const PROMPT_KEYS = { y: 'save', enter: 'save', n: 'discard', escape: 'keep', c: 'keep' };
+const PROMPT_CODES = { KeyY: 'save', Enter: 'save', NumpadEnter: 'save', KeyN: 'discard', Escape: 'keep', KeyC: 'keep' };
+export const unsavedPromptAction = (e) => PROMPT_KEYS[String(e.key || '').toLowerCase()] || PROMPT_CODES[e.code] || null;

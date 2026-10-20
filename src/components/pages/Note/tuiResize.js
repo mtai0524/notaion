@@ -82,6 +82,19 @@ export function sizesFromDrag(sizes, boundary, ratio) {
   return out.map((n) => Math.round(n * 1e6) / 1e6);
 }
 
+export const FOCUS_SHARES = [50, 60, 70];
+
+/* Focus expand: the focused panel takes `share` % and the other two split
+   the rest in their default proportions (still floored at MIN). */
+export function focusSizes(focus, share) {
+  const i = PANELS.indexOf(focus);
+  if (i === -1 || !Number.isFinite(share)) return [...DEFAULT_SIZES];
+  const rest = 100 - share;
+  const otherWeight = DEFAULT_SIZES.reduce((total, n, k) => (k === i ? total : total + n), 0);
+  const out = DEFAULT_SIZES.map((n, k) => (k === i ? share : (rest * n) / otherWeight));
+  return clampSizes(out);
+}
+
 export const SIZES_KEY = 'tui:panelSizes';
 
 /* Read persisted sizes. Anything we can't fully trust — wrong shape, NaN,

@@ -54,7 +54,7 @@
     gap: 8px;
     padding: 10px 12px;
     border-bottom: 1.5px dashed var(--border-color, #d1d5db);
-    .tele-caret { color: var(--tui-accent, #2563eb); font-weight: 800; }
+    .tele-caret { color: var(--tui-accent, var(--text-color, #111827)); font-weight: 800; }
     input {
       flex: 1;
       background: transparent;
@@ -115,10 +115,11 @@
         }
 
         &:hover { background: rgba(127, 127, 127, 0.10); }
+        /* inverted ink by default (works in light and dark); white on a custom accent */
         &.sel {
-          background: var(--tui-accent, #2563eb);
-          color: #fff;
-          .tele-item-meta { color: rgba(255, 255, 255, 0.75); }
+          background: var(--tui-accent, var(--text-color, #111827));
+          color: var(--tui-accent-ink, var(--container-bg, #fff));
+          .tele-item-meta { color: inherit; opacity: 0.75; }
         }
       }
       .tele-empty { padding: 12px; color: var(--text-muted, #9ca3af); font-size: 0.82rem; }

@@ -1,20 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { format, addDays, addMonths, subMonths, startOfMonth, startOfWeek, isSameDay, isSameMonth } from 'date-fns';
-import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, downloadTextFile } from './noteUtils';
-import { exportAllNotes, describeExport } from './exportAll';
-import { uploadFilesToCloudinary } from '../../../services/fileService';
-import { overlayDeadlines, setLocalDeadline } from '../../../utils/deadlineLocalStore';
+import { wordStats, CHECKBOX_RE, toggleChecklistLine, notesToMarkdown, unsavedPromptAction } from './noteUtils';
 import { mobileActionContext, swipePanelTarget } from './tuiMobile';
-import { DEFAULT_SIZES, loadSizes, saveSizes, applyDelta, sizesFromDrag, STEP, BIG_STEP } from './tuiResize';
-import { clearFiredForNote } from '../../../utils/deadlineReminders';
-import { AMBIENT_KINDS, startAmbient, stopAmbient, getAmbientAnalyser } from './ambientAudio';
+import {
+  DEFAULT_SIZES, FOCUS_SHARES, loadSizes, saveSizes, applyDelta, sizesFromDrag, focusSizes, STEP, BIG_STEP,
+} from './tuiResize';
 import { CALLOUT_KINDS } from './noteFormat';
 import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
-import Cookies from 'js-cookie';
-import jwt_decode from 'jwt-decode';
-import axiosInstance from '../../../axiosConfig';
 import Telescope from './Telescope';
+import OptionsPopup from './OptionsPopup';
+import {
+  DEFAULT_TEXT, LOOK_FIELDS, TEXT_FIELDS, OPTION_TABS, defaultsFor, loadAppearance, saveAppearance, stepAppearance,
+  appearanceStyle, textStyle, nextTextPanel,
+} from './appearance';
+
+// Options tabs whose rows are appearance fields (adjusted with ←/→).
+const FIELD_TABS = { look: LOOK_FIELDS, text: TEXT_FIELDS };
 import LineGutter from './LineGutter';
 import Spinner from './Spinner';
 import NotionEditor from './NotionEditor';
@@ -54,55 +56,15 @@ const PANELS = ['folders', 'notes', 'preview'];
 const SORTS = [
   { key: 'created', label: 'created' },
   { key: 'title', label: 'title' },
-  { key: 'status', label: 'status' },
   { key: 'updated', label: 'updated' },
 ];
 
-const POMO_LS_KEY = 'daily-note-tui-pomodoro';
-const POMO_CFG_KEY = 'daily-note-pomo-cfg';        // { focusMin, soundOn, ambient }
-const POMO_STATS_KEY = 'daily-note-pomo-stats';    // { 'yyyy-MM-dd': finished count }
-const FOCUS_TIME_KEY = 'daily-note-focus-time';    // { noteId: seconds focused }
-const ARCHIVE_KEY = 'daily-note-archived';         // [noteId]
-const TUI_THEME_KEY = 'daily-note-tui-theme';
-const TUI_ZEN_KEY = 'daily-note-tui-zen';
 const NOTE_FORMAT_KEY = 'daily-note-format';       // 'notion' | 'md'
 const NVIM_KEY = 'daily-note-nvim';                // 'on' | 'off'
+const FOCUS_EXPAND_KEY = 'daily-note-focus-expand'; // true | false
+const FOCUS_SHARE_KEY = 'daily-note-focus-share';   // 50 | 60 | 70 (% for the focused panel)
 const VIM_LINENO_KEY = 'daily-note-vim-lineno';   // 'on' | 'off'
-const YANK_KEY = 'daily-note-tui-yank';            // yanked note snapshot (cross-day paste)
-const RECUR_KEY = 'daily-note-recurring';          // [{key,title,content,category,freq,weekday,created}]
-const RECUR_DONE_KEY = 'daily-note-recurring-done';// { '<templateKey>|<date>': 1 }
-
-const BREAK_SHORT = 5 * 60;
-const BREAK_LONG = 15 * 60;
-const LONG_EVERY = 4; // long break after every 4th focus
-const FOCUS_CHOICES = [25, 45, 90];
-const TUI_THEMES = ['default', 'catppuccin', 'gruvbox', 'nord', 'dracula'];
-const TUI_FONT_KEY = 'daily-note-tui-font';
-const TUI_FONTFAM_KEY = 'daily-note-tui-fontfam';
-const FONT_STEPS = [0.8, 0.9, 1.0, 1.1];
-// nvim-crowd monospace fonts — each renders in itself in the picker; missing
-// fonts silently fall back to the next in the stack.
-const FONT_FAMILIES = [
-  { key: 'jetbrains', label: 'JetBrains Mono', stack: "'JetBrains Mono', 'Fira Code', monospace" },
-  { key: 'fira', label: 'Fira Code', stack: "'Fira Code', 'JetBrains Mono', monospace" },
-  { key: 'cascadia', label: 'Cascadia Code', stack: "'Cascadia Code', 'Cascadia Mono', monospace" },
-  { key: 'hack', label: 'Hack', stack: "'Hack', monospace" },
-  { key: 'sourcecode', label: 'Source Code Pro', stack: "'Source Code Pro', monospace" },
-  { key: 'plex', label: 'IBM Plex Mono', stack: "'IBM Plex Mono', monospace" },
-  { key: 'ubuntu', label: 'Ubuntu Mono', stack: "'Ubuntu Mono', monospace" },
-  { key: 'consolas', label: 'Consolas / Menlo', stack: "Consolas, Menlo, monospace" },
-  { key: 'system', label: 'System mono', stack: 'ui-monospace, SFMono-Regular, monospace' },
-];
-const OPT_TABS = ['theme', 'font', 'editor', 'view', 'pomo'];
 const AUTOLIST_KEY = 'daily-note-autolist';        // Enter tự nối bullet/checkbox
-// swatches for the appearance popup: [background, accent]
-const THEME_SWATCH = {
-  default: ['#fdfcf8', '#111827'],
-  catppuccin: ['#1e1e2e', '#f38ba8'],
-  gruvbox: ['#282828', '#fe8019'],
-  nord: ['#2e3440', '#88c0d0'],
-  dracula: ['#282a36', '#bd93f9'],
-};
 const TAG_RE = /#([\p{L}0-9_-]{2,30})/gu;
 
 const lsGet = (key, fallback) => {
@@ -115,115 +77,13 @@ const lsSet = (key, value) => {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota — ignore */ }
 };
 
-const todayStr = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
-
-const loadPomoCfg = () => ({ focusMin: 25, soundOn: true, ambient: 'off', ...lsGet(POMO_CFG_KEY, {}) });
-
-/* Tiny WebAudio chime/tick — no assets, degrades silently. */
-let audioCtx = null;
-const beep = (freq, at, dur, gain) => {
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  o.type = 'sine';
-  o.frequency.value = freq;
-  g.gain.setValueAtTime(0, at);
-  g.gain.linearRampToValueAtTime(gain, at + 0.015);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-  o.connect(g).connect(audioCtx.destination);
-  o.start(at);
-  o.stop(at + dur + 0.05);
-};
-const playSound = (kind) => {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const t = audioCtx.currentTime + 0.01;
-    if (kind === 'tick') beep(1800, t, 0.03, 0.012);
-    else if (kind === 'break-end') [520, 660].forEach((f, i) => beep(f, t + i * 0.18, 0.16, 0.05));
-    else [660, 880, 990].forEach((f, i) => beep(f, t + i * 0.16, 0.15, 0.05)); // focus-end
-  } catch { /* no audio — fine */ }
-};
-
-// Restore a persisted pomodoro, subtracting the time that passed while the
-// page was closed (only when it was left running). Migrates the old
-// phase-less shape from earlier versions.
-const loadPomodoro = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(POMO_LS_KEY));
-    if (!saved || typeof saved.remaining !== 'number') return null;
-    const elapsed = saved.running ? Math.floor((Date.now() - (saved.savedAt || Date.now())) / 1000) : 0;
-    const remaining = Math.max(0, saved.remaining - elapsed);
-    if (remaining <= 0) { localStorage.removeItem(POMO_LS_KEY); return null; }
-    const phase = saved.phase || 'focus';
-    return {
-      noteId: saved.noteId ?? null,
-      phase,
-      cycle: saved.cycle || 1,
-      total: saved.total || (phase === 'focus' ? loadPomoCfg().focusMin * 60 : phase === 'long' ? BREAK_LONG : BREAK_SHORT),
-      remaining,
-      running: !!saved.running,
-    };
-  } catch { return null; }
-};
-
-/* LED-style equalizer for the ambient soundscape — reads the WebAudio
-   analyser each frame straight onto a canvas (no React state per frame).
-   Bars melt to zero when the sound stops, thanks to analyser smoothing. */
-const PomoWave = ({ color }) => {
-  const canvasRef = useRef(null);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return undefined;
-    const W = 300;
-    const H = 40;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = W * dpr;
-    canvas.height = H * dpr;
-    const g2d = canvas.getContext('2d');
-    g2d.scale(dpr, dpr);
-    const BARS = 28;
-    const SEG = 4;   // LED segment height
-    const ROWS = Math.floor(H / (SEG + 1));
-    const bw = W / BARS;
-    let raf;
-    let data = null;
-    const draw = () => {
-      raf = requestAnimationFrame(draw);
-      g2d.clearRect(0, 0, W, H);
-      // Re-query every frame: the analyser is created by startAmbient, which
-      // runs in a parent effect AFTER this child effect on first activation.
-      const analyser = getAmbientAnalyser();
-      if (!analyser) return;
-      if (!data || data.length !== analyser.frequencyBinCount) data = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(data);
-      const usable = Math.floor(data.length * 0.72); // ambience lives low in the spectrum
-      for (let b = 0; b < BARS; b += 1) {
-        const start = Math.floor((b / BARS) * usable);
-        const end = Math.max(start + 1, Math.floor(((b + 1) / BARS) * usable));
-        let sum = 0;
-        for (let i = start; i < end; i += 1) sum += data[i];
-        const segs = Math.round(((sum / (end - start)) / 255) * ROWS);
-        g2d.fillStyle = color;
-        for (let s = 0; s < segs; s += 1) {
-          g2d.globalAlpha = 0.35 + (0.65 * s) / ROWS;
-          g2d.fillRect(b * bw + 1, H - (s + 1) * (SEG + 1), bw - 2, SEG);
-        }
-      }
-      g2d.globalAlpha = 1;
-    };
-    draw();
-    return () => cancelAnimationFrame(raf);
-  }, [color]);
-  return <canvas ref={canvasRef} className="tui-pomo-wave" aria-hidden />;
-};
-PomoWave.propTypes = { color: PropTypes.string.isRequired };
-
+/* Host-provided I/O (the web app and the desktop app each pass their own):
+   onUploadFiles(files) → [{ originalName, cloudUrl, contentType }],
+   onExportAll(format, { onProgress }) → summary string, onDownload(filename, text).
+   newNoteSignal: bump it to open a new note (desktop quick capture). */
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, streakStats, gridOn, onToggleGrid, onRestore, onGoToDate, loading, syncStatus,
-  fullscreenOn, onToggleFullscreen }) => {
+  allNotes, markedDates, onRestore, onGoToDate, loading, syncStatus,
+  fullscreenOn, onToggleFullscreen, onUploadFiles, onExportAll, onDownload, newNoteSignal }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
   const [noteIndex, setNoteIndex] = useState(0);
@@ -263,22 +123,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const [showCheatsheet, setShowCheatsheet] = useState(false); // markdown syntax hint panel
   const [livePreview, setLivePreview] = useState(false); // split editor + live rendered preview
   const [sortBy, setSortBy] = useState('created'); // created | title | status | updated
-  const [selectedIds, setSelectedIds] = useState([]); // multi-select for bulk actions
-  const [pomodoro, setPomodoro] = useState(loadPomodoro); // { noteId, phase, cycle, total, remaining, running }
-  const [pomoOverlay, setPomoOverlay] = useState(false); // fullscreen focus overlay
-  const [pomoCfg, setPomoCfg] = useState(loadPomoCfg); // { focusMin, soundOn }
-  const [pomoStats, setPomoStats] = useState(() => lsGet(POMO_STATS_KEY, {})); // finished 🍅 per day
-  const [focusTimes, setFocusTimes] = useState(() => lsGet(FOCUS_TIME_KEY, {})); // seconds per note
-  const [archivedIds, setArchivedIds] = useState(() => lsGet(ARCHIVE_KEY, [])); // local archive
-  const [tuiTheme, setTuiTheme] = useState(() => lsGet(TUI_THEME_KEY, 'default'));
-  const [tuiFont, setTuiFont] = useState(() => lsGet(TUI_FONT_KEY, 0.9)); // rem
-  const [tuiFontFam, setTuiFontFam] = useState(() => lsGet(TUI_FONTFAM_KEY, FONT_FAMILIES[0])); // {key,label,stack}
-  const [showTheme, setShowTheme] = useState(false); // appearance popup (T)
-  const [optTab, setOptTab] = useState('theme'); // active popup tab
-  const [optSel, setOptSel] = useState(0); // keyboard row selection in the tab
-  const [fontDraft, setFontDraft] = useState(null); // custom font input value (null = not editing)
-  const [zen, setZen] = useState(() => lsGet(TUI_ZEN_KEY, false)); // notes-only layout
+  const [showOptions, setShowOptions] = useState(false); // options popup (T)
+  const [optTab, setOptTab] = useState('editor'); // active options tab
+  const [optSel, setOptSel] = useState(-1); // keyboard row selection in the options tab; -1 = none
+  const [appearance, setAppearance] = useState(loadAppearance); // APPEARANCE + per-panel TEXT settings
+  const [textPanel, setTextPanel] = useState('notes'); // panel the TEXT tab is editing
   const [sizes, setSizes] = useState(loadSizes); // [folders, notes, preview] — % of .tui-body
+  const [focusExpand, setFocusExpand] = useState(() => lsGet(FOCUS_EXPAND_KEY, false)); // widen the focused panel
+  const [focusShare, setFocusShare] = useState(() => lsGet(FOCUS_SHARE_KEY, 60));
+  const [zoomed, setZoomed] = useState(false); // focused panel fills the TUI (z); not persisted
 
   // Bề rộng thôi, KHÔNG dùng touchUi: touchUi cần cả pointer:coarse, nên cửa
   // sổ desktop hẹp <768px sẽ lọt qua trong khi CSS mobile đã áp — inline
@@ -293,16 +146,37 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  // Chỉ ba-panel-desktop mới nhận inline flex; zen và mobile để CSS lo.
-  const sizingOn = !zen && !narrow;
+  // Chỉ ba-panel-desktop mới nhận inline flex; mobile để CSS lo.
+  const sizingOn = !narrow;
+  // Zoom (z) shows only the focused panel; phones already show one panel at a time.
+  const zoomOn = zoomed && sizingOn;
+  // Focus expand and zoom drive the widths themselves, so manual resizing pauses meanwhile.
+  const resizeOn = sizingOn && !focusExpand && !zoomOn;
+  const shownSizes = focusExpand ? focusSizes(focus, focusShare) : sizes;
   /* `%` tính theo TOÀN BỘ chiều rộng .tui-body, nhưng hai khe gap cũng ăn chỗ —
      cộng lại thành 100% + 2*gap và panel cuối bị đẩy tràn ra ngoài (mất viền
      phải). Trừ đi phần gap tương ứng tỉ lệ từng panel: tổng khớp đúng khung mà
      tỉ lệ giữ nguyên. Dùng var(--tui-gap) do .tui-body đặt nên chỉ có MỘT nơi
      khai báo khe — đổi trong SCSS là JS tự theo. */
-  const panelStyle = (i) => (sizingOn
-    ? { flex: `0 0 calc(${sizes[i]}% - var(--tui-gap) * 2 * ${sizes[i]} / 100)` }
-    : undefined);
+  // Each panel carries its own TEXT variables; desktop also sets its width.
+  const panelStyle = (i) => {
+    const text = textStyle(appearance.text[PANELS[i]]);
+    if (!sizingOn) return text;
+    if (zoomOn) return { ...text, flex: '1 1 100%' };
+    return { ...text, flex: `0 0 calc(${shownSizes[i]}% - var(--tui-gap) * 2 * ${shownSizes[i]} / 100)` };
+  };
+  const panelClass = (panel) => `${focus === panel ? 'focused' : ''} ${appearance.text[panel].textColor ? 'has-text-color' : ''}`;
+
+  // ⛶ on a panel title: zoom that panel, or restore if it is already zoomed.
+  const toggleZoom = (panel = focus) => {
+    if (zoomOn && panel === focus) { setZoomed(false); return; }
+    setFocus(panel);
+    setZoomed(true);
+  };
+  const zoomButton = (panel) => (
+    <button type="button" className="tui-zoom-btn" title={zoomOn && focus === panel ? 'Restore (z)' : 'Zoom panel (z)'}
+            aria-label="Zoom panel" onClick={(e) => { e.stopPropagation(); toggleZoom(panel); }}>⛶</button>
+  );
 
   const bodyRef = useRef(null);
   // Biên đang kéo (0 | 1 | null) — đọc đồng bộ trong pointermove nên vẫn cần
@@ -323,7 +197,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   };
 
   const startDrag = (boundary, e) => {
-    if (!sizingOn) return;
+    if (!resizeOn) return;
     dragRef.current = boundary;
     setDragging(true);
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -353,25 +227,24 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return () => clearTimeout(t);
   }, [sizes]);
 
-  // Zen bật hay cửa sổ co xuống mobile giữa lúc đang RESIZE → không còn biên
+  // Cửa sổ co xuống mobile (hoặc bật focus expand) giữa lúc đang RESIZE → không còn biên
   // nào để chỉnh, thoát về NORMAL kẻo kẹt trong mode vô nghĩa.
-  // Cùng lúc, nếu đang giữ chuột kéo splitter mà sizingOn tắt giữa chừng thì
-  // {sizingOn && (...)} unmount luôn element đang giữ pointer capture — nó
+  // Cùng lúc, nếu đang giữ chuột kéo splitter mà resizeOn tắt giữa chừng thì
+  // {resizeOn && (...)} unmount luôn element đang giữ pointer capture — nó
   // biến mất khỏi DOM nên pointerup không bao giờ bắn tới, endDrag không
   // chạy. Dọn dragRef/dragging thủ công ở đây để .tui-body không kẹt class
   // tui-dragging và không còn resize theo di chuột khi không giữ nút nào.
   useEffect(() => {
-    if (!sizingOn) {
+    if (!resizeOn) {
       if (mode === 'resize') setMode('normal');
       dragRef.current = null;
       setDragging(false);
     }
-  }, [sizingOn, mode]);
+  }, [resizeOn, mode]);
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
   const [count, setCount] = useState(''); // vim count prefix
   const [flash, setFlash] = useState(null); // transient status-bar message
-  const [showWeek, setShowWeek] = useState(false); // weekly review overlay
   const [showCal, setShowCal] = useState(false); // keyboard-driven calendar (c)
   const [sheetOpen, setSheetOpen] = useState(null); // mobile action sheet: null | 'tools' | 'note'
   const [calCursor, setCalCursor] = useState(() => new Date()); // day highlighted in the calendar
@@ -379,19 +252,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const inputRef = useRef(null);
   const previewRef = useRef(null);
   const fileInputRef = useRef(null);
-  const marksRef = useRef({}); // vim marks: letter -> noteId
   const undoRef = useRef([]); // undo stack (max 50)
   const redoRef = useRef([]);
   const flashTimerRef = useRef(null);
-  const notesRef = useRef(notes); // fresh notes inside timer callbacks
-  const pomoMetaRef = useRef({}); // { overlayOpen, soundOn } for the tick interval
   // While true, the textarea's onBlur must NOT commit/close the editor —
   // opening the file dialog blurs the textarea, and we want to come back to it.
   const suppressBlurRef = useRef(false);
   const lpRef = useRef(null); // long-press trên note row: { timer, x, y, fired }
-
-  notesRef.current = notes;
-  pomoMetaRef.current = { overlayOpen: pomoOverlay, soundOn: pomoCfg.soundOn };
 
   const flashMsg = (msg) => {
     setFlash(msg);
@@ -400,24 +267,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   };
 
   const catOf = (n) => n?.customCategory || n?.category || 'MEMO';
-  const catList = categories && categories.length ? categories : ['MEMO'];
+  const catList = useMemo(() => (categories && categories.length ? categories : ['MEMO']), [categories]);
 
-  // Deadlines live in the local overlay store until the backend migration
-  // lands — merge them so rows/preview can show ⏰ badges. overlayDeadlines
-  // also appends orphaned store entries (meant for the reminder engine);
-  // those are not real notes, so keep only ids that exist on this day.
-  const notesWithMeta = useMemo(() => {
-    const ids = new Set(notes.map((n) => n.id));
-    return overlayDeadlines(notes).filter((n) => ids.has(n.id));
-  }, [notes]);
-
-  const archivedSet = useMemo(() => new Set(archivedIds), [archivedIds]);
-
-  // #tags harvested from titles + bodies of the day's notes (archive excluded).
+  // #tags harvested from titles + bodies of the day's notes.
   const dayTags = useMemo(() => {
     const m = {};
-    notesWithMeta.forEach((n) => {
-      if (archivedSet.has(n.id)) return;
+    notes.forEach((n) => {
       const found = new Set(
         [...String(n.title || '').matchAll(TAG_RE), ...String(n.content || '').matchAll(TAG_RE)]
           .map((x) => x[1].toLowerCase()),
@@ -425,22 +280,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       found.forEach((t) => { m[t] = (m[t] || 0) + 1; });
     });
     return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 24);
-  }, [notesWithMeta, archivedSet]);
+  }, [notes]);
 
-  // FOLDERS = "ALL" + each category (+ 📦 ARCHIVE when anything is archived).
+  // FOLDERS = "ALL" + each category.
   const folders = useMemo(() => {
-    const cats = categories && categories.length ? categories : ['MEMO'];
     const counts = {};
-    const active = notesWithMeta.filter((n) => !archivedSet.has(n.id));
-    active.forEach((n) => { const c = catOf(n); counts[c] = (counts[c] || 0) + 1; });
-    const archCount = notesWithMeta.length - active.length;
-    const base = [
-      { key: 'ALL', label: 'ALL', count: active.length },
-      ...cats.map((c) => ({ key: c, label: c, count: counts[c] || 0 })),
+    notes.forEach((n) => { const c = catOf(n); counts[c] = (counts[c] || 0) + 1; });
+    return [
+      { key: 'ALL', label: 'ALL', count: notes.length },
+      ...catList.map((c) => ({ key: c, label: c, count: counts[c] || 0 })),
     ];
-    if (archCount > 0) base.push({ key: '__ARCHIVE', label: '📦 ARCHIVE', count: archCount });
-    return base;
-  }, [notesWithMeta, categories, archivedSet]);
+  }, [notes, catList]);
 
   const activeFolder = folders[Math.min(folderIndex, folders.length - 1)] || folders[0];
 
@@ -450,109 +300,24 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   };
 
   const list = useMemo(() => {
-    const inArchive = activeFolder?.key === '__ARCHIVE';
-    let l = notesWithMeta.filter((n) => archivedSet.has(n.id) === inArchive);
-    if (activeFolder && activeFolder.key !== 'ALL' && !inArchive) l = l.filter((n) => catOf(n) === activeFolder.key);
+    let l = notes;
+    if (activeFolder && activeFolder.key !== 'ALL') l = l.filter((n) => catOf(n) === activeFolder.key);
     if (tagFilter) l = l.filter((n) => hasTag(n, tagFilter));
     if (query.trim()) {
       const q = query.toLowerCase();
       l = l.filter((n) => (n.title || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q));
     }
-    // Sort by the chosen key, then always float pinned notes to the top.
     const cmp = {
       title: (a, b) => (a.title || '').localeCompare(b.title || ''),
-      status: (a, b) => (a.isCompleted ? 1 : 0) - (b.isCompleted ? 1 : 0),
       updated: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')),
       created: (a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')),
     }[sortBy] || (() => 0);
-    return [...l].sort((a, b) => {
-      if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1;
-      return cmp(a, b);
-    });
-  }, [notesWithMeta, activeFolder, query, sortBy, archivedSet, tagFilter]);
+    return [...l].sort(cmp);
+  }, [notes, activeFolder, query, sortBy, tagFilter]);
 
   useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
   useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
-  // Pomodoro countdown — ticks every second while running. Also accrues
-  // per-note focus time and plays the soft tick while the overlay is open.
-  useEffect(() => {
-    if (!pomodoro?.running) return undefined;
-    const isFocusPhase = pomodoro.phase === 'focus';
-    const trackedNote = pomodoro.noteId;
-    const id = setInterval(() => {
-      if (isFocusPhase && trackedNote) {
-        setFocusTimes((ft) => {
-          const next = { ...ft, [trackedNote]: (ft[trackedNote] || 0) + 1 };
-          lsSet(FOCUS_TIME_KEY, next);
-          return next;
-        });
-      }
-      const meta = pomoMetaRef.current;
-      if (meta.overlayOpen && meta.soundOn) playSound('tick');
-      setPomodoro((p) => {
-        if (!p || !p.running) return p;
-        if (p.remaining <= 1) return { ...p, remaining: 0, running: false, ended: true };
-        return { ...p, remaining: p.remaining - 1 };
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [pomodoro?.running, pomodoro?.phase, pomodoro?.noteId]);
-
-  // Phase transition — runs exactly once when a phase counts down to zero:
-  // focus → (stats + auto-log + chime) → break; break → chime → next focus.
-  useEffect(() => {
-    if (!pomodoro?.ended) return;
-    const p = pomodoro;
-    if (p.phase === 'focus') {
-      // 1 more 🍅 for today (real today, not the viewed date)
-      const day = todayStr();
-      setPomoStats((s) => { const next = { ...s, [day]: (s[day] || 0) + 1 }; lsSet(POMO_STATS_KEY, next); return next; });
-      // auto-log the finished session onto the focused note
-      const note = notesRef.current.find((n) => n.id === p.noteId);
-      if (note) {
-        const hhmm = new Date().toTimeString().slice(0, 5);
-        const line = `🍅 ${Math.round(p.total / 60)}m ${hhmm}`;
-        const content = note.content ? `${note.content}${note.content.endsWith('\n') ? '' : '\n'}${line}` : line;
-        onUpdate(note.id, { content });
-      }
-      if (pomoCfg.soundOn) playSound('focus-end');
-      try {
-        if (Notification?.permission === 'granted') new Notification('🍅 Pomodoro done!', { body: 'Take a short break ☕' });
-      } catch { /* ignore */ }
-      const long = p.cycle % LONG_EVERY === 0;
-      setPomodoro({
-        noteId: p.noteId, phase: long ? 'long' : 'break', cycle: p.cycle,
-        total: long ? BREAK_LONG : BREAK_SHORT, remaining: long ? BREAK_LONG : BREAK_SHORT, running: true,
-      });
-    } else {
-      if (pomoCfg.soundOn) playSound('break-end');
-      try {
-        if (Notification?.permission === 'granted') new Notification('☕ Break is over!', { body: 'Next focus session 🍅' });
-      } catch { /* ignore */ }
-      const focusSecs = pomoCfg.focusMin * 60;
-      setPomodoro({
-        noteId: p.noteId, phase: 'focus', cycle: p.cycle + 1,
-        total: focusSecs, remaining: focusSecs, running: true,
-      });
-    }
-  }, [pomodoro?.ended]);
-
-  // Persist the pomodoro so a reload (or accidental close) doesn't lose it.
-  useEffect(() => {
-    try {
-      if (pomodoro) localStorage.setItem(POMO_LS_KEY, JSON.stringify({ ...pomodoro, savedAt: Date.now() }));
-      else localStorage.removeItem(POMO_LS_KEY);
-    } catch { /* storage full/blocked — timer still works in-memory */ }
-  }, [pomodoro]);
-
-  // Ambient soundscape follows the timer: plays while a focus phase is
-  // running (even with the overlay closed), fades out on pause/break/stop.
-  useEffect(() => {
-    if (pomodoro?.running && pomodoro.phase === 'focus' && pomoCfg.ambient !== 'off') startAmbient(pomoCfg.ambient);
-    else stopAmbient();
-  }, [pomodoro?.running, pomodoro?.phase, pomoCfg.ambient]);
-  useEffect(() => () => stopAmbient(), []);
   useEffect(() => {
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') {
       // Entering the md body with nvim on starts in NORMAL (like nvim opening a file).
@@ -576,14 +341,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }
   }, [mode]);
 
-  // Closing an overlay unmounts whatever was DOM-focused inside it (e.g. the
-  // 45m button), dropping focus to <body> and killing every shortcut — hand
-  // focus back to the TUI root, unless an editor input owns it.
+  // Closing an overlay unmounts whatever was DOM-focused inside it, dropping
+  // focus to <body> and killing every shortcut — hand focus back to the TUI
+  // root, unless an editor input owns it.
   useEffect(() => {
-    if (pomoOverlay || showWeek || showTheme) return;
+    if (showOptions) return;
     if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
     requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
-  }, [pomoOverlay, showWeek, showTheme]);
+  }, [showOptions]);
 
   const current = list[noteIndex] || null;
 
@@ -628,7 +393,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // Update with undo capture: remembers the previous values of exactly the
   // keys being changed.
   const doUpdate = (id, updates) => {
-    const n = notesWithMeta.find((x) => x.id === id);
+    const n = notes.find((x) => x.id === id);
     if (n) {
       const prev = {};
       Object.keys(updates).forEach((k) => { prev[k] = n[k]; });
@@ -640,7 +405,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const doDelete = (n) => {
     if (!n) return;
     pushUndo({ type: 'delete', note: { ...n } });
-    if (n.deadline) { setLocalDeadline(n.id, { deadline: null }); clearFiredForNote(n.id); }
     onDelete(n.id, true);
   };
 
@@ -652,13 +416,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     else if (e.type === 'delete') {
       if (onRestore) {
         onRestore(e.note);
-        if (e.note.deadline) {
-          setLocalDeadline(e.note.id, {
-            deadline: e.note.deadline,
-            reminderLeadMinutes: e.note.reminderLeadMinutes ?? null,
-            reminderDone: !!e.note.reminderDone,
-          });
-        }
         flashMsg(`undo: restored "${e.note.title || 'untitled'}"`);
       } else flashMsg('undo: cannot restore (no handler)');
     } else if (e.type === 'add') { onDelete(e.note.id, true); flashMsg('undo: create'); }
@@ -675,25 +432,30 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
   // New notes inherit the active folder's category, so "n" inside TASK
   // creates a TASK note and it stays visible in the current filter.
-  const createNote = (template, extraOverrides = null, silent = false) => {
-    if (!silent) { setFocus('notes'); setQuery(''); }
-    const cat = activeFolder && activeFolder.key !== 'ALL' && activeFolder.key !== '__ARCHIVE' ? activeFolder.key : null;
-    const overrides = { ...(cat ? { category: cat, customCategory: cat } : {}), ...(extraOverrides || {}) };
-    return Promise.resolve(onAdd(template, null, null, overrides)).then((created) => {
+  const createNote = (template) => {
+    setFocus('notes');
+    setQuery('');
+    const cat = activeFolder && activeFolder.key !== 'ALL' ? activeFolder.key : null;
+    return Promise.resolve(onAdd(template, cat ? { category: cat, customCategory: cat } : {})).then((created) => {
       if (created?.id) {
         pushUndo({ type: 'add', note: { ...created } });
-        if (!silent) setPendingSelect(created.id);
+        setPendingSelect(created.id);
       }
       return created;
     });
   };
 
-  const toggleDone = () => { if (current) doUpdate(current.id, { isCompleted: !current.isCompleted }); };
+  // Desktop quick capture bumps newNoteSignal (from its global shortcut).
+  const lastNoteSignal = useRef(newNoteSignal);
+  useEffect(() => {
+    if (!newNoteSignal || newNoteSignal === lastNoteSignal.current) return;
+    lastNoteSignal.current = newNoteSignal;
+    createNote('blank');
+  }, [newNoteSignal]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const scrollPreview = (dy) => previewRef.current?.scrollBy({ top: dy });
 
-  /* ── Pin / sort ── */
-  const togglePin = () => { if (current) doUpdate(current.id, { pinned: !current.pinned }); };
+  /* ── Sort ── */
   const cycleSort = () => setSortBy((s) => SORTS[(SORTS.findIndex(x => x.key === s) + 1) % SORTS.length].key);
 
   /* Long-press (~500ms, không rê quá 10px) trên một note row mở action sheet
@@ -754,128 +516,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     };
   }, []);
 
-  /* ── Multi-select / bulk actions ── */
-  const toggleSelect = (id) => setSelectedIds((ids) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id]);
-  const clearSelection = () => setSelectedIds([]);
-  const selectAllVisible = () => setSelectedIds(list.map(n => n.id));
-  const bulkTargets = () => (selectedIds.length ? list.filter(n => selectedIds.includes(n.id)) : (current ? [current] : []));
-  const bulkComplete = (done) => { bulkTargets().forEach(n => doUpdate(n.id, { isCompleted: done })); };
-  const bulkCategory = (cat) => { bulkTargets().forEach(n => doUpdate(n.id, { category: cat, customCategory: cat })); };
-  const bulkDelete = () => { bulkTargets().forEach(n => doDelete(n)); clearSelection(); };
-  const bulkMove = (offset) => { bulkTargets().forEach(n => onMoveToDate?.(n.id, offset)); clearSelection(); };
-
-  /* ── Pomodoro focus timer bound to the selected note ── */
-  const startPomodoro = () => {
-    if (!current) return;
-    const total = pomoCfg.focusMin * 60;
-    setPomodoro({ noteId: current.id, phase: 'focus', cycle: 1, total, remaining: total, running: true });
-  };
-  const stopPomodoro = () => { setPomodoro(null); setPomoOverlay(false); };
-  const togglePomodoro = () => setPomodoro((p) => (p ? { ...p, running: !p.running } : p));
-
-  // Change session length (25/45/90). Applies immediately when the current
-  // focus phase hasn't started counting yet, otherwise from the next one.
-  const setFocusMinutes = (min) => {
-    if (!FOCUS_CHOICES.includes(min)) { flashMsg('pomo: 25 | 45 | 90'); return; }
-    const cfg = { ...pomoCfg, focusMin: min };
-    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
-    setPomodoro((p) => (p && p.phase === 'focus' && !p.running && p.remaining === p.total
-      ? { ...p, total: min * 60, remaining: min * 60 } : p));
-    flashMsg(`pomodoro: ${min} minutes`);
-  };
-
-  const toggleSound = () => {
-    const cfg = { ...pomoCfg, soundOn: !pomoCfg.soundOn };
-    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
-    if (cfg.soundOn) playSound('tick');
-  };
-
-  // Ambient soundscape (rain / lofi / waves). Clicking the active chip
-  // turns it off; m (in the overlay) cycles through all of them.
-  const setAmbientKind = (kind) => {
-    const next = pomoCfg.ambient === kind ? 'off' : kind;
-    const cfg = { ...pomoCfg, ambient: next };
-    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
-    flashMsg(`ambient: ${next}`);
-  };
-  const cycleAmbient = () => {
-    const order = ['off', ...AMBIENT_KINDS];
-    setAmbientKind(order[(order.indexOf(pomoCfg.ambient || 'off') + 1) % order.length]);
-  };
-
-  /* ── Yank / paste (cross-day via localStorage) ── */
-  const yankNote = () => {
-    if (!current) return;
-    const { title, content, category, customCategory, color } = current;
-    lsSet(YANK_KEY, { title, content, category, customCategory, color });
-    flashMsg(`yanked "${title || 'untitled'}" — P to paste (works on any day)`);
-  };
-  const pasteNote = () => {
-    const y = lsGet(YANK_KEY, null);
-    if (!y) { flashMsg('nothing yanked — Y first'); return; }
-    createNote('blank', { ...y }, true).then((created) => {
-      if (created?.id) flashMsg(`pasted "${y.title || 'untitled'}"`);
-    });
-  };
-
-  /* ── Vim marks: ;a sets mark a on the current note, 'a jumps to it ── */
-  const setMark = (letter) => {
-    if (!current) return;
-    marksRef.current[letter] = current.id;
-    flashMsg(`mark '${letter}' → "${current.title || 'untitled'}"`);
-  };
-  const jumpMark = (letter) => {
-    const id = marksRef.current[letter];
-    if (!id) { flashMsg(`mark '${letter}' not set`); return; }
-    const idx = list.findIndex((n) => n.id === id);
-    if (idx >= 0) { setNoteIndex(idx); setFocus('notes'); return; }
-    if (notesWithMeta.some((n) => n.id === id)) {
-      // filtered out — reset filters, then land on it
-      setFolderIndex(0); setQuery(''); setTagFilter(null);
-      requestAnimationFrame(() => setPendingJump(id));
-    } else flashMsg(`mark '${letter}': note not on this day`);
-  };
+  // Select a note once it shows up in the list (after a filter reset or a day jump).
   const [pendingJump, setPendingJump] = useState(null);
   useEffect(() => {
     if (!pendingJump) return;
     const idx = list.findIndex((n) => n.id === pendingJump);
     if (idx >= 0) { setNoteIndex(idx); setPendingJump(null); }
   }, [list, pendingJump]);
-
-  /* ── Zen / theme / archive ── */
-  const toggleZen = () => setZen((z) => { lsSet(TUI_ZEN_KEY, !z); return !z; });
-
-  const stepFont = (dir) => {
-    const i = FONT_STEPS.indexOf(tuiFont);
-    const next = FONT_STEPS[Math.max(0, Math.min(FONT_STEPS.length - 1, (i === -1 ? 1 : i) + dir))];
-    setTuiFont(next); lsSet(TUI_FONT_KEY, next);
-    flashMsg(`font: ${Math.round(next * 100)}%`);
-  };
-
-  const applyFontFam = (fam) => {
-    setTuiFontFam(fam); lsSet(TUI_FONTFAM_KEY, fam);
-    flashMsg(`font: ${fam.label}`);
-  };
-  const applyCustomFont = (name) => {
-    const clean = String(name || '').trim().replace(/["']/g, '');
-    if (!clean) { setFontDraft(null); return; }
-    applyFontFam({ key: 'custom', label: clean, stack: `'${clean}', monospace` });
-    setFontDraft(null);
-  };
-  // Unmounting the custom-font input drops DOM focus to <body> — reclaim it
-  // so the popup keeps reacting to j/k/l/Esc.
-  useEffect(() => {
-    if (fontDraft === null && showTheme) requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }));
-  }, [fontDraft, showTheme]);
-
-  const setTheme = (name) => {
-    const t = name === 'next'
-      ? TUI_THEMES[(TUI_THEMES.indexOf(tuiTheme) + 1) % TUI_THEMES.length]
-      : name;
-    if (!TUI_THEMES.includes(t)) { flashMsg(`theme: ${TUI_THEMES.join(' | ')}`); return; }
-    setTuiTheme(t); lsSet(TUI_THEME_KEY, t);
-    flashMsg(`theme: ${t}`);
-  };
 
   // Note editing format: 'notion' (visual block editor) vs 'md' (raw markdown).
   const toggleNoteFormat = () => setNoteFormat((f) => {
@@ -885,145 +532,111 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return n;
   });
 
-  // Nvim modal editing (Notion editor only).
   const setNvimMode = (on) => { setNvim(on); lsSet(NVIM_KEY, on ? 'on' : 'off'); flashMsg(`nvim mode: ${on ? 'on' : 'off'}`); };
   const toggleNvim = () => setNvimMode(!nvim);
   const setLineNo = (on) => { setVimLineNo(on); lsSet(VIM_LINENO_KEY, on ? 'on' : 'off'); flashMsg(`nvim line numbers: ${on ? 'on' : 'off'}`); };
   const toggleLineNo = () => setLineNo(!vimLineNo);
-
-  // Restore appearance + preferences to their out-of-the-box defaults.
-  const resetAppearance = () => {
-    setTuiTheme('default'); lsSet(TUI_THEME_KEY, 'default');
-    setTuiFontFam(FONT_FAMILIES[0]); lsSet(TUI_FONTFAM_KEY, FONT_FAMILIES[0]);
-    setTuiFont(0.9); lsSet(TUI_FONT_KEY, 0.9);
-    if (zen) { setZen(false); lsSet(TUI_ZEN_KEY, false); }
-    setNoteFormat('notion'); lsSet(NOTE_FORMAT_KEY, 'notion');
-    setNvim(false); lsSet(NVIM_KEY, 'off');
-    setVimLineNo(false); lsSet(VIM_LINENO_KEY, 'off');
-    setSortBy('created');
-    setLivePreview(false);
-    setShowCheatsheet(false);
-    const cfg = { ...pomoCfg, soundOn: false, ambient: 'off', focusMin: 25 };
-    setPomoCfg(cfg); lsSet(POMO_CFG_KEY, cfg);
-    flashMsg('reset — theme · font · sort · toggles back to defaults');
-  };
-
-  // Data-driven OPTIONS tab: each row is {kbd, label, value, on, run}. Adding a
-  // row here automatically updates j/k nav, 1-9 quick-pick and the render.
-  // Rebuilt every render (cheap) so each `run` closes over fresh state.
   const toggleAutoList = () => setAutoList((v) => {
     lsSet(AUTOLIST_KEY, !v ? 'on' : 'off');
     flashMsg(`auto-continue lists: ${!v ? 'on' : 'off'}`);
     return !v;
   });
 
-  // Đăng nhập/đăng xuất ngay trong TUI — fullscreen ẩn header (nơi có avatar)
-  // nên cần lối vào ở đây. Điều hướng full-page: /login tự lo phần còn lại.
-  // Tên hiển thị lấy từ claim "name" của JWT, giống Header.
-  const authUser = useMemo(() => {
-    const t = Cookies.get('token');
-    if (!t) return null;
-    try {
-      const d = jwt_decode(t);
-      return d['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name']
-        || d['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
-        || 'user';
-    } catch { return 'user'; }
-  }, []);
-  const authed = !!authUser;
-  const gotoLogin = () => { window.location.assign('/login'); };
-  // Đăng xuất nhanh: xóa token rồi ở lại Daily Note (reload để SignalR/Header
-  // khởi động lại sạch) — không đá người dùng sang trang login.
-  const doLogout = () => { Cookies.remove('token'); window.location.reload(); };
-  const oauthLogin = (provider) => {
-    window.location.href = `${axiosInstance.defaults.baseURL}/api/account/${provider}-login`;
+  const toggleFocusExpand = () => {
+    const next = !focusExpand;
+    setFocusExpand(next);
+    lsSet(FOCUS_EXPAND_KEY, next);
+    flashMsg(`focus expand: ${next ? 'on' : 'off'}`);
+  };
+  const cycleFocusShare = () => {
+    const next = FOCUS_SHARES[(FOCUS_SHARES.indexOf(focusShare) + 1) % FOCUS_SHARES.length];
+    setFocusShare(next);
+    lsSet(FOCUS_SHARE_KEY, next);
+    flashMsg(`focus size: ${next}%`);
   };
 
-  /* ── Đăng nhập nhanh ngay trong TUI (không rời trang) ──
-     Gọi cùng endpoint như trang /login; thành công thì reload để mọi thứ
-     (SignalR, Header, notes) khởi động lại với token mới. */
-  const [quickLogin, setQuickLogin] = useState(null); // { id, pw } | null
-  const [loginBusy, setLoginBusy] = useState(false);
-  const [loginErr, setLoginErr] = useState(null);
-  const submitQuickLogin = async () => {
-    const id = (quickLogin?.id || '').trim();
-    const pw = quickLogin?.pw || '';
-    if (!id || !pw) { setLoginErr('enter your account and password'); return; }
-    setLoginBusy(true); setLoginErr(null);
-    try {
-      const res = await axiosInstance.post('/api/account/SignIn', { email: id, username: id, password: pw });
-      const token = res?.data?.token;
-      if (!token) throw new Error('no token');
-      Cookies.set('token', token, { expires: 7 });
-      window.location.reload();
-    } catch (err) {
-      setLoginErr(err?.response?.data?.message || 'wrong account or password');
-      setLoginBusy(false);
+  const updateAppearance = (patch) => {
+    if (!patch) return;
+    const next = { ...appearance, ...patch };
+    setAppearance(next);
+    if (!saveAppearance(next)) flashMsg('could not save — browser storage is full');
+  };
+  const resetLook = () => {
+    updateAppearance(defaultsFor(LOOK_FIELDS));
+    flashMsg('appearance reset to default');
+  };
+  const updateText = (patch) => {
+    if (!patch) return;
+    updateAppearance({ text: { ...appearance.text, [textPanel]: { ...appearance.text[textPanel], ...patch } } });
+  };
+  const resetText = () => {
+    updateAppearance({ text: { ...appearance.text, [textPanel]: { ...DEFAULT_TEXT } } });
+    flashMsg(`${textPanel} text reset to default`);
+  };
+
+  // Options rows per tab: { label, value, on, run }. Rebuilt every render
+  // so each `run` closes over fresh state.
+  const optionRows = {
+    editor: [
+      { label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
+        run: toggleNoteFormat },
+      { label: 'nvim mode — modal editing in the editor', value: nvim ? 'on' : 'off', on: nvim,
+        run: toggleNvim },
+      { label: 'nvim line numbers — gutter on the left', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
+        run: toggleLineNo },
+      { label: 'auto-continue lists — Enter continues bullets/checkboxes', value: autoList ? 'on' : 'off', on: autoList,
+        run: toggleAutoList },
+      { label: 'live preview — edit and rendered markdown side by side', value: livePreview ? 'on' : 'off', on: livePreview,
+        run: () => setLivePreview((v) => !v) },
+      { label: 'markdown cheatsheet — syntax reference', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
+        run: () => setShowCheatsheet((v) => !v) },
+    ],
+    view: [
+      { label: 'sort — note ordering', value: sortBy, on: true,
+        run: cycleSort },
+      ...(onToggleFullscreen ? [{ label: 'fullscreen — hide header and toolbar', value: fullscreenOn ? 'on' : 'off',
+        on: !!fullscreenOn, run: onToggleFullscreen }] : []),
+      { label: 'focus expand — widen the focused panel, shrink the others', value: focusExpand ? 'on' : 'off', on: focusExpand,
+        run: toggleFocusExpand },
+      { label: 'focus size — width of the focused panel', value: `${focusShare}%`, on: false,
+        run: cycleFocusShare },
+    ],
+  };
+
+  // No row is selected on open / tab switch, so a stray ←/→ can't change a
+  // value; j/k (or clicking a row) picks one first. The TEXT tab starts on
+  // the panel you were in.
+  const openOptions = () => { setOptSel(-1); setTextPanel(focus); setShowOptions(true); };
+  const switchOptTab = (key) => { setOptTab(key); setOptSel(-1); };
+
+  // Keyboard for the options popup. h/l/Tab switch tabs, j/k move; the
+  // APPEARANCE and TEXT tabs adjust values with ←/→ instead of toggling rows.
+  const handleOptionsKey = (e) => {
+    const k = e.key;
+    const keys = OPTION_TABS.map((t) => t.key);
+    const fields = FIELD_TABS[optTab];
+    const isLook = !!fields;
+    const rows = fields || optionRows[optTab];
+    if (k === 'Escape' || k === 'T' || k === 'q') setShowOptions(false);
+    else if (k === 'Tab' || k === 'h' || k === 'l' || (!isLook && (k === 'ArrowLeft' || k === 'ArrowRight'))) {
+      const dir = (k === 'h' || k === 'ArrowLeft' || (k === 'Tab' && e.shiftKey)) ? -1 : 1;
+      switchOptTab(keys[(keys.indexOf(optTab) + dir + keys.length) % keys.length]);
+    } else if (k === 'j' || k === 'ArrowDown') setOptSel((i) => Math.min(i + 1, rows.length - 1));
+    else if (k === 'k' || k === 'ArrowUp') setOptSel((i) => Math.max(i - 1, 0));
+    else if (k === 'A') updateAppearance(stepAppearance(appearance, 'accent', 1));
+    else if (isLook && optSel >= 0 && (k === 'ArrowLeft' || k === 'ArrowRight')) {
+      const dir = k === 'ArrowRight' ? 1 : -1;
+      const field = fields[optSel];
+      if (optTab === 'look') updateAppearance(stepAppearance(appearance, field, dir));
+      else if (field === 'panel') setTextPanel((panel) => nextTextPanel(panel, dir));
+      else updateText(stepAppearance(appearance.text[textPanel], field, dir));
+    } else if (isLook && k === 'Enter' && fields[optSel] === 'reset') {
+      if (optTab === 'look') resetLook(); else resetText();
     }
-  };
-
-  // Settings rows, grouped per tab: EDITOR (soạn thảo) · VIEW (hiển thị) ·
-  // POMO (pomodoro). Cùng shape { kbd, label, value, on, run, danger? }.
-  const editorRows = [
-    { kbd: 'F', label: 'note format — Notion (blocks) / Markdown (raw)', value: noteFormat, on: noteFormat === 'notion',
-      run: toggleNoteFormat },
-    { kbd: 'V', label: 'nvim mode — modal editing in the editor', value: nvim ? 'on' : 'off', on: nvim,
-      run: toggleNvim },
-    { kbd: 'N', label: 'nvim line numbers — gutter on the left', value: vimLineNo ? 'on' : 'off', on: vimLineNo,
-      run: toggleLineNo },
-    { kbd: '↵', label: 'auto-continue lists — Enter continues bullets/checkboxes', value: autoList ? 'on' : 'off', on: autoList,
-      run: toggleAutoList },
-    { kbd: 'P', label: 'live preview — edit and rendered markdown side by side', value: livePreview ? 'on' : 'off', on: livePreview,
-      run: () => setLivePreview((v) => !v) },
-    { kbd: '?', label: 'markdown cheatsheet — syntax reference', value: showCheatsheet ? 'on' : 'off', on: showCheatsheet,
-      run: () => setShowCheatsheet((v) => !v) },
-  ];
-  const viewRows = [
-    { kbd: 'z', label: 'zen mode — show only the NOTES panel', value: zen ? 'on' : 'off', on: zen,
-      run: toggleZen },
-    { kbd: '⛶', label: 'fullscreen — hide header and toolbar', value: fullscreenOn ? 'on' : 'off', on: !!fullscreenOn,
-      run: () => onToggleFullscreen?.() },
-    { kbd: '#', label: 'canvas grid — background grid (canvas view)', value: gridOn ? 'on' : 'off', on: !!gridOn,
-      run: () => onToggleGrid?.() },
-    { kbd: 'S', label: 'sort — note ordering', value: sortBy, on: true,
-      run: cycleSort },
-    { kbd: '⟲', label: 'reset to defaults', value: '', on: false, danger: true,
-      run: resetAppearance },
-  ];
-  const pomoRows = [
-    { kbd: '🍅', label: 'pomodoro length', value: `${pomoCfg.focusMin}m`, on: true,
-      run: () => setFocusMinutes(FOCUS_CHOICES[(FOCUS_CHOICES.indexOf(pomoCfg.focusMin) + 1) % FOCUS_CHOICES.length]) },
-    { kbd: '♪', label: 'pomodoro sound — chime and tick', value: pomoCfg.soundOn ? 'on' : 'off', on: pomoCfg.soundOn,
-      run: toggleSound },
-    { kbd: '~', label: 'ambient — rain / lofi / waves', value: pomoCfg.ambient || 'off', on: (pomoCfg.ambient || 'off') !== 'off',
-      run: cycleAmbient },
-  ];
-  const TAB_ROWS = { editor: editorRows, view: viewRows, pomo: pomoRows };
-
-  // Rows per popup tab (for j/k navigation): font tab has the families + the
-  // custom row; the settings tabs use their row lists.
-  const optRows = optTab === 'theme' ? TUI_THEMES.length : optTab === 'font' ? FONT_FAMILIES.length + 1 : (TAB_ROWS[optTab] || []).length;
-  const optActivate = (sel) => {
-    if (optTab === 'theme') setTheme(TUI_THEMES[sel]);
-    else if (optTab === 'font') {
-      if (sel < FONT_FAMILIES.length) applyFontFam(FONT_FAMILIES[sel]);
-      else setFontDraft(tuiFontFam.key === 'custom' ? tuiFontFam.label : '');
-    } else (TAB_ROWS[optTab] || [])[sel]?.run();
-  };
-
-  const doArchive = () => {
-    if (!current) return;
-    const has = archivedSet.has(current.id);
-    const next = has ? archivedIds.filter((id) => id !== current.id) : [...archivedIds, current.id];
-    setArchivedIds(next); lsSet(ARCHIVE_KEY, next);
-    flashMsg(has ? `unarchived "${current.title || 'untitled'}"` : `archived "${current.title || 'untitled'}" — 📦 folder`);
-  };
-
-  // Archiving asks first (like delete/carry); unarchiving is harmless → runs now.
-  const askArchive = () => {
-    if (!current) return;
-    if (archivedSet.has(current.id)) { doArchive(); return; }
-    setMode('archive');
+    else if (!isLook && (k === 'Enter' || k === ' ')) rows[optSel]?.run();
+    else if (!isLook && /^[1-9]$/.test(k) && +k <= rows.length) { setOptSel(+k - 1); rows[+k - 1].run(); }
+    else return;
+    e.preventDefault();
   };
 
   /* ── Jump to an absolute date via the day-delta prop ── */
@@ -1032,124 +645,31 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (Number.isFinite(delta) && delta !== 0) onChangeDate(delta);
   };
 
-  /* ── Export: current day (or week) as Markdown ── */
+  /* ── Export: current day as Markdown ── */
   const exportDay = (toClipboard) => {
-    const md = notesToMarkdown(dateLabel, list.length ? list : notesWithMeta);
+    const md = notesToMarkdown(dateLabel, list.length ? list : notes);
     if (toClipboard) {
       navigator.clipboard?.writeText(md)
         .then(() => flashMsg('markdown copied to clipboard'))
         .catch(() => flashMsg('clipboard blocked — use :export'));
     } else {
-      downloadTextFile(`daily-note-${dateLabel}.md`, md);
-      flashMsg(`exported daily-note-${dateLabel}.md`);
+      Promise.resolve(onDownload(`daily-note-${dateLabel}.md`, md))
+        .then(() => flashMsg(`exported daily-note-${dateLabel}.md`))
+        .catch((err) => { console.error('[TUI-EXPORT-ERROR]', err); flashMsg(`export failed — ${err.message}`); });
     }
   };
   // Every day, not just the viewed one: 'md' | 'json' | 'zip' (zip also downloads images/files).
-  const exportAllData = async (format) => {
-    flashMsg(format === 'zip' ? 'exporting… downloading files' : 'exporting…');
+  const exportAllDataAsync = async (fileFormat) => {
+    flashMsg(fileFormat === 'zip' ? 'exporting… downloading files' : 'exporting…');
     try {
-      const r = await exportAllNotes(format, {
+      const summary = await onExportAll(fileFormat, {
         onProgress: (p) => { if (p.phase === 'files' && p.total > 0) flashMsg(`exporting… files ${p.done}/${p.total}`); },
       });
-      flashMsg(describeExport(r));
+      flashMsg(summary);
     } catch (err) {
+      console.error('[TUI-EXPORT-ERROR]', err);
       flashMsg(`export failed — ${err.message}`);
     }
-  };
-  const weekDays = useMemo(() => {
-    // the 7 days ending on the viewed date, oldest first
-    const end = new Date(`${dateLabel}T00:00:00`);
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(end); d.setDate(end.getDate() - (6 - i));
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    });
-  }, [dateLabel]);
-
-  const weekReview = useMemo(() => {
-    if (!showWeek) return null;
-    const byDay = weekDays.map((day) => {
-      const dayNotes = day === dateLabel
-        ? notesWithMeta
-        : (allNotes || []).filter((n) => n.date === day && !n.isDeleted);
-      const done = dayNotes.filter((n) => n.isCompleted).length;
-      const words = wordStats(dayNotes.map((n) => n.content).join(' ')).words;
-      return { day, total: dayNotes.length, done, words, pomos: pomoStats[day] || 0 };
-    });
-    const sum = (k) => byDay.reduce((s, d) => s + d[k], 0);
-    return { byDay, total: sum('total'), done: sum('done'), words: sum('words'), pomos: sum('pomos') };
-  }, [showWeek, weekDays, allNotes, notesWithMeta, dateLabel, pomoStats]);
-
-  const exportWeek = () => {
-    const md = weekDays.map((day) => {
-      const dayNotes = day === dateLabel ? notesWithMeta : (allNotes || []).filter((n) => n.date === day && !n.isDeleted);
-      return dayNotes.length ? notesToMarkdown(day, dayNotes) : `# Daily Note — ${day}\n\n_(empty)_`;
-    }).join('\n\n');
-    downloadTextFile(`weekly-review-${dateLabel}.md`, md);
-    flashMsg(`exported weekly-review-${dateLabel}.md`);
-  };
-
-  /* ── Recurring notes — templates in localStorage, generated per day ── */
-  const recurGenerated = useRef(null); // guard: one generation pass per viewed day
-  useEffect(() => {
-    if (recurGenerated.current === dateLabel) return;
-    recurGenerated.current = dateLabel;
-    if (dateLabel > todayStr()) return; // don't seed future days while browsing
-    const templates = lsGet(RECUR_KEY, []);
-    if (!templates.length) return;
-    const doneMap = lsGet(RECUR_DONE_KEY, {});
-    const weekday = new Date(`${dateLabel}T00:00:00`).getDay();
-    const due = templates.filter((t) =>
-      dateLabel >= (t.created || '') &&
-      (t.freq === 'daily' || (t.freq === 'weekly' && t.weekday === weekday)) &&
-      !doneMap[`${t.key}|${dateLabel}`]);
-    if (!due.length) return;
-    due.forEach((t) => { doneMap[`${t.key}|${dateLabel}`] = 1; });
-    lsSet(RECUR_DONE_KEY, doneMap);
-    Promise.all(due.map((t) => createNote('blank', {
-      title: t.title, content: t.content || '', category: t.category, customCategory: t.category,
-    }, true))).then(() => flashMsg(`recurring: +${due.length} note${due.length > 1 ? 's' : ''}`));
-  }, [dateLabel]);
-
-  const setRecurring = (freq) => {
-    if (!current) { flashMsg('select a note first'); return; }
-    const templates = lsGet(RECUR_KEY, []).filter((t) => !t.key.startsWith(current.id));
-    if (freq === 'off') {
-      lsSet(RECUR_KEY, templates);
-      flashMsg(`recurring off for "${current.title || 'untitled'}"`);
-      return;
-    }
-    templates.push({
-      key: `${current.id}:${freq}`,
-      title: current.title || '(untitled)',
-      content: current.content || '',
-      category: catOf(current),
-      freq,
-      weekday: new Date(`${dateLabel}T00:00:00`).getDay(),
-      created: dateLabel,
-    });
-    lsSet(RECUR_KEY, templates);
-    flashMsg(`"${current.title || 'untitled'}" repeats ${freq}${freq === 'weekly' ? ' (this weekday)' : ''}`);
-  };
-
-  /* ── Due time on the current note (deadline + optional lead reminder) ── */
-  const setDue = (hhmm, leadMin) => {
-    if (!current) { flashMsg('select a note first'); return; }
-    if (hhmm === 'off') {
-      doUpdate(current.id, { deadline: null, reminderLeadMinutes: null, reminderDone: false });
-      setLocalDeadline(current.id, { deadline: null });
-      clearFiredForNote(current.id);
-      flashMsg('due time cleared');
-      return;
-    }
-    const m = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(hhmm || '');
-    if (!m) { flashMsg('usage: :due HH:mm [leadMinutes] | :due off'); return; }
-    const iso = new Date(`${dateLabel}T${m[1].padStart(2, '0')}:${m[2]}:00`).toISOString();
-    const lead = Number.isFinite(+leadMin) && +leadMin > 0 ? +leadMin : null;
-    const fields = { deadline: iso, reminderLeadMinutes: lead, reminderDone: false };
-    doUpdate(current.id, fields);
-    setLocalDeadline(current.id, fields);
-    clearFiredForNote(current.id);
-    flashMsg(`due ${m[1].padStart(2, '0')}:${m[2]}${lead ? ` · remind ${lead}m before` : ''}`);
   };
 
   /* ── ":" command line ── */
@@ -1158,28 +678,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     const arg = args[0];
     switch ((name || '').toLowerCase()) {
       case 'export':
-        if (arg === 'week') exportWeek();
-        else if (arg === 'all' || arg === 'md') exportAllData('md');
-        else if (arg === 'json') exportAllData('json');
-        else if (arg === 'zip') exportAllData('zip');
+        if (arg === 'all' || arg === 'md') exportAllDataAsync('md');
+        else if (arg === 'json') exportAllDataAsync('json');
+        else if (arg === 'zip') exportAllDataAsync('zip');
         else exportDay(arg === 'clip');
         break;
-      case 'week': setShowWeek(true); break;
       case 'cal':
       case 'calendar': setShowCal(true); return; // keep mode; the overlay owns keys
-      case 'due': setDue(arg, args[1]); break;
-      case 'recur':
-        if (arg === 'daily' || arg === 'weekly' || arg === 'off') setRecurring(arg);
-        else if (arg === 'list') {
-          const ts = lsGet(RECUR_KEY, []);
-          flashMsg(ts.length ? `recurring: ${ts.map((t) => `${t.title} (${t.freq})`).join(' · ')}` : 'no recurring notes');
-        } else flashMsg('usage: :recur daily | weekly | off | list');
-        break;
-      case 'theme': setTheme(arg || 'next'); break;
-      case 'pomo':
-        if (arg === 'sound') toggleSound();
-        else setFocusMinutes(parseInt(arg, 10));
-        break;
       case 'tag':
         if (!arg || arg === 'off') { setTagFilter(null); flashMsg('tag filter off'); }
         else { setTagFilter(arg.replace(/^#/, '').toLowerCase()); flashMsg(`filter: #${arg.replace(/^#/, '')}`); }
@@ -1193,7 +698,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else if (/^\d{4}-\d{2}-\d{2}$/.test(arg || '')) gotoDate(arg);
         else flashMsg('usage: :goto yyyy-mm-dd | today');
         break;
-      case 'archive': askArchive(); break;
       case 'nvim':
         if (arg === 'off') setNvimMode(false);
         else if (arg === 'on') setNvimMode(true);
@@ -1206,7 +710,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else flashMsg('usage: :set number | nonumber');
         break;
       case 'number': case 'nu': toggleLineNo(); break;
-      case 'zen': toggleZen(); break;
       case 'help': setMode('help'); return; // keep mode change
       case '': break;
       default: flashMsg(`unknown command :${name} — try :help`);
@@ -1232,14 +735,26 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // y = save & exit · n = discard & exit · Esc/c = keep editing.
   useEffect(() => {
     if (!unsavedPrompt) return undefined;
+    // Take focus out of the textarea: an IME composing there would swallow
+    // y/n and type them into the note. suppressBlurRef keeps the blur from
+    // committing; refocusing the textarea (Keep) clears it again.
+    suppressBlurRef.current = true;
+    rootRef.current?.focus({ preventScroll: true });
     const onKey = (e) => {
-      const k = e.key.toLowerCase();
-      if (k === 'y' || k === 'enter') { e.preventDefault(); e.stopPropagation(); saveBody(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }
-      else if (k === 'n') { e.preventDefault(); e.stopPropagation(); setUnsavedPrompt(false); setMode('normal'); setDraft(''); setSlash(null); }
-      else if (k === 'escape' || k === 'c') { e.preventDefault(); e.stopPropagation(); setUnsavedPrompt(false); requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true })); }
+      const action = unsavedPromptAction(e);
+      if (!action) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setUnsavedPrompt(false);
+      if (action === 'keep') { requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true })); return; }
+      if (action === 'save') saveBody();
+      setMode('normal'); setDraft(''); setSlash(null);
     };
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    return () => {
+      window.removeEventListener('keydown', onKey, true);
+      suppressBlurRef.current = false; // prompt closed (keys or buttons) — blur commits again
+    };
   }, [unsavedPrompt]); // eslint-disable-line react-hooks/exhaustive-deps
   const execEditorEx = (raw) => {
     const c = (raw || '').trim();
@@ -1350,7 +865,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   // there and select once loaded.
   const openWikiLink = (title) => {
     const t = title.trim().toLowerCase();
-    const sameDay = notesWithMeta.find((n) => (n.title || '').trim().toLowerCase() === t);
+    const sameDay = notes.find((n) => (n.title || '').trim().toLowerCase() === t);
     if (sameDay) {
       setFolderIndex(0); setQuery(''); setTagFilter(null);
       setPendingJump(sameDay.id); setFocus('notes');
@@ -1542,7 +1057,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     if (!list.length || !current) return;
     setUploading(true);
     try {
-      const uploaded = await uploadFilesToCloudinary(list);
+      const uploaded = await onUploadFiles(list);
       const md = (uploaded || []).map((f) => {
         const isImg = (f.contentType || '').startsWith('image/');
         return isImg ? `![${f.originalName}](${f.cloudUrl})` : `[📎 ${f.originalName}](${f.cloudUrl})`;
@@ -1617,47 +1132,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
     if (mode === 'help') { setMode('normal'); e.preventDefault(); return; }
     if (mode === 'command') return; // the ":" input handles its own keys
-    if (quickLogin !== null) return; // the quick-login form owns its keys
 
-    // Appearance popup: h/l or Tab switch tabs · j/k move · Enter apply ·
-    // 1-9 quick-pick · +/- font size · Esc/T/q closes.
-    if (showTheme) {
-      if (fontDraft !== null) return; // the custom-font input handles its own keys
-      const k2 = e.key;
-      if (k2 === 'Tab' || k2 === 'l' || k2 === 'ArrowRight' || k2 === 'h' || k2 === 'ArrowLeft') {
-        const dir = (k2 === 'h' || k2 === 'ArrowLeft' || (k2 === 'Tab' && e.shiftKey)) ? -1 : 1;
-        setOptTab((t) => OPT_TABS[(OPT_TABS.indexOf(t) + dir + OPT_TABS.length) % OPT_TABS.length]);
-        setOptSel(0);
-      } else if (k2 === 'j' || k2 === 'ArrowDown') setOptSel((s) => Math.min(s + 1, optRows - 1));
-      else if (k2 === 'k' || k2 === 'ArrowUp') setOptSel((s) => Math.max(s - 1, 0));
-      else if (k2 === 'Enter' || k2 === ' ') optActivate(optSel);
-      else if (/^[1-9]$/.test(k2) && +k2 <= optRows) { setOptSel(+k2 - 1); optActivate(+k2 - 1); }
-      else if (k2 === '+' || k2 === '=') stepFont(1);
-      else if (k2 === '-') stepFont(-1);
-      else if (k2 === 'z') toggleZen();
-      else if (k2 === 'Escape' || k2 === 'T' || k2 === 'q') setShowTheme(false);
-      e.preventDefault();
-      return;
-    }
-
-    // Weekly review overlay: any of Esc / W / q closes.
-    if (showWeek) {
-      if (e.key === 'Escape' || e.key === 'W' || e.key === 'q') setShowWeek(false);
-      e.preventDefault();
-      return;
-    }
-
-    // Pomodoro focus overlay swallows keys: , or Space pause/resume · . stop ·
-    // s sound · m ambient · Esc/q close.
-    if (pomoOverlay) {
-      if (e.key === ',' || e.key === ' ') togglePomodoro();
-      else if (e.key === '.') stopPomodoro();
-      else if (e.key === 's') toggleSound();
-      else if (e.key === 'm') cycleAmbient();
-      else if (e.key === 'Escape' || e.key === 'q') setPomoOverlay(false);
-      e.preventDefault();
-      return;
-    }
+    if (showOptions) { handleOptionsKey(e); return; }
 
     // Calendar overlay owns the keyboard: arrows/hjkl move the cursor day,
     // [ / ] page months, t jumps to today, Enter/Space picks, Esc/c/q close.
@@ -1676,28 +1152,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       return;
     }
 
-    // Marks: ';<letter>' sets, '\'<letter>' jumps.
-    if (mode === 'markset' || mode === 'markjump') {
-      if (/^[a-z]$/.test(e.key)) (mode === 'markset' ? setMark : jumpMark)(e.key);
-      setMode('normal');
-      e.preventDefault();
-      return;
-    }
-
     if (mode === 'delete') {
       // y/Enter confirms; n/Esc/anything else cancels.
-      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') {
-        if (selectedIds.length) bulkDelete();
-        else if (current) doDelete(current);
-      }
-      setMode('normal');
-      e.preventDefault();
-      return;
-    }
-
-    if (mode === 'archive') {
-      // y/Enter archives; anything else cancels.
-      if (e.key === 'y' || e.key === 'Y' || e.key === 'Enter') doArchive();
+      if ((e.key === 'y' || e.key === 'Y' || e.key === 'Enter') && current) doDelete(current);
       setMode('normal');
       e.preventDefault();
       return;
@@ -1705,22 +1162,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
     if (mode === 'category') {
       const idx = parseInt(e.key, 10);
-      if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) {
-        if (selectedIds.length) bulkCategory(catList[idx - 1]);
-        else setCategory(catList[idx - 1]);
-      }
+      if (!Number.isNaN(idx) && idx >= 1 && idx <= catList.length) setCategory(catList[idx - 1]);
       setMode('normal');
       e.preventDefault();
       return;
     }
 
-    // Move mode: pick a target day for the current note (or the selection).
+    // Move mode: pick a target day for the current note.
     if (mode === 'move') {
       const map = { '1': 0, '2': 1, '3': -1, '7': 7 };
-      if (e.key in map) {
-        if (selectedIds.length) bulkMove(map[e.key]);
-        else if (current) onMoveToDate?.(current.id, map[e.key]);
-      }
+      if (e.key in map && current) onMoveToDate?.(current.id, map[e.key]);
       setMode('normal');
       e.preventDefault();
       return;
@@ -1757,7 +1208,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     // nuốt nên không dùng được trong trình duyệt). PHẢI đứng trước switch(k):
     // guard trên chỉ chặn Ctrl/Meta, nên Alt+h/l sẽ rơi xuống case 'h'/'l'
     // (nhảy focus, dòng ~1708/1729) và chuyển panel thay vì resize.
-    if (e.altKey && sizingOn) {
+    if (e.altKey && resizeOn) {
       // Shift capitalizes e.key (Alt+Shift+l arrives as 'L'), so match both cases.
       const dir = (k === 'l' || k === 'L' || k === 'ArrowRight') ? 1 : (k === 'h' || k === 'H' || k === 'ArrowLeft') ? -1 : 0;
       if (dir) {
@@ -1785,7 +1236,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case '1': setFocus('folders'); e.preventDefault(); return;
       case '2': setFocus('notes'); e.preventDefault(); return;
       case '3': setFocus('preview'); e.preventDefault(); return;
-      case 'R': if (sizingOn) { setMode('resize'); e.preventDefault(); } return;
+      case 'z': if (sizingOn) toggleZoom(); e.preventDefault(); return;
+      case 'R':
+        if (resizeOn) setMode('resize');
+        else if (zoomOn) flashMsg('a panel is zoomed — press z to restore, then resize');
+        else if (focusExpand) flashMsg('focus expand is on — turn it off in Options → VIEW to resize panels');
+        e.preventDefault();
+        return;
       case '?': setMode('help'); e.preventDefault(); return;
       case '/': setMode('search'); e.preventDefault(); return;
       case ':': setCmd(''); setMode('command'); e.preventDefault(); return;
@@ -1797,29 +1254,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case 'n': createNote('blank'); e.preventDefault(); return;
       case 'N': createNote('todo'); e.preventDefault(); return;
       case 'm': if (current) setMode('category'); e.preventDefault(); return;
-      case 'M': if (current || selectedIds.length) setMode('move'); e.preventDefault(); return;
-      case 'p': togglePin(); e.preventDefault(); return;
+      case 'M': if (current) setMode('move'); e.preventDefault(); return;
       case 'S': cycleSort(); e.preventDefault(); return;
       case 'y': if (current) onDuplicate?.({ ...current }); e.preventDefault(); return;
-      case 'Y': yankNote(); e.preventDefault(); return;
-      case 'P': pasteNote(); e.preventDefault(); return;
-      case 'a': selectedIds.length === list.length ? clearSelection() : selectAllVisible(); e.preventDefault(); return;
-      case 'A': askArchive(); e.preventDefault(); return;
-      case 'z': toggleZen(); e.preventDefault(); return;
-      case 'W': setShowWeek(true); e.preventDefault(); return;
-      case 'T': setShowTheme(true); e.preventDefault(); return;
+      case 'T': openOptions(); e.preventDefault(); return;
       case 'c': setCalCursor(new Date(`${dateLabel}T00:00:00`)); setShowCal(true); e.preventDefault(); return;
-      case ';': setMode('markset'); e.preventDefault(); return;
-      case "'": setMode('markjump'); e.preventDefault(); return;
       case 'u': if (!e.ctrlKey) { undo(); e.preventDefault(); return; } break;
       case 'U': redo(); e.preventDefault(); return;
-      case '.': pomodoro ? stopPomodoro() : startPomodoro(); e.preventDefault(); return;
-      case ',': togglePomodoro(); e.preventDefault(); return;
       case 'Escape':
         if (count) setCount('');
+        else if (zoomOn) setZoomed(false);
         else if (tagFilter) setTagFilter(null);
         else if (query) setQuery('');
-        else if (selectedIds.length) clearSelection();
         else setFocus('notes');
         e.preventDefault();
         return;
@@ -1848,13 +1294,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         case 'l': case 'L': case 'ArrowRight': setFocus('preview'); break;
         case 'Enter': case 'e': editTitle(); break;
         case 'i': editBody(); break;
-        case 'x':
-          if (selectedIds.length) bulkComplete(!bulkTargets().every(n => n.isCompleted));
-          else toggleDone();
-          break;
-        case ' ': if (current) toggleSelect(current.id); break;
         case 'C': cycleCategory(1); break;
-        case 'd': if (selectedIds.length) setMode('delete'); else if (current) setMode('delete'); break;
+        case 'd': if (current) setMode('delete'); break;
         default: return;
       }
       e.preventDefault();
@@ -1870,7 +1311,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         case 'k': case 'ArrowUp': scrollPreview(-48); break;
         case 'g': previewRef.current?.scrollTo({ top: 0 }); break;
         case 'G': previewRef.current?.scrollTo({ top: previewRef.current.scrollHeight }); break;
-        case 'x': case ' ': toggleDone(); break;
         case 'C': cycleCategory(1); break;
         case 'd':
           if (e.ctrlKey) scrollPreview((previewRef.current?.clientHeight || 400) / 2);
@@ -2011,7 +1451,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     }
   };
 
-  const done = notes.filter((n) => n.isCompleted).length;
   const filtered = list.length !== notes.length;
 
   // Condensed keymap — the essentials, grouped to fit one screen (no scroll).
@@ -2032,19 +1471,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['n / N', 'new note / todo'],
         ['Enter / e', 'edit title'],
         ['i', 'edit body · Ctrl+Enter saves'],
-        ['x · p', 'toggle done · pin'],
         ['y · d→y', 'duplicate · delete'],
-        ['A → y', 'archive → 📦 (asks first)'],
+        ['u / U', 'undo / redo'],
       ],
     },
     {
-      title: 'SELECT & BULK',
+      title: 'ORGANIZE',
       rows: [
-        ['space · a', 'select one · all / clear'],
-        ['x · d', 'complete · delete selected'],
         [`m → 1-${catList.length}`, 'set category'],
-        ['M → 1/2/3/7', 'move to day'],
         ['C', 'cycle category'],
+        ['M → 1/2/3/7', 'move to day'],
+        ['S', 'sort order'],
+        ['T', 'options (format · nvim · preview)'],
       ],
     },
     {
@@ -2055,27 +1493,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['R', 'RESIZE mode — h/l · H/L · 1/2/3'],
         ['= (in RESIZE)', 'back to default sizes'],
         ['drag gap · Alt+drag', 'mouse resize · anywhere'],
+        ['z · ⛶', 'zoom focused panel · z / Esc restore'],
       ],
     },
     {
-      title: 'DATE',
+      title: 'DATE & FIND',
       rows: [
         ['[ / ]', 'prev / next day (5] = +5)'],
         ['t', 'today'],
         ['c', 'calendar — arrows · Enter · Esc'],
-        ['/', 'search'],
+        ['/', 'search this day'],
         ['Ctrl+p', 'Telescope finder (Space f in nvim)'],
-        ['W', 'weekly review'],
-      ],
-    },
-    {
-      title: 'FOCUS & VIM',
-      rows: [
-        ['. · ,', 'start-stop · pause pomodoro'],
-        ['u / U', 'undo / redo'],
-        ['Y / P', 'yank / paste (cross-day)'],
-        [';a → \'a', 'set mark → jump'],
-        ['z · T', 'zen · options popup'],
       ],
     },
     {
@@ -2083,10 +1511,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       rows: [
         ['#tag · [[link]]', 'chip filter · wiki-link'],
         ['/', 'block menu (in body)'],
-        [':due 14:30 10', 'deadline + remind'],
-        [':recur daily', 'repeating note'],
-        [':export | week', 'markdown out'],
+        [':export | clip', 'this day as markdown'],
         [':export all | json | zip', 'every day · backup · + files'],
+        [':goto yyyy-mm-dd', 'jump to a day'],
       ],
     },
   ];
@@ -2125,7 +1552,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     });
   }
   const hints = {
-    normal: '1/2/3:panel  j/k:move  i:body  x:done  p:pin  u:undo  Y/P:yank  z:zen  R:resize  A:arch  c:calendar  W:week  ;/\':marks  :cmd  .:pomodoro  ?:help',
+    normal: '1/2/3:panel  j/k:move  i:body  u:undo  z:zoom  R:resize  c:calendar  T:options  :cmd  ?:help',
     category: '',
     move: '',
     title: '── EDIT TITLE ──  Enter:save  Esc:cancel',
@@ -2134,38 +1561,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     help: 'press any key to close',
     search: '',
     command: '',
-    archive: '',
-    markset: 'mark: press a letter (a-z) to tag this note',
-    markjump: "jump: press a mark letter (a-z)",
     resize: '── RESIZE ──  h/l:±2%  H/L:±8%  1/2/3:panel  =:reset  Esc:done',
   };
-
-  /* Month heatmap for the FOLDERS panel — GitHub-style activity levels. */
-  const heatmap = useMemo(() => {
-    const [yy, mm] = dateLabel.split('-').map(Number);
-    const daysInMonth = new Date(yy, mm, 0).getDate();
-    return Array.from({ length: daysInMonth }, (_, i) => {
-      const day = `${yy}-${String(mm).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
-      const c = (markedDates || {})[day] || 0;
-      return { day, n: i + 1, level: c === 0 ? 0 : c === 1 ? 1 : c <= 3 ? 2 : c <= 6 ? 3 : 4 };
-    });
-  }, [dateLabel, markedDates]);
 
   // Telescope finder sources (built here so every action helper is in scope).
   const teleSources = (() => {
     const noteItems = (allNotes || []).filter((n) => !n.isDeleted);
     const cmdItems = [
       { id: 'export', label: 'export markdown', run: () => exportDay(false) },
-      { id: 'export-all', label: 'export all days (.md)', run: () => exportAllData('md') },
-      { id: 'export-json', label: 'backup all (.json)', run: () => exportAllData('json') },
-      { id: 'export-zip', label: 'export all + files (.zip)', run: () => exportAllData('zip') },
-      { id: 'week', label: 'weekly review', run: () => setShowWeek(true) },
+      { id: 'export-all', label: 'export all days (.md)', run: () => exportAllDataAsync('md') },
+      { id: 'export-json', label: 'backup all (.json)', run: () => exportAllDataAsync('json') },
+      { id: 'export-zip', label: 'export all + files (.zip)', run: () => exportAllDataAsync('zip') },
       { id: 'calendar', label: 'calendar', run: () => setShowCal(true) },
-      { id: 'theme', label: 'cycle theme', run: () => setTheme('next') },
-      { id: 'options', label: 'options popup', run: () => setShowTheme(true) },
+      { id: 'options', label: 'options popup', run: openOptions },
+      { id: 'format', label: 'toggle Notion / Markdown', run: toggleNoteFormat },
       { id: 'nvim', label: 'toggle nvim mode', run: toggleNvim },
       { id: 'number', label: 'toggle line numbers', run: toggleLineNo },
-      { id: 'zen', label: 'toggle zen', run: toggleZen },
       { id: 'today', label: 'go to today', run: goToday },
     ];
     const dateItems = Object.entries(markedDates || {})
@@ -2203,15 +1614,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   })();
 
   return (
-    <div className={`tui ${zen ? 'tui-zen' : ''}`} data-tui-theme={tuiTheme === 'default' ? undefined : tuiTheme}
-         style={{ fontSize: `${tuiFont}rem`, '--tui-font': tuiFontFam.stack }}
-         tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
+    <div className={`tui ${appearance.accent ? 'has-accent' : ''} ${appearance.bgImage ? 'has-bg' : ''}`}
+         style={appearanceStyle(appearance)} tabIndex={0} ref={rootRef} onKeyDown={handleKeyDown}
          onKeyDownCapture={(e) => {
            // Telescope open keys must be caught at CAPTURE phase: focus often sits
            // on a child <button> (note row / folder), which would swallow Space
            // (button click) and the browser swallows Ctrl+p (print) before the
            // bubbling handler sees them. Only in list context (not editing).
            if (mode === 'title' || mode === 'body' || mode === 'search' || mode === 'command') return;
+           if (e.target.tagName === 'INPUT') return; // e.g. the background URL field in Options
            // stopPropagation so these keys don't ALSO reach the bubbling
            // handleKeyDown (where 'f' would cycle the folder → jumps to SYSTEM).
            if (e.key === 'p' && e.ctrlKey) { e.preventDefault(); e.stopPropagation(); setShowTele(true); return; }
@@ -2239,12 +1650,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         <button type="button" className={focus === 'preview' ? 'on' : ''}
                 onClick={() => setFocus('preview')}>◨ PREVIEW</button>
       </div>
-      <div className={`tui-body ${dragging ? 'tui-dragging' : ''}`} ref={bodyRef}
+      <div className={`tui-body ${dragging ? 'tui-dragging' : ''} ${focusExpand && sizingOn ? 'tui-focus-expand' : ''} ${zoomOn ? 'tui-zoomed' : ''}`} ref={bodyRef}
            onTouchStart={bodySwipeStart} onTouchEnd={bodySwipeEnd}
            onPointerDown={(e) => {
              // Alt+kéo ở bất kỳ đâu (kiểu Hyprland): điểm bắt đầu quyết định
              // biên nào bị kéo — trong FOLDERS thì biên trái, còn lại biên phải.
-             if (!e.altKey || !sizingOn || e.button !== 0) return;
+             if (!e.altKey || !resizeOn || e.button !== 0) return;
              const inFolders = e.target.closest?.('.tui-folders');
              startDrag(inFolders ? 0 : 1, e);
            }}
@@ -2253,14 +1664,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
            onPointerCancel={endDrag}
            onLostPointerCapture={endDrag}>
         {/* FOLDERS */}
-        <div className={`tui-panel tui-folders ${focus === 'folders' ? 'focused' : ''}`} style={panelStyle(0)}>
-          <span className="tui-panel-title"><kbd>1</kbd>FOLDERS</span>
+        <div className={`tui-panel tui-folders ${panelClass('folders')}`} style={panelStyle(0)}>
+          <span className="tui-panel-title"><kbd>1</kbd>FOLDERS{zoomButton('folders')}</span>
           <div className="tui-scroll">
             {folders.map((f, i) => (
-              <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''} ${f.key === '__ARCHIVE' ? 'archive' : ''}`}
+              <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''} ${f.key === 'ALL' ? 'all' : ''}`}
                    onClick={() => { setFolderIndex(i); setFocus('notes'); }}>
                 <span className="tui-folder-name">{f.label}</span>
-                <span className="tui-folder-count">{f.count}</span>
+                <span className={`tui-folder-count ${f.count === 0 ? 'zero' : ''}`}>{f.count}</span>
               </div>
             ))}
 
@@ -2277,66 +1688,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 ))}
               </div>
             )}
-
-            {!authed && (
-              <div className="tui-login">
-                <div className="tui-side-h">SIGN IN</div>
-                {quickLogin === null ? (
-                  <>
-                    <button type="button" className="tui-login-open" onClick={() => { setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
-                      ⎆ quick sign in
-                    </button>
-                    <div className="tui-login-oauth">
-                      <button type="button" className="gh" title="Sign in with GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
-                      <button type="button" className="dc" title="Sign in with Discord" onClick={() => oauthLogin('discord')}>Discord</button>
-                    </div>
-                  </>
-                ) : (
-                  <form className="tui-login-form"
-                        onSubmit={(e) => { e.preventDefault(); submitQuickLogin(); }}
-                        onKeyDown={(e) => {
-                          e.stopPropagation();
-                          if (e.key === 'Escape') { e.preventDefault(); setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }
-                        }}>
-                    {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                    <input autoFocus value={quickLogin.id} placeholder="email / username" autoComplete="username"
-                           onChange={(e) => setQuickLogin((s) => ({ ...s, id: e.target.value }))} />
-                    <input type="password" value={quickLogin.pw} placeholder="password" autoComplete="current-password"
-                           onChange={(e) => setQuickLogin((s) => ({ ...s, pw: e.target.value }))} />
-                    {loginErr && <div className="tui-login-err">{loginErr}</div>}
-                    <div className="tui-login-btns">
-                      <button type="submit" className="go" disabled={loginBusy}>
-                        {loginBusy ? <Spinner label="…" /> : 'Enter ⏎'}
-                      </button>
-                      <button type="button" onClick={() => { setQuickLogin(null); setLoginErr(null); rootRef.current?.focus({ preventScroll: true }); }}>Esc</button>
-                    </div>
-                    <div className="tui-login-oauth">
-                      <button type="button" className="gh" title="Sign in with GitHub" onClick={() => oauthLogin('github')}>GitHub</button>
-                      <button type="button" className="dc" title="Sign in with Discord" onClick={() => oauthLogin('discord')}>Discord</button>
-                    </div>
-                    <button type="button" className="tui-login-full" onClick={gotoLogin}>full sign-in page →</button>
-                  </form>
-                )}
-              </div>
-            )}
-
-            <div className="tui-heatmap">
-              <div className="tui-side-h">ACTIVITY · {dateLabel.slice(0, 7)}</div>
-              <div className="tui-heatmap-grid">
-                {heatmap.map((c) => (
-                  <button key={c.day} type="button"
-                          className={`hm lv${c.level} ${c.day === dateLabel ? 'cur' : ''}`}
-                          title={`${c.day} — ${(markedDates || {})[c.day] || 0} notes`}
-                          onClick={() => gotoDate(c.day)}>
-                    {c.n}
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </div>
 
-        {sizingOn && (
+        {resizeOn && (
           <div className="tui-resizer" role="separator" aria-orientation="vertical"
                aria-label="Resize folders panel"
                onPointerDown={(e) => { e.stopPropagation(); startDrag(0, e); }}
@@ -2346,14 +1701,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         )}
 
         {/* NOTES */}
-        <div className={`tui-panel tui-notes ${focus === 'notes' ? 'focused' : ''}`} style={panelStyle(1)}>
+        <div className={`tui-panel tui-notes ${panelClass('notes')}`} style={panelStyle(1)}>
           <span className="tui-panel-title">
-            <kbd>2</kbd>{`NOTES · ${dateLabel}`}
+            <kbd>2</kbd>NOTES{zoomButton('notes')}
             {loading && <Spinner label="loading" className="tui-title-spinner" />}
-            <button type="button" className="tui-sort-chip" title="Sort order (S)"
-                    onMouseDown={(e) => { e.preventDefault(); cycleSort(); }}>
-              ⇅ {sortBy}
-            </button>
             {tagFilter && (
               <button type="button" className="tui-tagfilter-chip" title="Clear tag filter (Esc)"
                       onMouseDown={(e) => { e.preventDefault(); setTagFilter(null); }}>
@@ -2367,30 +1718,22 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
             ) : (
               list.map((n, i) => {
                 const sel = i === noteIndex;
-                const picked = selectedIds.includes(n.id);
-                const pendingDelete = mode === 'delete' && (selectedIds.length ? picked : sel);
+                const pendingDelete = mode === 'delete' && sel;
                 return (
                   <div key={n.id}
                        ref={sel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
-                       className={`tui-row ${sel ? 'sel' : ''} ${n.isCompleted ? 'done' : ''} ${picked ? 'picked' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.pinned ? 'pinned' : ''}`}
+                       className={`tui-row ${sel ? 'sel' : ''} ${pendingDelete ? 'pending-delete' : ''}`}
                        onTouchStart={(e) => lpStart(i, e)}
                        onTouchMove={lpMove}
                        onTouchEnd={lpEnd}
                        onContextMenu={(e) => { if (lpRef.current?.fired) e.preventDefault(); }}
-                       onClick={(e) => {
+                       onClick={() => {
                          if (lpRef.current?.fired) { lpRef.current = null; return; } // long-press đã xử lý
-                         if (e.ctrlKey || e.metaKey) { toggleSelect(n.id); return; }
                          setNoteIndex(i);
                          // phone: tapping a note drills into its preview
                          setFocus(window.matchMedia('(max-width: 768px)').matches ? 'preview' : 'notes');
                        }}
                        onDoubleClick={() => { setNoteIndex(i); setDraft(n.title || ''); setMode('title'); }}>
-                    <button type="button" className={`tui-row-pick ${picked ? 'on' : ''}`}
-                            title="Select (Space / Ctrl+click)"
-                            onClick={(e) => { e.stopPropagation(); toggleSelect(n.id); }}>
-                      {picked ? '☑' : '☐'}
-                    </button>
-                    {n.pinned && <span className="tui-pin" title="Pinned">📌</span>}
                     {sel && mode === 'title' && focus !== 'preview' ? (
                       // eslint-disable-next-line jsx-a11y/no-autofocus
                       <input ref={inputRef} autoFocus className="tui-input" value={draft}
@@ -2408,16 +1751,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         ? <span className={`tui-sub-chip ${doneCt === total ? 'full' : ''}`} title={`${doneCt}/${total} subtasks`}>▣ {doneCt}/{total}</span>
                         : null;
                     })()}
-                    {n.deadline && (() => {
-                      const d = new Date(n.deadline);
-                      const overdue = !n.isCompleted && d.getTime() < Date.now();
-                      return (
-                        <span className={`tui-due-chip ${overdue ? 'overdue' : ''}`}
-                              title={overdue ? 'Overdue' : 'Due time'}>
-                          ⏰ {String(d.getHours()).padStart(2, '0')}:{String(d.getMinutes()).padStart(2, '0')}
-                        </span>
-                      );
-                    })()}
                     <button type="button" className="tui-row-del" title="Delete note (d)"
                             onClick={(e) => { e.stopPropagation(); setNoteIndex(i); setMode('delete'); }}>
                       ×
@@ -2429,7 +1762,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </div>
         </div>
 
-        {sizingOn && (
+        {resizeOn && (
           <div className="tui-resizer" role="separator" aria-orientation="vertical"
                aria-label="Resize notes panel"
                onPointerDown={(e) => { e.stopPropagation(); startDrag(1, e); }}
@@ -2439,8 +1772,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         )}
 
         {/* PREVIEW */}
-        <div className={`tui-panel tui-preview ${focus === 'preview' ? 'focused' : ''}`} style={panelStyle(2)}>
-          <span className="tui-panel-title"><kbd>3</kbd>PREVIEW</span>
+        <div className={`tui-panel tui-preview ${panelClass('preview')}`} style={panelStyle(2)}>
+          <span className="tui-panel-title"><kbd>3</kbd>PREVIEW{zoomButton('preview')}</span>
           {current ? (
             <div className="tui-scroll" ref={previewRef}>
               {mode === 'title' && focus === 'preview' ? (
@@ -2457,29 +1790,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               <div className="tui-pv-meta">
                 <span className="tag">{catOf(current)}</span>
                 {current.timestamp && <span> · {current.timestamp}</span>}
-                <span> · {current.isCompleted ? 'done' : 'open'}</span>
                 {current.content && (() => {
                   const s = wordStats(current.content);
                   return <span> · {s.words}w · ~{s.minutes}m read</span>;
                 })()}
-                {current.deadline && (() => {
-                  const d = new Date(current.deadline);
-                  const overdue = !current.isCompleted && d.getTime() < Date.now();
-                  return (
-                    <span className={overdue ? 'tui-pv-overdue' : undefined}>
-                      {' '}· ⏰ due {String(d.getHours()).padStart(2, '0')}:{String(d.getMinutes()).padStart(2, '0')}
-                      {current.reminderLeadMinutes ? ` (remind ${current.reminderLeadMinutes}m before)` : ''}
-                      {overdue ? ' — OVERDUE' : ''}
-                    </span>
-                  );
-                })()}
-                {(focusTimes[current.id] || 0) >= 60 && (() => {
-                  const secs = focusTimes[current.id];
-                  const h = Math.floor(secs / 3600);
-                  const mn = Math.floor((secs % 3600) / 60);
-                  return <span> · ⏱ {h ? `${h}h` : ''}{mn}m focused</span>;
-                })()}
-                {archivedSet.has(current.id) && <span> · 📦 archived</span>}
               </div>
               {mode === 'body' && noteFormat === 'notion' ? (
                 <div className="tui-editor-wrap notion">
@@ -2710,10 +2024,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </>);
           if (ctx === 'preview') return (<>
             <button type="button" className="tma-btn primary" onClick={editBody}>✎ Edit</button>
-            <button type="button" className={`tma-btn icon ${current?.isCompleted ? 'on' : ''}`}
-                    title={current?.isCompleted ? 'Mark undone' : 'Mark done'} onClick={toggleDone}>✓</button>
-            <button type="button" className={`tma-btn icon ${current?.pinned ? 'on' : ''}`}
-                    title={current?.pinned ? 'Unpin' : 'Pin'} onClick={togglePin}>📌</button>
             <button type="button" className="tma-btn icon" onClick={() => setSheetOpen('note')}>⋯</button>
           </>);
           return (<>
@@ -2725,7 +2035,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
 
       {/* STATUS BAR — st-idle: trên mobile ẩn đi khi chỉ hiện thông tin tĩnh
           (giữ lại khi có confirm delete/category/…, flash, hay ô nhập) */}
-      <div className={`tui-status ${!flash && !['command', 'search', 'delete', 'archive', 'category', 'move'].includes(mode) ? 'st-idle' : ''}`}>
+      <div className={`tui-status ${!flash && !['command', 'search', 'delete', 'category', 'move'].includes(mode) ? 'st-idle' : ''}`}>
         {mode === 'command' ? (
           <span className="tui-search tui-cmdline">:<input ref={inputRef} className="tui-input inline" value={cmd}
             onChange={(e) => setCmd(e.target.value)}
@@ -2735,29 +2045,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               else if (e.key === 'Escape') { e.preventDefault(); setCmd(''); setMode('normal'); }
             }}
             onBlur={() => { setCmd(''); setMode('normal'); }}
-            placeholder="export · week · cal · due HH:mm · recur daily · theme · pomo 45 · tag x · goto…" /></span>
+            placeholder="export · cal · tag x · sort title · goto yyyy-mm-dd · nvim · help" /></span>
         ) : mode === 'search' ? (
           <span className="tui-search">/<input ref={inputRef} className="tui-input inline" value={query}
             onChange={(e) => setQuery(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur} placeholder="search…" /></span>
         ) : mode === 'delete' ? (
           <span className="tui-warn">
-            {selectedIds.length
-              ? `delete ${selectedIds.length} selected note${selectedIds.length > 1 ? 's' : ''}?`
-              : `delete "${current?.title || 'untitled'}"?`}
+            {`delete "${current?.title || 'untitled'}"?`}
             <button type="button" className="tui-warn-btn yes"
-                    onClick={() => { if (selectedIds.length) bulkDelete(); else if (current) doDelete(current); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
-              Yes (y)
-            </button>
-            <button type="button" className="tui-warn-btn no"
-                    onClick={() => { setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
-              No (n / Esc)
-            </button>
-          </span>
-        ) : mode === 'archive' ? (
-          <span className="tui-warn">
-            archive &quot;{current?.title || 'untitled'}&quot; to the 📦 folder?
-            <button type="button" className="tui-warn-btn yes"
-                    onClick={() => { doArchive(); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
+                    onClick={() => { if (current) doDelete(current); setMode('normal'); rootRef.current?.focus({ preventScroll: true }); }}>
               Yes (y)
             </button>
             <button type="button" className="tui-warn-btn no"
@@ -2767,10 +2063,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </span>
         ) : mode === 'category' ? (
           <span className="tui-cat-pick">
-            {selectedIds.length ? `category → ${selectedIds.length} notes:` : 'set category:'}&nbsp;
+            set category:&nbsp;
             {catList.map((c, i) => (
-              <span key={c} className={`tui-cat-opt ${!selectedIds.length && catOf(current) === c ? 'cur' : ''}`}
-                    onClick={() => { if (selectedIds.length) bulkCategory(c); else setCategory(c); setMode('normal'); }}>
+              <span key={c} className={`tui-cat-opt ${catOf(current) === c ? 'cur' : ''}`}
+                    onClick={() => { setCategory(c); setMode('normal'); }}>
                 <kbd>{i + 1}</kbd>{c}
               </span>
             ))}
@@ -2778,10 +2074,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </span>
         ) : mode === 'move' ? (
           <span className="tui-cat-pick">
-            {selectedIds.length ? `move ${selectedIds.length} notes to:` : 'move to:'}&nbsp;
+            move to:&nbsp;
             {[['1', 'Today', 0], ['2', 'Tomorrow', 1], ['3', 'Yesterday', -1], ['7', '+1 week', 7]].map(([k, lbl, off]) => (
               <span key={k} className="tui-cat-opt"
-                    onClick={() => { if (selectedIds.length) bulkMove(off); else if (current) onMoveToDate?.(current.id, off); setMode('normal'); }}>
+                    onClick={() => { if (current) onMoveToDate?.(current.id, off); setMode('normal'); }}>
                 <kbd>{k}</kbd>{lbl}
               </span>
             ))}
@@ -2790,48 +2086,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ) : (
           <>
             <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
-            <span className="tui-focus-tag">◈ {focus.toUpperCase()}</span>
-            {selectedIds.length > 0 && (
-              <span className="tui-sel-tag" title="Selected — d/m/M act on all; Esc clears">✓ {selectedIds.length} selected</span>
-            )}
-            {pomodoro && (
-              <button type="button"
-                      className={`tui-pomo phase-${pomodoro.phase} ${pomodoro.remaining === 0 ? 'done' : pomodoro.running ? 'run' : 'paused'}`}
-                      title="Pomodoro — click: focus overlay · , pause/resume · . stop"
-                      onClick={(e) => { e.stopPropagation(); setPomoOverlay(true); rootRef.current?.focus({ preventScroll: true }); }}>
-                {pomodoro.phase === 'focus' ? '🍅' : '☕'} {String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0')}:{String(pomodoro.remaining % 60).padStart(2, '0')}
-                {!pomodoro.running && pomodoro.remaining > 0 && ' ⏸'}
+            {zoomOn && (
+              <button type="button" className="tui-zoom-tag" title="Restore (z / Esc)"
+                      onClick={(e) => { e.stopPropagation(); setZoomed(false); }}>
+                ⛶ {focus.toUpperCase()}
               </button>
-            )}
-            {(pomoStats[todayStr()] || 0) > 0 && (
-              <span className="tui-pomo-count" title={`${pomoStats[todayStr()]} pomodoro finished today`}>
-                🍅×{pomoStats[todayStr()]}
-              </span>
             )}
             {count && <span className="tui-count-tag" title="Count prefix">{count}</span>}
             {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
-            <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`} · {done} done</span>
+            <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`}</span>
             {syncStatus === 'saving' && <Spinner label="saving" className="tui-sync-spinner" />}
-            {zen && <span className="tui-zen-tag" title="Zen mode (z)">◎ zen</span>}
-            <button type="button" className="tui-theme-chip" title="Appearance — theme, font, zen (T)"
-                    onClick={(e) => { e.stopPropagation(); setShowTheme(true); }}>
-              ◐ {tuiTheme}
-            </button>
-            {authed ? (
-              <span className="tui-auth-chip authed" title={`Logged in as ${authUser}`}>
-                <span className="who">@{authUser}</span>
-                <button type="button" className="out" title="Log out"
-                        onClick={(e) => { e.stopPropagation(); doLogout(); }}>⏻</button>
-              </span>
-            ) : (
-              <button type="button" className="tui-auth-chip login" title="Log in (quick form in FOLDERS)"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFocus('folders');
-                        setQuickLogin({ id: '', pw: '' });
-                        setLoginErr(null);
-                      }}>⎆ login</button>
-            )}
+            <button type="button" className="tui-help-btn" title="Options (T)" aria-label="Options"
+                    onClick={(e) => { e.stopPropagation(); openOptions(); }}>⚙</button>
             <button type="button" className="tui-help-btn" title="Keyboard shortcuts (?)"
                     onClick={(e) => { e.stopPropagation(); setMode('help'); rootRef.current?.focus({ preventScroll: true }); }}>?</button>
           </>
@@ -2868,216 +2134,13 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         </div>
       )}
 
-      {/* ── Pomodoro focus overlay — big animated timer over the whole screen ── */}
-      {pomoOverlay && pomodoro && (() => {
-        const isBreak = pomodoro.phase !== 'focus';
-        const frac = Math.max(0, Math.min(1, pomodoro.remaining / (pomodoro.total || 1)));
-        const mm = String(Math.floor(pomodoro.remaining / 60)).padStart(2, '0');
-        const ss = String(pomodoro.remaining % 60).padStart(2, '0');
-        const CELLS = 28;
-        const filledCells = Math.round(frac * CELLS);
-        const focusNote = notes.find((n) => n.id === pomodoro.noteId);
-        const todayCount = pomoStats[todayStr()] || 0;
-        return (
-          <div className="tui-pomo-overlay" onClick={() => setPomoOverlay(false)}>
-            <div className={`tui-pomo-stage ${isBreak ? 'break' : ''} ${pomodoro.running ? 'run' : 'paused'}`}
-                 onClick={(e) => e.stopPropagation()}>
-              <div className="tui-pomo-rings"><span /><span /><span /></div>
-              <div className="tui-pomo-tomato">{isBreak ? '☕' : '🍅'}</div>
-              <div className="tui-pomo-time">
-                {mm}<span className="tui-pomo-colon">:</span>{ss}
-              </div>
-              <div className="tui-pomo-bar">
-                <span className="fill">{'▓'.repeat(filledCells)}</span>{'░'.repeat(CELLS - filledCells)}
-              </div>
-              {pomoCfg.ambient !== 'off' && !isBreak && <PomoWave color="#e11d48" />}
-              <div className="tui-pomo-label">
-                {isBreak
-                  ? `${pomodoro.phase === 'long' ? 'LONG BREAK' : 'BREAK'} · NGHỈ MỘT CHÚT ☕${pomodoro.running ? '' : ' · PAUSED'}`
-                  : `FOCUS #${pomodoro.cycle} · ${focusNote?.title || 'deep work'}${pomodoro.running ? '' : ' · PAUSED'}`}
-              </div>
-              <div className="tui-pomo-sub">
-                today: {'🍅'.repeat(Math.min(todayCount, 8))}{todayCount > 8 ? ` ×${todayCount}` : todayCount === 0 ? '—' : ''}
-                {' · '}{LONG_EVERY - ((pomodoro.cycle - 1) % LONG_EVERY)} 🍅 until the long break
-              </div>
-              <div className="tui-pomo-ctl">
-                <button type="button" onClick={togglePomodoro}>
-                  {pomodoro.running ? '⏸ pause' : '▶ resume'} <kbd>,</kbd>
-                </button>
-                <button type="button" onClick={stopPomodoro}>■ stop <kbd>.</kbd></button>
-                <button type="button" onClick={() => setPomoOverlay(false)}>× close <kbd>Esc</kbd></button>
-              </div>
-              <div className="tui-pomo-cfg">
-                {FOCUS_CHOICES.map((min) => (
-                  <button key={min} type="button" className={pomoCfg.focusMin === min ? 'on' : ''}
-                          title={`Focus ${min} minutes`}
-                          onClick={() => setFocusMinutes(min)}>{min}m</button>
-                ))}
-                <button type="button" className={pomoCfg.soundOn ? 'on' : ''}
-                        title="Chime + tick sound (s)" onClick={toggleSound}>
-                  {pomoCfg.soundOn ? '♪ on' : '♪ off'}
-                </button>
-              </div>
-              <div className="tui-pomo-cfg tui-pomo-amb">
-                {AMBIENT_KINDS.map((k) => (
-                  <button key={k} type="button" className={pomoCfg.ambient === k ? 'on' : ''}
-                          title={`Ambient: ${k} — press m to cycle, click again to turn off`}
-                          onClick={() => setAmbientKind(k)}>
-                    {k === 'rain' ? '⛆ rain' : k === 'lofi' ? '♫ lofi' : '≈ waves'}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* ── Options popup (T / click ◐) — tabbed: THEME · FONT · EDITOR · VIEW · POMO ── */}
-      {showTheme && (
-        <div className="tui-week-overlay" onClick={() => setShowTheme(false)}>
-          <div className="tui-opt-box" onClick={(e) => e.stopPropagation()}>
-            <div className="tui-opt-head">
-              <span className="tui-opt-title">◈ OPTIONS</span>
-              <button type="button" className="tui-opt-close" title="Close (Esc)" onClick={() => setShowTheme(false)}>×</button>
-            </div>
-
-            <div className="tui-opt-tabs">
-              {OPT_TABS.map((t) => (
-                <button key={t} type="button" className={optTab === t ? 'on' : ''}
-                        onClick={() => { setOptTab(t); setOptSel(0); }}>
-                  {t.toUpperCase()}
-                </button>
-              ))}
-              <span className="tui-opt-tabhint">h/l · Tab</span>
-            </div>
-
-            <div className="tui-opt-body">
-              {optTab === 'theme' && TUI_THEMES.map((t, i) => (
-                <button key={t} type="button"
-                        className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${tuiTheme === t ? 'on' : ''}`}
-                        onMouseEnter={() => setOptSel(i)}
-                        onClick={() => { setOptSel(i); setTheme(t); }}>
-                  <kbd>{i + 1}</kbd>
-                  <span className="sw" style={{ background: THEME_SWATCH[t][0] }} />
-                  <span className="sw" style={{ background: THEME_SWATCH[t][1] }} />
-                  <span className="nm">{t}</span>
-                  <span className="cur">{tuiTheme === t ? '●' : ''}</span>
-                </button>
-              ))}
-
-              {optTab === 'font' && (
-                <>
-                  {FONT_FAMILIES.map((f, i) => (
-                    <button key={f.key} type="button"
-                            className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${tuiFontFam.key === f.key ? 'on' : ''}`}
-                            onMouseEnter={() => setOptSel(i)}
-                            onClick={() => { setOptSel(i); applyFontFam(f); }}>
-                      <kbd>{i + 1}</kbd>
-                      <span className="nm" style={{ fontFamily: f.stack }}>{f.label}</span>
-                      <span className="fx" style={{ fontFamily: f.stack }}>{'{ } => 0O 1lI'}</span>
-                      <span className="cur">{tuiFontFam.key === f.key ? '●' : ''}</span>
-                    </button>
-                  ))}
-                  {fontDraft !== null ? (
-                    <div className="tui-opt-row sel tui-opt-custom">
-                      <kbd>✎</kbd>
-                      {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-                      <input autoFocus value={fontDraft} placeholder="a font installed on your machine, e.g. Iosevka"
-                             onChange={(e) => setFontDraft(e.target.value)}
-                             onKeyDown={(e) => {
-                               e.stopPropagation();
-                               if (e.key === 'Enter') applyCustomFont(fontDraft);
-                               else if (e.key === 'Escape') setFontDraft(null);
-                             }}
-                             onBlur={() => setFontDraft(null)} />
-                    </div>
-                  ) : (
-                    <button type="button"
-                            className={`tui-opt-row ${optSel === FONT_FAMILIES.length ? 'sel' : ''} ${tuiFontFam.key === 'custom' ? 'on' : ''}`}
-                            onMouseEnter={() => setOptSel(FONT_FAMILIES.length)}
-                            onClick={() => optActivate(FONT_FAMILIES.length)}>
-                      <kbd>✎</kbd>
-                      <span className="nm">custom…{tuiFontFam.key === 'custom' ? ` (${tuiFontFam.label})` : ''}</span>
-                      <span className="cur">{tuiFontFam.key === 'custom' ? '●' : ''}</span>
-                    </button>
-                  )}
-                  <div className="tui-opt-size">
-                    <span className="lbl">SIZE</span>
-                    <button type="button" title="Smaller (-)" onClick={() => stepFont(-1)}>−</button>
-                    <span className="pct">{Math.round(tuiFont * 100)}%</span>
-                    <button type="button" title="Larger (+)" onClick={() => stepFont(1)}>+</button>
-                    <span className="sample" style={{ fontSize: `${tuiFont}rem`, fontFamily: tuiFontFam.stack }}>
-                      hello — the quick brown fox 🦊
-                    </span>
-                  </div>
-                </>
-              )}
-
-              {(TAB_ROWS[optTab] || []).map((row, i) => (
-                <button key={row.label} type="button"
-                        className={`tui-opt-row ${optSel === i ? 'sel' : ''} ${row.on ? 'on' : ''} ${row.danger ? 'danger' : ''}`}
-                        onMouseEnter={() => setOptSel(i)} onClick={() => { setOptSel(i); optActivate(i); }}>
-                  <kbd>{row.kbd}</kbd>
-                  <span className="nm">{row.label}</span>
-                  {row.value && <span className="cur">{row.value}</span>}
-                </button>
-              ))}
-            </div>
-
-            <div className="tui-opt-foot">
-              h/l:tab · j/k:move · Enter:apply · 1-9:pick · +/−:size · Esc:close
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Weekly review overlay (W / :week) ── */}
-      {showWeek && weekReview && (
-        <div className="tui-week-overlay" onClick={() => setShowWeek(false)}>
-          <div className="tui-week-box" onClick={(e) => e.stopPropagation()}>
-            <div className="tui-week-head">
-              <span>WEEKLY REVIEW — {weekDays[0]} → {weekDays[6]}</span>
-              <button type="button" title="Close (Esc)" onClick={() => setShowWeek(false)}>×</button>
-            </div>
-            <table className="tui-week-table">
-              <thead>
-                <tr><th>day</th><th>notes</th><th>done</th><th>progress</th><th>words</th><th>🍅</th></tr>
-              </thead>
-              <tbody>
-                {weekReview.byDay.map((d) => {
-                  const pct = d.total ? Math.round((d.done / d.total) * 100) : 0;
-                  return (
-                    <tr key={d.day} className={d.day === dateLabel ? 'cur' : ''}
-                        onClick={() => { gotoDate(d.day); setShowWeek(false); }}>
-                      <td>{d.day}{d.day === todayStr() ? ' ★' : ''}</td>
-                      <td>{d.total || '—'}</td>
-                      <td>{d.done || '—'}</td>
-                      <td>
-                        <span className="wk-bar"><span style={{ width: `${pct}%` }} /></span> {d.total ? `${pct}%` : ''}
-                      </td>
-                      <td>{d.words || '—'}</td>
-                      <td>{d.pomos || '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td>TOTAL</td>
-                  <td>{weekReview.total}</td>
-                  <td>{weekReview.done}</td>
-                  <td>{weekReview.total ? `${Math.round((weekReview.done / weekReview.total) * 100)}%` : '—'}</td>
-                  <td>{weekReview.words}</td>
-                  <td>{weekReview.pomos}</td>
-                </tr>
-              </tfoot>
-            </table>
-            <div className="tui-week-foot">
-              <button type="button" onClick={exportWeek}>⬇ export week .md</button>
-              <span>click a row to open that day · Esc to close</span>
-            </div>
-          </div>
-        </div>
+      {/* ── Options popup (T / click ⚙) ── */}
+      {showOptions && (
+        <OptionsPopup tab={optTab} onTabChange={switchOptTab} sel={optSel} onSelChange={setOptSel}
+                      tabRows={optionRows} appearance={appearance} onAppearanceChange={updateAppearance}
+                      onAppearanceReset={resetLook} textPanel={textPanel} onTextPanelChange={setTextPanel}
+                      onTextChange={updateText} onTextReset={resetText}
+                      onError={flashMsg} onClose={() => setShowOptions(false)} />
       )}
 
       {showTele && (
@@ -3128,11 +2191,6 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 });
               })()}
             </div>
-            {streakStats && (
-              <div className="tui-cal-stats">
-                🔥 {streakStats.streak}d · {streakStats.monthNotes} this month · {streakStats.totalDays} days total
-              </div>
-            )}
             <div className="tui-week-foot">
               <span>←↑↓→ / hjkl move · [ ] month · t today · Enter open · Esc close</span>
             </div>
@@ -3146,47 +2204,19 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           <div className="tui-action-sheet" onClick={(e) => e.stopPropagation()}>
             {sheetOpen === 'note' && current ? (<>
               <div className="tui-sheet-title">{current.title || '(untitled)'}</div>
-              <button type="button" onClick={() => { toggleDone(); setSheetOpen(null); }}>
-                ✓ {current.isCompleted ? 'Mark undone' : 'Mark done'}</button>
-              <button type="button" onClick={() => { togglePin(); setSheetOpen(null); }}>
-                📌 {current.pinned ? 'Unpin' : 'Pin'}</button>
               <button type="button" onClick={() => { setSheetOpen(null); editBody(); }}>✎ Edit content</button>
-              <button type="button" onClick={() => { setSheetOpen(null); askArchive(); }}>📦 Archive</button>
               <button type="button" onClick={() => { setSheetOpen(null); setMode('category'); }}>🏷 Category</button>
-              <button type="button" onClick={() => { yankNote(); setSheetOpen(null); }}>⧉ Copy</button>
-              <div className="tui-sheet-due">
-                <span>⏰ Due</span>
-                <input type="time"
-                       defaultValue={current.deadline
-                         ? `${String(new Date(current.deadline).getHours()).padStart(2, '0')}:${String(new Date(current.deadline).getMinutes()).padStart(2, '0')}`
-                         : ''}
-                       onChange={(e) => { if (e.target.value) setDue(e.target.value); }} />
-                {current.deadline && (
-                  <button type="button" onClick={() => { setDue('off'); setSheetOpen(null); }}>clear</button>
-                )}
-              </div>
               <button type="button" className="danger"
                       onClick={() => { setSheetOpen(null); setMode('delete'); }}>🗑 Delete</button>
             </>) : (<>
-              <button type="button" onClick={() => { onToggleFullscreen?.(); setSheetOpen(null); }}>
-                ⛶ Fullscreen {fullscreenOn ? 'off' : 'on'}</button>
+              {onToggleFullscreen && (
+                <button type="button" onClick={() => { onToggleFullscreen(); setSheetOpen(null); }}>
+                  ⛶ Fullscreen {fullscreenOn ? 'off' : 'on'}</button>
+              )}
               <button type="button" onClick={() => { setSheetOpen(null); setShowTele(true); }}>🔍 Search notes</button>
               <button type="button" onClick={() => { setSheetOpen(null); setShowCal(true); }}>📅 Calendar</button>
-              <button type="button" onClick={() => { setSheetOpen(null); setShowWeek(true); }}>📊 Week review</button>
-              <button type="button" onClick={() => { setSheetOpen(null); setShowTheme(true); }}>⚙ Options</button>
-              <button type="button" onClick={() => { toggleZen(); setSheetOpen(null); }}>
-                ◱ Zen {zen ? 'off' : 'on'}</button>
-              <button type="button" onClick={() => { setSheetOpen(null); if (pomodoro) stopPomodoro(); else startPomodoro(); }}>
-                🍅 {pomodoro ? 'Stop pomodoro' : 'Pomodoro'}</button>
+              <button type="button" onClick={() => { setSheetOpen(null); openOptions(); }}>⚙ Options</button>
               <button type="button" onClick={() => { setSheetOpen(null); setMode('help'); }}>? Help</button>
-              {authed ? (
-                <button type="button" className="danger" onClick={doLogout}>⏻ Log out — @{authUser}</button>
-              ) : (
-                <button type="button"
-                        onClick={() => { setSheetOpen(null); setFocus('folders'); setQuickLogin({ id: '', pw: '' }); setLoginErr(null); }}>
-                  ⎆ Log in
-                </button>
-              )}
             </>)}
           </div>
         </div>
@@ -3207,15 +2237,16 @@ TuiView.propTypes = {
   categories: PropTypes.array,
   allNotes: PropTypes.array,
   markedDates: PropTypes.object,
-  streakStats: PropTypes.object,
   loading: PropTypes.bool,
   syncStatus: PropTypes.string,
-  gridOn: PropTypes.bool,
-  onToggleGrid: PropTypes.func,
   onRestore: PropTypes.func,
   onGoToDate: PropTypes.func,
   fullscreenOn: PropTypes.bool,
   onToggleFullscreen: PropTypes.func,
+  onUploadFiles: PropTypes.func.isRequired,
+  onExportAll: PropTypes.func.isRequired,
+  onDownload: PropTypes.func.isRequired,
+  newNoteSignal: PropTypes.number,
 };
 
 export default TuiView;

@@ -23,7 +23,7 @@
 
   /* the block the vim cursor is on */
   &.vim-normal .ne-block.vim-cur {
-    box-shadow: -2px 0 0 0 var(--tui-accent, #2563eb);
+    box-shadow: -2px 0 0 0 var(--tui-accent, var(--text-color, #111827));
     border-radius: var(--radius-sm, 4px);
   }
 
@@ -79,7 +79,7 @@
 
     /* selected block (multi-select sweep) */
     &.selected {
-      background: color-mix(in srgb, var(--tui-accent, #2563eb) 16%, transparent);
+      background: color-mix(in srgb, var(--tui-accent, var(--text-color, #111827)) 16%, transparent);
     }
 
     .ne-add {
@@ -138,7 +138,7 @@
       text-align: left;
       cursor: pointer;
       &:hover, &.sel { background: rgba(127, 127, 127, 0.12); }
-      &.sel { box-shadow: inset 2px 0 0 0 var(--tui-accent, #2563eb); }
+      &.sel { box-shadow: inset 2px 0 0 0 var(--tui-accent, var(--text-color, #111827)); }
 
       .ne-slash-icon {
         flex-shrink: 0;

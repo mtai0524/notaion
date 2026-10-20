@@ -14,13 +14,10 @@ description: Build/launch/drive recipe for verifying changes to the notaion fron
 
 - No playwright/puppeteer in the repo. Install `playwright-core` in the scratchpad and launch the system Chrome:
   `chromium.launch({ executablePath: '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--mute-audio'] })`.
-- Default landing is `/daily-note` (TUI view is default via `daily-note-view-mode` = `tui`).
+- Default landing is `/daily-note`, which renders the TUI (the only view).
 
 ## Gotchas
 
-- The pomodoro needs a selected note, unreachable without a backend. Instead seed a running timer via `page.addInitScript`:
-  `localStorage['daily-note-tui-pomodoro'] = { noteId: 'seed', phase: 'focus', cycle: 1, total: 1500, remaining: 1490, running: true, savedAt: Date.now() }`
-  then click `.tui-status .tui-pomo` to open the fullscreen overlay.
+- Without a backend there are no notes. Mock them with `page.route('**/api/DailyNote/**', …)` (return `[note]` for GETs, `{}` for writes) to exercise the editor and autosave.
 - `addInitScript` re-runs on every navigation — it wipes localStorage state you're trying to verify persistence of. For reload/persistence probes open a **second page in the same context** (init script is page-scoped) instead of `page.reload()`.
-- TUI is keyboard-driven; overlay keys: `,` pause · `.` stop · `s` chime · `m` ambient · `Esc` close. `page.keyboard.press` works.
-- Canvas activity (e.g. `.tui-pomo-wave` equalizer) is best asserted by counting non-transparent pixels via `getImageData`, not screenshots alone.
+- TUI is keyboard-driven: `T` options (Notion/Markdown format, nvim), `c` calendar, `?` help, `Esc` close. `page.keyboard.press` works.

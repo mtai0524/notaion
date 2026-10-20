@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { DEFAULT_SIZES, MIN, clampSizes, applyDelta, sizesFromDrag, SIZES_KEY, loadSizes, saveSizes } from './tuiResize';
+import { DEFAULT_SIZES, MIN, clampSizes, applyDelta, sizesFromDrag, focusSizes, SIZES_KEY, loadSizes, saveSizes } from './tuiResize';
 
 const sum = (a) => a.reduce((x, y) => x + y, 0);
 
@@ -129,5 +129,24 @@ describe('loadSizes / saveSizes', () => {
   it('lệch trong sai số ±0.5 vẫn nhận (và được chuẩn hoá)', () => {
     localStorage.setItem(SIZES_KEY, JSON.stringify([16.2, 35, 49]));
     expect(sum(loadSizes())).toBeCloseTo(100);
+  });
+});
+
+describe('focusSizes', () => {
+  it('gives the focused panel its share', () => {
+    expect(focusSizes('notes', 60)[1]).toBe(60);
+  });
+  it('splits the rest in default proportions', () => {
+    const [folders, , preview] = focusSizes('notes', 60);
+    expect(preview / folders).toBeCloseTo(DEFAULT_SIZES[2] / DEFAULT_SIZES[0]);
+  });
+  it('keeps the total at 100', () => {
+    expect(sum(focusSizes('preview', 70))).toBeCloseTo(100);
+  });
+  it('never squeezes a panel under MIN', () => {
+    expect(Math.min(...focusSizes('preview', 70))).toBeGreaterThanOrEqual(MIN);
+  });
+  it('falls back to defaults for an unknown panel', () => {
+    expect(focusSizes('nope', 60)).toEqual(DEFAULT_SIZES);
   });
 });
