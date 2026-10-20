@@ -1,29 +1,26 @@
 # Notaion Daily — desktop app
 
-App desktop gọn nhẹ cho **Daily Notes** của Notaion. Dùng Tauri 2 (WebView2 có sẵn trên Windows) và Preact, không kéo theo antd/tiptap của web. Bộ cài khoảng vài MB, mở gần như tức thì.
+App desktop gọn nhẹ cho **Daily Notes** của Notaion, dùng Tauri 2 (WebView2 có sẵn trên Windows) và Preact. Phần giao diện ngày chính là **TUI của bản web** (`../src/components/pages/Note/TuiView.jsx`), chạy qua `preact/compat`. Nhờ vậy desktop và web luôn giống nhau, sửa một chỗ là cả hai cùng có. App không kéo theo antd/tiptap, bộ cài vẫn chỉ vài MB.
 
 Người dùng tải bộ cài từ trang web `/desktop` (menu **Desktop App**). Trang này trỏ tới GitHub Releases.
 
 ## Tính năng
-- **Nhanh:** hiện ngay dữ liệu cache trong localStorage, rồi mới đồng bộ ở nền. Mọi thay đổi vào hàng đợi ghi (outbox) trước, nên mất mạng vẫn ghi được và sẽ tự gửi khi có mạng lại.
-- **Ghi nhanh toàn hệ thống:** `Ctrl+Alt+N` gọi app lên và focus ô *Ghi nhanh*. `Enter` lưu, `Shift+Enter` lưu rồi viết tiếp nội dung, `Esc` (khi ô trống) ẩn app xuống khay.
+- **Giống bản web:** layout TUI 3 cột FOLDERS · NOTES · PREVIEW, soạn thảo kiểu **Notion (block)** hoặc **Markdown**, tuỳ chọn chế độ nvim. Có focus expand, phóng to panel bằng `z`, lịch `c`, Telescope `Ctrl+P`, lệnh `:`, trợ giúp `?`.
+- **Options** (`T`) gồm các tab:
+  - EDITOR, VIEW.
+  - APPEARANCE: màu active, viền, bo góc, độ trong suốt, ảnh nền.
+  - TEXT: font, độ đậm, cỡ chữ, giãn dòng, màu chữ, riêng cho từng panel.
+  - Mọi tuỳ chọn lưu trong localStorage, có nút khôi phục mặc định.
+- **Nhanh:** hiện ngay dữ liệu cache trong localStorage, rồi mới đồng bộ ở nền. Mọi thay đổi vào hàng đợi ghi (outbox) trước, nên mất mạng vẫn ghi được (thanh trên hiện `offline — will sync`) và sẽ tự gửi khi có mạng lại.
+- **Ghi nhanh toàn hệ thống:** `Ctrl+Alt+N` gọi app lên, chuyển về hôm nay và mở một ghi chú mới để gõ tiêu đề ngay.
 - Chạy nền ở khay hệ thống, nút X chỉ ẩn cửa sổ. Chỉ chạy một bản (mở lần hai sẽ focus bản đang chạy).
-- Tìm mọi ngày bằng `Ctrl+K`, không phân biệt dấu (gõ `hop du an` vẫn ra "Họp dự án").
-- **Chế độ nvim** (bật/tắt bằng `V`, app nhớ lựa chọn): soạn thảo kiểu vim ngay trong ghi chú, cùng bộ phím di chuyển với chế độ nvim của web.
-  - `Enter` từ danh sách mở ghi chú ở **NORMAL**; `i a I A o O` vào INSERT, `Esc` về NORMAL, `Esc` lần nữa về danh sách.
-  - Di chuyển `h l w b e 0 $ j k gg G` (có số đếm, ví dụ `2w`, `5j`). Hết khối thì `w`/`j` sang khối kế.
-  - Sửa `x X s r D C dw cw d$ dd yy p P` (ví dụ `3dd`, `cw`), hoàn tác `u`, làm lại `Ctrl+r`.
-  - Chưa có: VISUAL, lặp lệnh bằng `.`, dòng lệnh `:`, tìm trong ghi chú `/`.
-- **Export** (`E`): toàn bộ ghi chú ở mọi ngày, lưu thẳng vào thư mục Downloads.
-  - `1` Markdown (`.md`): mọi ngày trong một file.
-  - `2` Backup (`.json`): đầy đủ mọi trường để lưu trữ và nhập lại.
-  - `3` Zip (`.zip`): `notes/<ngày>.md` + `notes.json` + thư mục `attachments/` chứa ảnh và file đã tải về. Link trong Markdown được đổi sang bản local; file nào không tải được thì giữ link gốc và được ghi vào `download-errors.txt`.
-  - Web có cùng chức năng: menu Tools hoặc lệnh `:export all | json | zip` trong TUI.
-- Soạn thảo: `Ctrl+L` bật/tắt checkbox, `Ctrl+;` chèn `[HH:MM]`, `Enter` tự nối danh sách.
-- Điều hướng: `Alt+←/→` đổi ngày, `Alt+Home` về hôm nay, `Alt+↑/↓` chuyển ghi chú, `Ctrl+R` tải lại.
-- Đăng nhập bằng email/mật khẩu, hoặc **qua trình duyệt** (GitHub/Discord). Cách thứ hai dùng deep-link `notaion://auth?token=…` từ trang web `/desktop-auth`.
-
-Ghi chú tạo từ app có đủ các trường layout (x/y/width…), nên vẫn hiển thị bình thường trên canvas của web.
+- Theme sáng/tối tự theo cài đặt của Windows.
+- Hộp xác nhận `y`/`n` hoạt động cả khi đang bật bộ gõ tiếng Việt (Unikey/Telex).
+- **Export:** nút ⬇ trên thanh trên cùng hoặc lệnh `:export | all | json | zip`, lưu thẳng vào thư mục Downloads.
+  - Markdown (`.md`): một ngày, hoặc mọi ngày trong một file.
+  - Backup (`.json`): đầy đủ mọi trường để lưu trữ và nhập lại.
+  - Zip (`.zip`): `notes/<ngày>.md` + `notes.json` + thư mục `attachments/` chứa ảnh và file đã tải về. Link trong Markdown được đổi sang bản local; file nào không tải được thì giữ link gốc và được ghi vào `download-errors.txt`.
+- Đăng nhập bằng email/mật khẩu, hoặc **qua trình duyệt** (GitHub/Discord). Cách thứ hai dùng deep-link `notaion://auth?token=…` từ trang web `/desktop-auth`. Nút `@tên ⏻` trên thanh trên cùng để đăng xuất.
 
 ## Phát triển
 Cần Node 18+, Rust và **Visual Studio Build Tools (C++)** để có MSVC linker.
@@ -46,7 +43,7 @@ API mặc định là `https://notaion.runasp.net`. Có thể đổi bằng `VIT
 
 ## Phát hành
 1. Tăng `version` trong `src-tauri/tauri.conf.json` (và `package.json`).
-2. `git tag desktop-v0.1.0 && git push origin desktop-v0.1.0`
+2. `git tag desktop-v0.3.0 && git push origin desktop-v0.3.0`
 3. Workflow `.github/workflows/desktop-release.yml` build trên `windows-latest` và đăng file `*_x64-setup.exe` lên GitHub Release.
 
 Giữ minor version của các crate `tauri-plugin-*` khớp với package npm `@tauri-apps/plugin-*` tương ứng, nếu lệch thì `tauri build` sẽ báo lỗi.
@@ -54,12 +51,14 @@ Giữ minor version của các crate `tauri-plugin-*` khớp với package npm `
 ## Cấu trúc
 | Đường dẫn | Vai trò |
 |---|---|
+| `src/components/TuiApp.jsx` | Nối TUI của web với store của desktop: cache, outbox, upload, export qua Tauri, quick capture |
+| `../src/components/pages/Note/` | TUI dùng chung với web (`TuiView`, `DayToolbar`, Options…). React code, chạy qua `preact/compat` |
 | `src/lib/store.js` | Cache theo ngày, outbox, đồng bộ |
 | `src/lib/api.js` | Client HTTP (đi qua `plugin-http` phía Rust, nên không bị CORS), kiểm tra hạn JWT |
-| `src/lib/notes.js`, `editing.js` | Logic thuần: merge, search, phím tắt soạn thảo |
-| `src/lib/vim.js`, `vimEditor.js` | Logic thuần của nvim: di chuyển, toán tử, undo/redo (`vimEditor.js` chép nguyên từ web) |
+| `src/lib/notes.js` | Logic thuần: tạo note, merge, sắp xếp |
 | `../shared/exportNotes.js` | Logic export (md / json / zip) dùng chung với web, không phụ thuộc thư viện nào. Test ở `src/lib/exportNotes.test.js` |
-| `src/components/` | UI Preact |
 | `src-tauri/src/lib.rs` | Tray, hotkey toàn cục, single-instance, deep-link |
+
+Code dùng chung nằm ngoài `desktop/`, mà CI chỉ cài `desktop/node_modules`. Vì vậy mọi gói mà các file đó import (`prop-types`, `date-fns`, `react-icons`, `react-beautiful-dnd`, `sass`) phải có trong `desktop/package.json` và trong `resolve.dedupe` của `vite.config.js`.
 
 **Lưu ý bảo mật:** `DailyNoteController` phía backend không có `[Authorize]`. Nếu gửi token hết hạn, request sẽ âm thầm ghi vào user `anonymous`. Vì vậy app tự chặn token hết hạn và bắt đăng nhập lại.

@@ -72,10 +72,10 @@ const DesktopApp = () => {
         ) : (
           <>
             <ul className="desktop-features">
-              <li><kbd>Ctrl+Alt+N</kbd> ghi nhanh từ bất kỳ đâu, <kbd>Esc</kbd> ẩn lại</li>
+              <li>Giao diện TUI giống bản web: soạn kiểu Notion hoặc Markdown, tuỳ chỉnh giao diện và chữ trong <kbd>T</kbd></li>
+              <li><kbd>Ctrl+Alt+N</kbd> ghi nhanh từ bất kỳ đâu</li>
               <li>Mở tức thì từ cache, vẫn ghi được khi mất mạng — tự đồng bộ khi có mạng lại</li>
-              <li>Tìm kiếm mọi ngày <kbd>Ctrl+K</kbd>, không phân biệt dấu</li>
-              <li>Checklist <kbd>Ctrl+L</kbd>, chèn giờ <kbd>Ctrl+;</kbd>, tự nối danh sách khi Enter</li>
+              <li>Tìm kiếm mọi ngày <kbd>Ctrl+P</kbd></li>
               <li>Chạy nền ở khay hệ thống, cài đặt ~5 MB</li>
             </ul>
             <a className="desktop-btn primary" href={DESKTOP_DOWNLOAD_URL} target="_blank" rel="noreferrer">

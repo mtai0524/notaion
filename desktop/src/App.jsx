@@ -4,7 +4,7 @@ import { createStore } from "./lib/store.js";
 import { isTokenExpired } from "./lib/jwt.js";
 import { onAuthLink } from "./lib/native.js";
 import { Login } from "./components/Login.jsx";
-import { DailyView } from "./components/DailyView.jsx";
+import { TuiApp } from "./components/TuiApp.jsx";
 
 const TOKEN_KEY = "nd:token";
 
@@ -52,5 +52,5 @@ export function App() {
   };
 
   if (!token) return <Login onSignIn={signIn} notice={notice} />;
-  return <DailyView store={store} token={token} onSignOut={signOut} />;
+  return <TuiApp store={store} token={token} onSignOut={signOut} />;
 }
