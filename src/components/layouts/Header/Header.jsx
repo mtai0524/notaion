@@ -20,6 +20,7 @@ import {
   faComment,
   faTrashCan,
   faGamepad,
+  faCity,
   faDesktop,
   faClock,
   faBookOpen,
@@ -366,6 +367,9 @@ const Header = () => {
       case "game":
         navigate("/game");
         break;
+      case "iso-city":
+        navigate("/iso-city");
+        break;
       case "desktop":
         navigate("/desktop");
         break;
@@ -468,6 +472,15 @@ const Header = () => {
             }}
           >
             Mini Game
+          </Menu.Item>
+          <Menu.Item
+            key="iso-city"
+            icon={<FontAwesomeIcon icon={faCity} />}
+            style={{
+              backgroundColor: location.pathname === "/iso-city" ? "#f0f0f0" : "transparent",
+            }}
+          >
+            Iso City
           </Menu.Item>
           <Menu.Item
             key="desktop"

@@ -37,6 +37,7 @@ const FilesPage = lazy(() => import("./pages/FilesPage"));
 const InsightDashboard = lazy(() => import("./components/pages/InsightDashboard/InsightDashboard"));
 const MiniGame = lazy(() => import("./components/pages/MiniGame/MiniGame"));
 const PixelGame = lazy(() => import("./components/pages/PixelGame/PixelGame"));
+const IsoCity = lazy(() => import("./components/pages/IsoCity/IsoCity"));
 const DesktopApp = lazy(() => import("./components/pages/DesktopApp/DesktopApp"));
 
 
@@ -172,6 +173,7 @@ const MainApp = () => {
         <Route path="/files" element={<FilesPage />} />
         <Route path="/game" element={<MiniGame />} />
         <Route path="/pixel-game" element={<PixelGame />} />
+        <Route path="/iso-city" element={<IsoCity />} />
         <Route path="/desktop" element={<DesktopApp />} />
         <Route path="/desktop-auth" element={<DesktopApp />} />
 
