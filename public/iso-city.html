@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="vi" data-theme="dark" data-accent="ember">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iso architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg:#0c0d0e; --panel:#141516; --edge:#222426;
+    --line:#3d4144; --detail:#2b2e30; --body:#17181a; --deck:#1b1d1f;
+    --ink:#868b8f; --ink-hi:#e6e8e9;
+    --glass:#0f1011; --recess:#0e0f10;
+    --accent:#ff7a1a; --accent-hi:#ffb070;
+    --mono:"DM Mono",ui-monospace,Consolas,monospace;
+  }
+  :root[data-theme="light"] {
+    --bg:#e9eaea; --panel:#f6f6f5; --edge:#d6d8d8;
+    --line:#8e9397; --detail:#c3c6c8; --body:#ececeb; --deck:#f3f3f2;
+    --ink:#6a6f73; --ink-hi:#16181a; --glass:#dcdede; --recess:#e2e4e4;
+  }
+  :root { --accent-dim:color-mix(in srgb, var(--accent) 10%, transparent); --glass-on:color-mix(in srgb, var(--accent) 10%, var(--glass)); }
+  :root[data-accent="cyan"]   { --accent:#22d3ee; --accent-hi:#9beefa; }
+  :root[data-accent="lime"]   { --accent:#a3e635; --accent-hi:#d6f79f; }
+  :root[data-accent="violet"] { --accent:#a78bfa; --accent-hi:#d6caff; }
+  :root[data-accent="rose"]   { --accent:#fb7185; --accent-hi:#fdb8c2; }
+  :root[data-accent="ice"]    { --accent:#dfe9ef; --accent-hi:#ffffff; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:13px var(--mono); padding:20px 16px 32px; transition:background .4s; }
+  .wrap { max-width:1180px; margin:auto; display:grid; gap:14px; }
+  .top { display:flex; align-items:center; gap:18px; padding:0 4px; text-transform:uppercase; letter-spacing:.14em; }
+  .top .hi { color:var(--ink-hi); margin-right:auto; }
+  .top .dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--accent); box-shadow:0 0 8px var(--accent); margin-right:10px; vertical-align:1px; }
+  .top button { font:inherit; color:var(--ink); background:none; border:1px solid var(--edge); border-radius:10px; padding:6px 12px; letter-spacing:.14em; text-transform:uppercase; cursor:pointer; }
+  .top button:hover { color:var(--ink-hi); border-color:var(--line); }
+  .top .theme { width:30px; height:30px; padding:0; border-radius:999px; color:var(--ink-hi); letter-spacing:0; }
+  .layout { display:grid; grid-template-columns:230px minmax(0,1fr); gap:14px; align-items:stretch; }
+  nav { display:grid; gap:4px; align-content:start; background:var(--panel); border:1px solid var(--edge); border-radius:22px; padding:14px; }
+  nav button { display:flex; gap:12px; align-items:center; text-align:left; padding:9px 12px; font:inherit; letter-spacing:.06em; color:var(--ink); background:none; border:1px solid transparent; border-radius:10px; cursor:pointer; }
+  nav button:hover { color:var(--ink-hi); }
+  nav button .n { color:var(--line); font-size:12px; }
+  nav button[aria-current="true"] { color:var(--ink-hi); border-color:var(--edge); background:var(--bg); }
+  nav button[aria-current="true"] .n { color:var(--accent); text-shadow:0 0 8px var(--accent); }
+  .side { display:grid; grid-template-rows:auto 1fr auto; gap:14px; }
+  .credit { display:grid; gap:4px; padding:0 16px 10px; font-size:12px; line-height:1.5; }
+  .credit .dim { color:var(--line); }
+  .swatches { display:flex; gap:4px; padding:4px; width:fit-content; border:1px solid var(--edge); border-radius:999px; margin-bottom:10px; }
+  .swatches button { width:26px; height:26px; border-radius:50%; border:1px solid transparent; background:none; cursor:pointer; display:grid; place-items:center; padding:0; }
+  .swatches i { width:12px; height:12px; border-radius:50%; background:var(--sw); border:1px solid var(--line); }
+  .swatches button[aria-checked="true"] { border-color:var(--line); }
+  .swatches button[aria-checked="true"] i { box-shadow:0 0 10px 1px var(--sw); }
+  figure { margin:0; background:var(--panel); border:1px solid var(--edge); border-radius:22px; padding:22px 26px; display:grid; gap:6px; }
+  .cap { display:flex; justify-content:space-between; gap:18px; text-transform:uppercase; letter-spacing:.14em; }
+  .cap .hi { color:var(--ink-hi); text-transform:none; letter-spacing:.05em; white-space:nowrap; }
+  #holder { aspect-ratio:4/3; border-radius:14px; transition:background .5s; }
+  #holder.glow { background:radial-gradient(ellipse 50% 45% at 50% 55%, var(--accent-dim), transparent 72%); }
+  #stage { width:100%; height:100%; display:block; user-select:none; }
+
+  .face { fill:var(--body); stroke:var(--line); stroke-width:1; vector-effect:non-scaling-stroke; stroke-linejoin:round; transition:stroke .2s; }
+  .face.top { fill:var(--deck); }
+  .face.recess { fill:var(--recess); }
+  .detail { fill:none; stroke:var(--detail); stroke-width:1; vector-effect:non-scaling-stroke; }
+  .glass { fill:var(--glass); transition:fill .35s, stroke .35s; }
+  .glass.hot { fill:var(--glass-on); stroke:var(--accent); }
+  .halo { fill:var(--accent); opacity:0; transition:opacity .4s; pointer-events:none; }
+  .halo.hot { opacity:.2; }
+  .led { fill:var(--detail); transition:fill .2s; }
+  .led.hot { fill:var(--accent); }
+  .blink { animation:blink 1.2s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:.15; } }
+  .win { fill:var(--recess); stroke:var(--detail); stroke-width:.8; vector-effect:non-scaling-stroke; transition:fill .4s, stroke .4s; }
+  .win.hot { fill:color-mix(in srgb, var(--accent) 28%, var(--glass)); stroke:var(--accent); }
+  .neon-t { fill:var(--detail); font-family:var(--mono); font-weight:500; transition:fill .3s; }
+  .neon-t.hot { fill:var(--accent-hi); }
+  .flicker.hot { animation:flicker 3.4s infinite; }
+  @keyframes flicker { 0%, 90%, 100% { opacity:1; } 91% { opacity:.2; } 93% { opacity:1; } 95% { opacity:.35; } 96% { opacity:1; } }
+  .scr { fill:var(--accent-hi); font-family:var(--mono); }
+  .scr-accent { fill:var(--accent); }
+  .wire { fill:none; stroke:var(--line); stroke-width:1; vector-effect:non-scaling-stroke; stroke-linecap:round; transition:stroke .4s; }
+  .wire.hot { stroke:var(--accent); }
+  .wire-under { fill:none; stroke:var(--panel); stroke-width:3.5; stroke-linecap:round; }
+  .pulse { fill:none; stroke:var(--accent-hi); stroke-width:2.2; stroke-linecap:round; vector-effect:non-scaling-stroke; stroke-dasharray:70 1200; stroke-dashoffset:70; opacity:0; }
+  .pulse.go { animation:flow .55s linear; }
+  @keyframes flow { 0% { stroke-dashoffset:70; opacity:1; } 90% { opacity:1; } 100% { stroke-dashoffset:-1000; opacity:0; } }
+  .press { cursor:pointer; transition:transform 60ms ease-out; }
+  .press.down { transform:translateY(2px); }
+  .press .face { transition:fill .6s ease-out, stroke .6s ease-out; }
+  .press.lit .face { fill:var(--accent); stroke:var(--accent-hi); transition:none; }
+  .press.lit .face.top { fill:var(--accent-hi); }
+  .press.lit { filter:url(#glow); }
+  .press:hover .face.top { stroke:var(--ink); }
+  .sign { opacity:0; transition:opacity .3s; }
+  .sign.hot { opacity:1; }
+  #car { transition:transform .7s cubic-bezier(.5,0,.3,1); }
+  #car rect { fill:var(--accent); }
+  .door .shutter { transition:transform .6s cubic-bezier(.5,0,.3,1); transform-box:fill-box; transform-origin:50% 0; }
+  .door.open .shutter { transform:scaleY(.12); }
+  .smoke { fill:color-mix(in srgb, var(--ink) 22%, transparent); stroke:color-mix(in srgb, var(--ink) 45%, transparent); stroke-width:1; vector-effect:non-scaling-stroke; transform-box:fill-box; transform-origin:center; animation:smoke 3s ease-out forwards; pointer-events:none; }
+  @keyframes smoke { from { opacity:.8; transform:translate(0,0) scale(.5); } to { opacity:0; transform:translate(26px,-70px) scale(2.4); } }
+  .trail { fill:none; stroke-width:1.6; stroke-linecap:round; vector-effect:non-scaling-stroke; }
+  .lane0 .trail { stroke:var(--accent-hi); }
+  .lane1 .trail { stroke:var(--accent); opacity:.75; }
+  .lane0 .head { fill:#fff; }
+  .lane1 .head { fill:var(--accent); }
+  .river { fill:color-mix(in srgb, var(--accent) 5%, var(--recess)); stroke:var(--line); vector-effect:non-scaling-stroke; }
+  .ripple { fill:none; stroke:color-mix(in srgb, var(--accent) 35%, transparent); vector-effect:non-scaling-stroke; }
+  .district { cursor:pointer; }
+  .district.active > g:nth-child(-n+3) rect { stroke:var(--accent); transition:stroke .3s; }
+  .floor, .door, .house, .tower, #hall, #chimney, #landmark { cursor:pointer; }
+  .floor:hover .face, .door:hover .face, .house:hover .face, .tower:hover .face, #landmark:hover .face { stroke:var(--ink); }
+  :root[data-theme="light"] .halo, :root[data-theme="light"] #holder.glow { opacity:0; background:none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="soft" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000"><feGaussianBlur stdDeviation="1.6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="glow" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="bloom" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000"><feGaussianBlur stdDeviation="8"/></filter>
+  </defs>
+</svg>
+<div class="wrap">
+  <div class="top">
+    <span class="hi"><span class="dot"></span>Iso architecture</span>
+    <button id="prev">← Prev</button><button id="next">Next →</button>
+    <button class="theme" id="theme" title="Sáng / tối">◐</button>
+  </div>
+  <div class="layout">
+    <div class="side">
+      <nav id="nav" aria-label="Hình"></nav>
+      <div></div>
+      <aside class="credit">
+        <div class="swatches" id="swatches" role="radiogroup" aria-label="Màu phát sáng"></div>
+        <span><span class="dim">Made with</span> Claude</span>
+        <span class="dim">Phong cách theo iso-glow của April Zhu (MIT)</span>
+      </aside>
+    </div>
+    <figure>
+      <div class="cap"><span class="hi" id="fignum">Fig 1</span><span id="figname"></span></div>
+      <div id="holder"></div>
+      <div class="cap"><span id="hint"></span><span class="hi" id="readout"></span></div>
+    </figure>
+  </div>
+</div>
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const C = Math.cos(Math.PI / 6), S = Math.sin(Math.PI / 6), Q = Math.PI / 4;
+
+function kernel(OX, OY) {
+  const P = (x, y, z) => [(x - y) * C + OX, (x + y) * S - z + OY];
+  const D = (x, y, z) => [(x - y) * C, (x + y) * S - z];
+  const plane = (O, U, V) => { const o = P(...O), u = D(...U), v = D(...V); return `matrix(${u[0]} ${u[1]} ${v[0]} ${v[1]} ${o[0]} ${o[1]})`; };
+  const TOP = (x, y, z) => plane([x, y, z], [1, 0, 0], [0, 1, 0]);
+  const FRONT = (x, y, z) => plane([x, y, z], [1, 0, 0], [0, 0, -1]);
+  const SIDE = (x, y, z) => plane([x, y, z], [0, -1, 0], [0, 0, -1]);
+  const rect = (t, w, h, cls) => `<g transform="${t}"><rect class="${cls}" width="${w}" height="${h}"/></g>`;
+  const path = pts => 'M' + pts.map(p => P(...p).map(v => v.toFixed(2)).join(' ')).join('L');
+  const poly = (pts, cls = 'face') => `<path class="${cls}" d="${path(pts)}Z"/>`;
+  const arc = (cx, cy, r, a0, a1, z, n = 24) => Array.from({ length: n + 1 }, (_, i) => { const a = a0 + (a1 - a0) * i / n; return [cx + r * Math.cos(a), cy + r * Math.sin(a), z]; });
+  const cylinder = (cx, cy, z, r, h, cls = '') => {
+    const c = cls ? ' ' + cls : '';
+    const wall = [...arc(cx, cy, r, -Q, 3 * Q, z), ...arc(cx, cy, r, 3 * Q, -Q, z + h)];
+    return poly(wall, 'face' + c) + poly(arc(cx, cy, r, 0, 2 * Math.PI, z + h, 32), 'face top' + c);
+  };
+  const ring = (cx, cy, z, r) => `<path class="detail" d="${path(arc(cx, cy, r, -Q, 3 * Q, z))}"/>`;
+  const box = (x, y, z, w, d, h, cls = '') => {
+    const c = cls ? ' ' + cls : '';
+    return rect(SIDE(x + w, y + d, z + h), d, h, 'face' + c) + rect(FRONT(x, y + d, z + h), w, h, 'face' + c) + rect(TOP(x, y, z + h), w, d, 'face top' + c);
+  };
+  const dot = (x, y, z, r, cls, id = '') => { const [cx, cy] = P(x, y, z); return `<circle class="${cls}"${id ? ` id="${id}"` : ''} filter="url(#soft)" cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${r}"/>`; };
+  return { OX, OY, P, TOP, FRONT, SIDE, path, poly, cylinder, ring, box, dot };
+}
+
+function frame(points, margin = 0.08, aspect = 4 / 3) {
+  const d = points.map(([x, y, z]) => [(x - y) * C, (x + y) * S - z]);
+  const x0 = Math.min(...d.map(p => p[0])), x1 = Math.max(...d.map(p => p[0]));
+  const y0 = Math.min(...d.map(p => p[1])), y1 = Math.max(...d.map(p => p[1]));
+  const m = margin * Math.max(x1 - x0, y1 - y0);
+  let w = x1 - x0 + 2 * m, h = y1 - y0 + 2 * m, ox = m - x0, oy = m - y0;
+  if (w / h < aspect) { const nw = h * aspect; ox += (nw - w) / 2; w = nw; }
+  else { const nh = w / aspect; oy += (nh - h) / 2; h = nh; }
+  return { ...kernel(ox, oy), viewBox: `0 0 ${w.toFixed(1)} ${h.toFixed(1)}` };
+}
+
+const slits = (a0, a1, step, b0, b1, vertical = true) => {
+  let s = '';
+  for (let a = a0; a <= a1 + 1e-6; a += step)
+    s += vertical ? `<line class="detail" x1="${a}" y1="${b0}" x2="${a}" y2="${b1}"/>` : `<line class="detail" x1="${b0}" y1="${a}" x2="${b1}" y2="${a}"/>`;
+  return s;
+};
+
+function grid(cols, rows, W, H, { mx = 4, my = 4, gx = 3, gy = 3, cls = 'win', attr = () => '' } = {}) {
+  const w = (W - 2 * mx - (cols - 1) * gx) / cols, h = (H - 2 * my - (rows - 1) * gy) / rows;
+  let s = '';
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++)
+    s += `<rect class="${cls}" ${attr(c, r)} x="${(mx + c * (w + gx)).toFixed(2)}" y="${(my + r * (h + gy)).toFixed(2)}" width="${w.toFixed(2)}" height="${h.toFixed(2)}" rx=".8"/>`;
+  return s;
+}
+
+function plate(K, W, D, PZ = 7) {
+  const screws = [[18, 18], [W - 18, 18], [18, D - 18], [W - 18, D - 18]]
+    .map(([x, y]) => `<circle class="face recess" cx="${x}" cy="${y}" r="3"/><line class="detail" x1="${x - 1.8}" y1="${y}" x2="${x + 1.8}" y2="${y}"/>`).join('');
+  return K.box(0, 0, 0, W, D, PZ) + `<g transform="${K.TOP(0, 0, PZ)}"><rect class="detail" x="9" y="9" width="${W - 18}" height="${D - 18}" rx="10"/>${screws}</g>`;
+}
+
+function tree(K, x, y, z, s = 1) {
+  let o = K.cylinder(x, y, z, 2.4 * s, 12 * s);
+  [[15, 12], [11, 22], [7, 31], [3.5, 39]].forEach(([r, h]) => { o += K.cylinder(x, y, z + h * s, r * s, 9 * s); });
+  return o;
+}
+
+const FIGS = [];
+
+/* Fig 1 — Glass pavilion: type on the console, the rooftop LED sign writes it. */
+FIGS.push({
+  id: 'pavilion',
+  name: 'Glass pavilion',
+  hint: 'Gõ phím viết lên bảng LED · bấm tầng bật đèn · bấm mái tắt/mở',
+  mount(stage, api) {
+    const PZ = 7, LZ = 47, FH = 38, BX = 50, BY = 40, BW = 170, BD = 140, RZ = LZ + 3 * FH;
+    const KX = 232, KY = 46, KW = 34, KD = 48, KT = RZ + 44;
+    const FLOOR_Z = [PZ, LZ + 4, LZ + FH + 4, LZ + 2 * FH + 4];
+    const QX = 24, QY = 198, QW = 170, QD = 56, QT = PZ + 10;
+    const SX = 50, SY = 178, SW = 170, SH = 36, ST = RZ + 6 + SH;
+    const K = api.place([[0, 270, 0], [300, 0, 7], [300, 270, 0], [0, 0, 7], [KX, KY, KT + 8], [KX + KW, KY, KT], [42, 32, RZ + 6], [42, 188, RZ + 6]]);
+    const { TOP, FRONT, SIDE, box, cylinder, path, dot } = K;
+
+    const windows = (n, len, h, i) => {
+      const step = (len - 8) / n, w = step - 5;
+      let s = `<rect class="halo" data-f="${i}" x="2" y="2" width="${len - 4}" height="${h - 4}" filter="url(#bloom)"/>`;
+      for (let k = 0; k < n; k++) s += `<rect class="face glass" data-f="${i}" filter="url(#soft)" x="${(6.5 + k * step).toFixed(2)}" y="6" width="${w.toFixed(2)}" height="${h - 11}" rx="1.2"/>`;
+      return s;
+    };
+
+    let svg = plate(K, 300, 270);
+    svg += `<g transform="${TOP(0, 0, PZ)}"><rect class="face recess" x="120" y="172" width="24" height="18" rx="2"/>${slits(122, 142, 4, 173, 189)}</g>`;
+    svg += tree(K, 24, 118, PZ) + tree(K, 24, 168, PZ);
+
+    svg += `<g class="floor" data-f="0">${box(70, 56, PZ, 140, 112, 40, 'glass')}
+      <g transform="${FRONT(70, 168, LZ)}">${windows(7, 140, 40, 0)}<rect class="face recess" x="58" y="12" width="24" height="28"/><line class="detail" x1="70" y1="12" x2="70" y2="40"/></g>
+      <g transform="${SIDE(210, 168, LZ)}">${windows(6, 112, 40, 0)}</g></g>`;
+    for (let i = 1; i <= 3; i++) {
+      const z = LZ + (i - 1) * FH, top = z + FH;
+      svg += `<g class="floor" data-f="${i}">` + box(BX - 4, BY - 4, z, BW + 8, BD + 8, 4) + box(BX, BY, z + 4, BW, BD, FH - 4);
+      svg += `<g transform="${FRONT(BX, BY + BD, top)}">${windows(9, BW, FH - 4, i)}</g>`;
+      svg += `<g transform="${SIDE(BX + BW, BY + BD, top)}">${windows(7, BD, FH - 4, i)}</g></g>`;
+    }
+
+    svg += `<g id="power">` + box(42, 32, RZ, 186, 156, 6) + box(70, 60, RZ + 6, 60, 44, 16);
+    svg += `<g transform="${FRONT(70, 104, RZ + 22)}">${slits(6, 54, 3, 3, 13)}</g>`;
+    svg += `<g transform="${TOP(140, 60, RZ + 6)}">${[0, 1, 2].map(r => `<rect class="face recess" x="0" y="${r * 30}" width="70" height="24" rx="1.5"/>${slits(6, 64, 8, r * 30 + 2, r * 30 + 22)}`).join('')}</g>`;
+    svg += box(KX, KY, PZ, KW, KD, KT - PZ);
+    svg += `<g transform="${FRONT(KX, KY + KD, KT)}"><rect class="face recess" x="10" y="8" width="14" height="${KT - PZ - 16}" rx="2"/><g id="car"><rect x="11.5" y="0" width="11" height="14" rx="1.5" filter="url(#soft)"/></g></g>`;
+    svg += `<g transform="${SIDE(KX + KW, KY + KD, KT)}">${slits(8, 40, 3.2, 10, 40)}${slits(8, 40, 3.2, KT - 60, KT - 20)}</g>`;
+    svg += cylinder(KX + KW / 2, KY + KD / 2, KT, 4, 6) + dot(KX + KW / 2, KY + KD / 2, KT + 8, 2.6, 'led blink', 'beacon');
+    svg += box(SX + 6, SY + 1, RZ + 6, 4, 3, 6) + box(SX + SW - 10, SY + 1, RZ + 6, 4, 3, 6) + box(SX, SY, RZ + 12, SW, 5, SH - 6);
+    svg += `<defs><clipPath id="sign-glass"><rect x="6" y="4" width="${SW - 12}" height="${SH - 14}" rx="2"/></clipPath></defs>
+      <g transform="${FRONT(SX, SY + 5, ST)}">
+        <rect class="face recess" x="3" y="2" width="${SW - 6}" height="${SH - 10}" rx="3"/>
+        <rect class="halo" x="6" y="4" width="${SW - 12}" height="${SH - 14}" filter="url(#bloom)"/>
+        <rect class="face glass" filter="url(#soft)" x="6" y="4" width="${SW - 12}" height="${SH - 14}" rx="2"/>
+        <g class="sign" clip-path="url(#sign-glass)"><g filter="url(#soft)">
+          <text class="scr" id="sign-text" x="11" y="19.2" font-size="12">&gt; </text>
+          <rect id="sign-cur" class="scr-accent blink" x="26" y="9" width="5.6" height="12"/>
+        </g></g>
+      </g></g>`;
+
+    svg += box(QX, QY, PZ, QW, QD, QT - PZ);
+    svg += `<g transform="${TOP(QX, QY, QT)}"><rect class="face recess" x="5" y="4" width="${QW - 10}" height="${QD - 8}" rx="3"/></g>`;
+    const ROWS = [
+      [['`',1],['1',1],['2',1],['3',1],['4',1],['5',1],['6',1],['7',1],['8',1],['9',1],['0',1],['-',1],['=',1],['Backspace',1]],
+      [['Tab',1.5],['q',1],['w',1],['e',1],['r',1],['t',1],['y',1],['u',1],['i',1],['o',1],['p',1],['[',1],[']',1.5]],
+      [['CapsLock',1.75],['a',1],['s',1],['d',1],['f',1],['g',1],['h',1],['j',1],['k',1],['l',1],[';',1],["'",1],['Enter',1.25]],
+      [['Shift',2.25],['z',1],['x',1],['c',1],['v',1],['b',1],['n',1],['m',1],[',',1],['.',1],['/',1],['ShiftRight',1.75]],
+      [['Control',1.25],['Alt',1.25],['Meta',1.25],[' ',7],['MetaRight',1.25],['AltRight',1],['ControlRight',1]],
+    ];
+    const AX = QX + 8, AY = QY + 6, U = (QW - 16) / 14, RD = (QD - 12) / ROWS.length, G = 1.2;
+    ROWS.forEach((row, r) => { let x = AX; row.forEach(([k, w]) => {
+      svg += `<g class="press key" data-key="${k.replace(/"/g, '&quot;')}">${box(x + G / 2, AY + r * RD + G / 2, QT, w * U - G, RD - G, 3)}</g>`;
+      x += w * U; }); });
+
+    const JX = 228, JY = 158;
+    const P0 = [QX + QW + 6, 228, PZ + 3], P1 = [216, 240, PZ + 2], P2 = [238, 196, PZ + 2], P3 = [JX + 4, JY + 9, PZ + 4];
+    const bez = t => P0.map((_, i) => (1 - t) ** 3 * P0[i] + 3 * (1 - t) ** 2 * t * P1[i] + 3 * (1 - t) * t ** 2 * P2[i] + t ** 3 * P3[i]);
+    const coil = [];
+    for (let i = 0; i <= 700; i++) {
+      const t = i / 700, p = bez(t), a = bez(Math.max(0, t - 1e-3)), b = bez(Math.min(1, t + 1e-3));
+      let T = b.map((v, j) => v - a[j]); const tl = Math.hypot(...T); T = T.map(v => v / tl);
+      let N1 = [T[1], -T[0], 0]; const nl = Math.hypot(...N1) || 1; N1 = N1.map(v => v / nl);
+      const N2 = [T[1] * N1[2] - T[2] * N1[1], T[2] * N1[0] - T[0] * N1[2], T[0] * N1[1] - T[1] * N1[0]];
+      const env = Math.min(1, Math.max(0, (t - .08) / .06)) * Math.min(1, Math.max(0, (.9 - t) / .06));
+      const ang = t * 26 * 2 * Math.PI;
+      coil.push(p.map((v, j) => v + env * 2.2 * (Math.cos(ang) * N1[j] + Math.sin(ang) * N2[j])));
+    }
+    const cable = path(coil);
+    svg += box(QX + QW, 224, PZ + 1, 6, 8, 6) + box(JX, JY, PZ, 10, 10, 12) + dot(JX + 5, JY + 5, PZ + 12, 1.8, 'led', 'junction');
+    svg += `<path class="wire-under" d="${cable}"/><path class="wire" filter="url(#soft)" d="${cable}"/><path class="pulse" filter="url(#glow)" pathLength="1000" d="${cable}"/>`;
+    svg += tree(K, 276, 128, PZ) + tree(K, 282, 250, PZ);
+
+    stage.innerHTML = svg;
+
+    const st = { on: true, lit: [true, false, true, false], lift: 2, text: 'XIN CHAO', key: null };
+    const q = s => stage.querySelector(s), qa = s => [...stage.querySelectorAll(s)];
+    const keys = new Map(qa('.key').map(k => [k.dataset.key, k]));
+    const TAIL = 18, CW = 12 * 0.6;
+
+    function render() {
+      st.lit.forEach((on, i) => qa(`[data-f="${i}"].glass, .halo[data-f="${i}"]`).forEach(el => el.classList.toggle('hot', st.on && on)));
+      qa('.floor[data-f="0"] > g > rect.glass').forEach(el => el.classList.toggle('hot', st.on && st.lit[0]));
+      qa('#power .glass, #power .halo, .sign, #beacon, #junction, .wire').forEach(el => el.classList.toggle('hot', st.on));
+      q('#car').style.transform = `translateY(${KT - FLOOR_Z[st.lift] - 18}px)`;
+      api.power(st.on);
+      const vis = st.text.slice(-TAIL);
+      q('#sign-text').textContent = '> ' + vis;
+      q('#sign-cur').setAttribute('x', 11 + (2 + vis.length) * CW + .4);
+      const parts = [st.on ? 'on' : 'off', `${st.text.length} ký tự`];
+      if (st.key) parts.push(`phím ${st.key}`);
+      api.readout(parts.join(' · '));
+    }
+
+    const BASE = { '!':'1','@':'2','#':'3','$':'4','%':'5','^':'6','&':'7','*':'8','(':'9',')':'0','_':'-','+':'=','{':'[','}':']',':':';','"':"'",'<':',','>':'.','?':'/','~':'`' };
+    function press(k, code = '') {
+      let id = k.length === 1 ? (BASE[k] || k.toLowerCase()) : k;
+      if (/Right$/.test(code)) id = code.replace(/Left|Right/, '') + 'Right';
+      const el = keys.get(id);
+      if (!el && k.length !== 1) return false;
+      if (el) api.flash(el);
+      st.key = k === ' ' ? 'space' : k.length === 1 ? k : id.replace('Right', '').toLowerCase();
+      if (st.on) {
+        api.replay(q('.pulse'));
+        if (k === 'Backspace') st.text = st.text.slice(0, -1);
+        else if (k === 'Enter') st.text = '';
+        else if (k.length === 1) st.text += k;
+      }
+      render();
+      return true;
+    }
+
+    stage.addEventListener('click', e => {
+      const k = e.target.closest('.key');
+      if (k) { const id = k.dataset.key; press(id.replace('Right', ''), /Right$/.test(id) ? id : ''); return; }
+      const f = e.target.closest('.floor');
+      if (f) { st.lit[+f.dataset.f] = !st.lit[+f.dataset.f]; st.lift = +f.dataset.f; render(); return; }
+      if (e.target.closest('#power')) { st.on = !st.on; render(); }
+    });
+    render();
+    return { key: e => press(e.key, e.code) };
+  },
+});
+
+/* Fig 2 — Factory: sawtooth hall, chimney, conveyor carrying crates into a bin. */
+FIGS.push({
+  id: 'factory',
+  name: 'Nhà máy',
+  hint: 'Space chạy/dừng · 1–3 hoặc bấm cửa cuốn · bấm xưởng',
+  mount(stage, api) {
+    /*  boxes            x    y    z    w    d    h
+        plate            0    0    0  320  260    7
+        chimney (r 11)  64   22    7    ·    ·  150
+        hall            30   40    7  170  110   83   + 5 sawtooth bays, 18 high
+        silos (r 14)   228   62    7    ·    ·   74   and 260 62
+        conveyor       200  112   23   96   14    3   -> bin at x 296                 */
+    const PZ = 7, W = 320, D = 260;
+    const HX = 30, HY = 40, HW = 170, HD = 110, HZ = 90, TH = 18, N = 5, TW = HW / N;
+    const CHX = 64, CHY = 22, CHT = PZ + 150;
+    const CY0 = 112, CB = 14, CZ = PZ + 16, CX0 = HX + HW, CL = 96;
+    const K = api.place([[0, D, 0], [W, 0, PZ], [W, D, 0], [0, 0, PZ], [CHX, CHY, CHT + 40], [HX, HY, HZ + TH]]);
+    const { P, TOP, FRONT, SIDE, box, cylinder, poly, ring, dot } = K;
+
+    let svg = plate(K, W, D);
+    svg += `<g transform="${TOP(0, 0, PZ)}">
+      <rect class="face recess" x="14" y="166" width="${W - 28}" height="18" rx="3"/>
+      <line class="detail" x1="20" y1="175" x2="${W - 20}" y2="175" stroke-dasharray="8 6"/>
+      ${[0, 1, 2, 3, 4, 5].map(i => `<line class="detail" x1="${120 + i * 26}" y1="196" x2="${120 + i * 26}" y2="232"/>`).join('')}
+      <line class="detail" x1="120" y1="232" x2="250" y2="232"/>
+    </g>`;
+
+    svg += `<g id="chimney">` + cylinder(CHX, CHY, PZ, 11, CHT - PZ);
+    [40, 80, 120].forEach(z => { svg += ring(CHX, CHY, PZ + z, 11); });
+    svg += cylinder(CHX, CHY, CHT, 13, 5) + dot(CHX + 8, CHY + 8, CHT - 8, 1.8, 'led blink', 'chim-led') + `</g>`;
+
+    const door = (x, i) => `<g class="door" data-d="${i}">
+      <rect class="face recess" x="${x - 2}" y="35" width="44" height="48"/>
+      <rect class="halo" x="${x}" y="37" width="40" height="46" filter="url(#bloom)"/>
+      <rect class="face glass inside" x="${x}" y="37" width="40" height="46"/>
+      <path class="detail" d="M${x + 8} 83 v-16 h10 l8 -10 h6 M${x + 22} 83 v-8 h12"/>
+      <g class="shutter"><rect class="face" x="${x}" y="37" width="40" height="46"/>${slits(41, 81, 4, x + 1, x + 39, false)}</g>
+      <circle class="led" filter="url(#soft)" cx="${x + 44}" cy="33" r="1.6"/>
+    </g>`;
+    svg += `<g id="hall">` + box(HX, HY, PZ, HW, HD, HZ - PZ);
+    svg += `<g transform="${FRONT(HX, HY + HD, HZ)}">
+      <rect class="halo band" x="6" y="6" width="${HW - 12}" height="14" filter="url(#bloom)"/>
+      ${grid(10, 1, HW, 26, { mx: 6, my: 6, gx: 4, cls: 'face glass band' })}
+      ${[0, 1, 2].map(i => door(14 + i * 54, i)).join('')}
+    </g>`;
+    svg += `<g transform="${SIDE(HX + HW, HY + HD, HZ)}">
+      <rect class="halo band" x="6" y="6" width="${HD - 12}" height="14" filter="url(#bloom)"/>
+      ${grid(7, 1, HD, 26, { mx: 6, my: 6, gx: 4, cls: 'face glass band' })}
+      <rect class="face recess" x="20" y="54" width="22" height="20" rx="1"/>
+      ${slits(50, 72, 4, 60, 100, false)}
+    </g>`;
+    for (let i = 0; i < N; i++) {
+      const a = HX + i * TW, b = a + TW;
+      svg += poly([[a, HY, HZ], [b, HY, HZ + TH], [b, HY + HD, HZ + TH], [a, HY + HD, HZ]], 'face top');
+      svg += poly([[a, HY + HD, HZ], [b, HY + HD, HZ], [b, HY + HD, HZ + TH]]);
+      svg += poly([[b, HY, HZ], [b, HY + HD, HZ], [b, HY + HD, HZ + TH], [b, HY, HZ + TH]]);
+      svg += `<g transform="${SIDE(b, HY + HD, HZ + TH)}"><rect class="halo band" x="3" y="3" width="${HD - 6}" height="${TH - 6}" filter="url(#bloom)"/><rect class="face glass band" x="3" y="3" width="${HD - 6}" height="${TH - 6}" rx="1"/>${slits(14, HD - 10, 12, 3, TH - 3)}</g>`;
+    }
+    svg += `</g>`;
+
+    [[228, 62], [260, 62]].forEach(([x, y]) => {
+      svg += cylinder(x, y, PZ, 14, 74);
+      [24, 48].forEach(z => { svg += ring(x, y, PZ + z, 14); });
+      svg += cylinder(x, y, PZ + 74, 9, 6) + cylinder(x, y, PZ + 80, 3, 6);
+    });
+
+    [214, 244, 274].forEach(x => { svg += box(x, CY0 + 1, PZ, 3, 3, CZ - PZ) + box(x, CY0 + CB - 4, PZ, 3, 3, CZ - PZ); });
+    svg += box(CX0, CY0, CZ, CL, CB, 3);
+    svg += `<g transform="${TOP(CX0, CY0, CZ + 3)}">${slits(4, CL - 4, 6, 1, CB - 1)}</g>`;
+    svg += `<g id="crates"></g>`;
+    svg += box(CX0 + CL, CY0 - 6, PZ, 18, 26, 16);
+    svg += `<g transform="${TOP(CX0 + CL, CY0 - 6, PZ + 16)}"><rect class="face recess" x="2" y="2" width="14" height="22" rx="1"/></g>`;
+    svg += dot(CX0 + CL + 18, CY0 + 10, PZ + 10, 1.8, 'led', 'bin-led');
+
+    svg += box(24, 196, PZ, 26, 22, 20) + box(22, 194, PZ + 20, 30, 26, 3);
+    svg += `<g transform="${FRONT(24, 218, PZ + 20)}"><rect class="face glass band" x="4" y="4" width="18" height="8" rx="1"/></g>`;
+    svg += box(54, 186, PZ, 4, 4, 12) + `<path class="wire hot" d="${K.path([[56, 186, PZ + 11], [56, 166, PZ + 11]])}"/>`;
+    svg += tree(K, 96, 236, PZ, .8) + tree(K, 284, 214, PZ, .9);
+    svg += `<g id="smoke"></g>`;
+
+    stage.innerHTML = svg;
+
+    const st = { run: true, doors: [true, false, true], made: 0 };
+    const q = s => stage.querySelector(s), qa = s => [...stage.querySelectorAll(s)];
+    const crates = q('#crates'), smoke = q('#smoke');
+    const [sx, sy] = P(CHX, CHY, CHT + 5);
+    const items = [];
+
+    function render() {
+      qa('.band').forEach(el => el.classList.toggle('hot', st.run));
+      qa('.door').forEach((d, i) => {
+        d.classList.toggle('open', st.doors[i]);
+        d.querySelectorAll('.inside, .halo').forEach(el => el.classList.toggle('hot', st.run && st.doors[i]));
+        d.querySelector('.led').classList.toggle('hot', st.doors[i]);
+      });
+      q('#chim-led').classList.toggle('hot', st.run);
+      api.power(st.run);
+      api.readout(`${st.run ? 'đang chạy' : 'dừng'} · ${st.made} thùng · cửa ${st.doors.filter(Boolean).length}/3 mở`);
+    }
+    const toggleDoor = i => { st.doors[i] = !st.doors[i]; render(); };
+
+    let last = 0, spawnT = 0, smokeT = 0;
+    api.loop(ts => {
+      const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
+      if (!st.run) return;
+      spawnT -= dt; smokeT -= dt;
+      if (spawnT <= 0) {
+        spawnT = 1.3;
+        const g = document.createElementNS(NS, 'g');
+        g.innerHTML = box(CX0 + 2, CY0 + 2, CZ + 3, 10, 10, 10) + `<g transform="${TOP(CX0 + 2, CY0 + 2, CZ + 13)}"><line class="detail" x1="5" y1="0" x2="5" y2="10"/></g>`;
+        crates.prepend(g);
+        items.push({ el: g, dx: 0 });
+      }
+      items.forEach(it => { it.dx += 22 * dt; it.el.setAttribute('transform', `translate(${(it.dx * C).toFixed(2)} ${(it.dx * S).toFixed(2)})`); });
+      while (items.length && items[0].dx > CL - 12) {
+        items.shift().el.remove();
+        st.made++;
+        q('#bin-led').classList.add('hot');
+        api.after(200, () => q('#bin-led').classList.remove('hot'));
+        render();
+      }
+      if (smokeT <= 0) {
+        smokeT = .45;
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('class', 'smoke');
+        c.setAttribute('cx', (sx + (Math.random() - .5) * 6).toFixed(1));
+        c.setAttribute('cy', sy.toFixed(1));
+        c.setAttribute('r', 6);
+        smoke.appendChild(c);
+        api.after(3000, () => c.remove());
+      }
+    });
+
+    stage.addEventListener('click', e => {
+      const d = e.target.closest('.door');
+      if (d) { toggleDoor(+d.dataset.d); return; }
+      if (e.target.closest('#hall, #chimney')) { st.run = !st.run; render(); }
+    });
+    render();
+    return { key: e => {
+      if (e.key === ' ') { st.run = !st.run; render(); return true; }
+      if (/^[1-3]$/.test(e.key)) { toggleDoor(+e.key - 1); return true; }
+      return false;
+    } };
+  },
+});
+
+/* Fig 3 — Saigon by night: shophouses with neon signs, a lotus tower, motorbike light trails. */
+FIGS.push({
+  id: 'saigon',
+  name: 'Sài Gòn về đêm',
+  hint: 'Space giờ cao điểm · N bảng hiệu · bấm nhà hoặc tháp',
+  mount(stage, api) {
+    /*  plate 320 x 280 · road y 150..194 · shophouses y 92..140 from x 12
+        tower: podium 224..280 x 30..86, 14 tapering drums r 22 -> 12, helipad, spire     */
+    const PZ = 7, W = 320, D = 280, RY0 = 150, RY1 = 194, HY = 92, HD = 48;
+    const TX = 252, TY = 58, TB = PZ + 22, SL = 14, SLH = 10, TT = TB + SL * SLH;
+    const HOUSES = [[20, 62, 'PHỞ'], [24, 78, 'HOTEL'], [18, 54, 'BIA'], [22, 92, 'CAFE'], [26, 70, 'KARAOKE'],
+                    [20, 58, 'CƠM'], [24, 86, 'BÁNH MÌ'], [22, 66, 'SPA'], [20, 74, 'TRÀ SỮA'], [22, 60, 'NAILS']];
+    const LAMPS = [40, 110, 180, 250];
+    const K = api.place([[0, D, 0], [W, 0, PZ], [W, D, 0], [0, 0, PZ], [TX, TY, TT + 34], [TX - 22, TY - 22, TB]]);
+    const { P, TOP, FRONT, box, cylinder, dot } = K;
+
+    let svg = plate(K, W, D);
+    svg += `<g transform="${TOP(0, 0, PZ)}">
+      <rect class="face recess" x="10" y="${RY0}" width="${W - 20}" height="${RY1 - RY0}" rx="2"/>
+      <line class="detail" x1="14" y1="${(RY0 + RY1) / 2}" x2="${W - 14}" y2="${(RY0 + RY1) / 2}" stroke-dasharray="8 6"/>
+      <line class="detail" x1="10" y1="${RY0 - 4}" x2="${W - 10}" y2="${RY0 - 4}"/>
+      <line class="detail" x1="10" y1="${RY1 + 4}" x2="${W - 10}" y2="${RY1 + 4}"/>
+      ${[0, 1, 2, 3, 4, 5].map(i => `<rect class="detail" x="268" y="${RY0 + 4 + i * 6.5}" width="24" height="3"/>`).join('')}
+      ${LAMPS.map(x => `<ellipse class="halo hot" cx="${x + 1}" cy="${RY1 - 8}" rx="18" ry="12" filter="url(#bloom)"/>`).join('')}
+    </g>`;
+
+    svg += `<g id="landmark">` + box(TX - 28, TY - 28, PZ, 56, 56, TB - PZ);
+    svg += `<g transform="${FRONT(TX - 28, TY + 28, TB)}">${grid(6, 1, 56, TB - PZ, { mx: 4, my: 4, gx: 3, cls: 'face glass tw' })}</g>`;
+    for (let k = 0; k < SL; k++) svg += cylinder(TX, TY, TB + k * SLH, 22 - k * .75, SLH, 'glass tw');
+    const HZ = TB + 9 * SLH + 2;
+    svg += cylinder(TX + 17, TY + 15, HZ, 12, 2.5);
+    svg += `<g transform="${TOP(TX + 5, TY + 3, HZ + 2.5)}"><circle class="detail" cx="12" cy="12" r="8"/><text class="neon-t tw-t" x="12" y="15" font-size="8" text-anchor="middle">H</text></g>`;
+    svg += cylinder(TX, TY, TT, 3, 30) + dot(TX, TY, TT + 32, 2.4, 'led blink tw-led') + `</g>`;
+
+    let x = 12;
+    HOUSES.forEach(([w, h, label], i) => {
+      const top = PZ + h, floors = Math.max(1, Math.floor((h - 40) / 14)), cols = w >= 22 ? 2 : 1;
+      const fs = Math.min(5.5, (w - 6) / (label.length * .62)).toFixed(2);
+      svg += `<g class="house" data-h="${i}">` + box(x, HY, PZ, w, HD, h);
+      svg += `<g transform="${FRONT(x, HY + HD, top)}"><g filter="url(#soft)">`;
+      for (let f = 0; f < floors; f++) {
+        const y = 6 + f * 14, ww = (w - 4 - (cols + 1) * 2) / cols + 2;
+        for (let c = 0; c < cols; c++) svg += `<rect class="win" data-r="${Math.random().toFixed(2)}" x="${(3 + c * (ww + 1)).toFixed(2)}" y="${y}" width="${(ww - 2).toFixed(2)}" height="8" rx=".6"/>`;
+        svg += `<line class="detail" x1="1" y1="${y + 11}" x2="${w - 1}" y2="${y + 11}"/>`;
+      }
+      svg += `</g>
+        <rect class="halo neon-h" x="1" y="${h - 35}" width="${w - 2}" height="13" filter="url(#bloom)"/>
+        <rect class="face glass neon${i % 4 === 1 ? ' flicker' : ''}" filter="url(#soft)" x="2" y="${h - 33}" width="${w - 4}" height="9" rx="1"/>
+        <text class="neon-t${i % 4 === 1 ? ' flicker' : ''}" filter="url(#soft)" x="${w / 2}" y="${h - 26.6}" font-size="${fs}" text-anchor="middle">${label}</text>
+        <rect class="face recess" x="2" y="${h - 20}" width="${w - 4}" height="20"/>
+        <rect class="face glass shop" x="3.5" y="${h - 18}" width="${w - 7}" height="18"/>
+      </g>`;
+      if (i % 3 !== 1) svg += cylinder(x + w / 2, HY + 12, top, 4, 7);
+      svg += `</g>`;
+      x += w;
+    });
+
+    svg += `<g id="lane0" class="lane0"></g><g id="lane1" class="lane1"></g>`;
+    LAMPS.forEach(lx => {
+      svg += box(lx, RY1 + 8, PZ, 2, 2, 40);
+      svg += `<path class="wire" d="${K.path([[lx + 1, RY1 + 8, PZ + 40], [lx + 1, RY1 - 3, PZ + 42]])}"/>`;
+      svg += box(lx - 2, RY1 - 8, PZ + 39, 6, 6, 2) + dot(lx + 1, RY1 - 5, PZ + 38.5, 1.8, 'led hot');
+    });
+    [75, 145, 215, 285].forEach(tx => { svg += tree(K, tx, 222, PZ, .8); });
+
+    stage.innerHTML = svg;
+
+    const st = { houses: HOUSES.map((_, i) => i !== 5), neon: true, rush: false, tower: true };
+    const q = s => stage.querySelector(s), qa = s => [...stage.querySelectorAll(s)];
+    const bikes = [];
+
+    function addBike() {
+      const lane = Math.random() < .5 ? 0 : 1;
+      const g = document.createElementNS(NS, 'g');
+      g.innerHTML = `<path class="trail"/><circle class="head" r="1.3"/>`;
+      q('#lane' + lane).appendChild(g);
+      bikes.push({ g, lane, x: 14 + Math.random() * (W - 28), y: lane ? RY1 - 9 - Math.random() * 7 : RY0 + 5 + Math.random() * 7, v: (34 + Math.random() * 30) * (lane ? -1 : 1) });
+    }
+    function setBikes(n) {
+      while (bikes.length < n) addBike();
+      while (bikes.length > n) bikes.pop().g.remove();
+    }
+
+    function render() {
+      qa('.house').forEach((g, i) => {
+        const on = st.houses[i], neon = on && st.neon;
+        g.querySelectorAll('.win').forEach(w => w.classList.toggle('hot', on && +w.dataset.r < .7));
+        g.querySelectorAll('.shop').forEach(el => el.classList.toggle('hot', on));
+        g.querySelectorAll('.neon, .neon-t, .neon-h').forEach(el => el.classList.toggle('hot', neon));
+      });
+      qa('.tw, .tw-t, .tw-led').forEach(el => el.classList.toggle('hot', st.tower));
+      api.power(true);
+      const signs = st.houses.filter(Boolean).length * (st.neon ? 1 : 0);
+      api.readout(`${bikes.length} xe máy · ${signs}/10 bảng hiệu · ${st.rush ? 'giờ cao điểm' : 'tối thường'}`);
+    }
+
+    let last = 0;
+    api.loop(ts => {
+      const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
+      bikes.forEach(b => {
+        b.x += b.v * dt;
+        if (b.x > W - 12) b.x = 14; else if (b.x < 12) b.x = W - 14;
+        const [hx, hy] = P(b.x, b.y, PZ + 3), [tx, ty] = P(b.x - Math.sign(b.v) * 10, b.y, PZ + 3);
+        b.g.firstChild.setAttribute('d', `M${hx.toFixed(1)} ${hy.toFixed(1)}L${tx.toFixed(1)} ${ty.toFixed(1)}`);
+        b.g.lastChild.setAttribute('cx', hx.toFixed(1)); b.g.lastChild.setAttribute('cy', hy.toFixed(1));
+      });
+    });
+
+    stage.addEventListener('click', e => {
+      const h = e.target.closest('.house');
+      if (h) { st.houses[+h.dataset.h] = !st.houses[+h.dataset.h]; render(); return; }
+      if (e.target.closest('#landmark')) { st.tower = !st.tower; render(); }
+    });
+    setBikes(16);
+    render();
+    return { key: e => {
+      if (e.key === ' ') { st.rush = !st.rush; setBikes(st.rush ? 46 : 16); render(); return true; }
+      if (e.key.toLowerCase() === 'n') { st.neon = !st.neon; render(); return true; }
+      return false;
+    } };
+  },
+});
+
+/* Fig 4 — Apartment towers: every flat is a window, lights follow the clock. */
+FIGS.push({
+  id: 'apartments',
+  name: 'Khu chung cư',
+  hint: '← → đổi giờ · Space tua nhanh · 1–4 hoặc bấm tháp để cúp điện',
+  mount(stage, api) {
+    /*  plate 320 x 300 · podium 24..296 x 24..276, 18 high
+        towers 70 x 70: (44,44) h190 · (44,184) h130 · (184,44) h160 · (184,184) h175
+        courtyard trees go between the left pair and the right pair so they sort correctly */
+    const PZ = 7, W = 320, D = 300, PH = 18, Z0 = PZ + PH, FH = 9, TS = 70;
+    const TOWERS = [[44, 44, 190], [44, 184, 130], [184, 44, 160], [184, 184, 175]];
+    const CURVE = [.03, .15, .55, .8, .88, .8, .6, .35, .15, .06];
+    const K = api.place([[0, D, 0], [W, 0, PZ], [W, D, 0], [0, 0, PZ], [44, 44, Z0 + 190 + 20], [184, 44, Z0 + 160 + 20], [114, 44, Z0 + 190]]);
+    const { TOP, FRONT, SIDE, box, cylinder, dot } = K;
+
+    let svg = plate(K, W, D) + box(24, 24, PZ, 272, 252, PH);
+    svg += `<g transform="${FRONT(24, 276, Z0)}">${grid(16, 1, 272, PH, { mx: 6, my: 4, gx: 4, cls: 'face glass shop' })}</g>`;
+    svg += `<g transform="${SIDE(296, 276, Z0)}">${grid(15, 1, 252, PH, { mx: 6, my: 4, gx: 4, cls: 'face glass shop' })}</g>`;
+    svg += `<g transform="${TOP(24, 24, Z0)}">
+      <rect class="face glass pool" x="106" y="46" width="38" height="160" rx="3"/>
+      ${[0, 1, 2, 3].map(i => `<path class="detail" d="M${112 + (i % 2) * 10} ${70 + i * 34} q4 -3 8 0 t8 0"/>`).join('')}
+      <line class="detail" x1="100" y1="10" x2="100" y2="242"/><line class="detail" x1="150" y1="10" x2="150" y2="242"/>
+    </g>`;
+
+    TOWERS.forEach(([x, y, h], t) => {
+      if (t === 2) [[123, 100], [123, 160], [176, 100], [176, 160], [150, 250]].forEach(([tx, ty]) => { svg += tree(K, tx, ty, Z0, .55); });
+      const top = Z0 + h, floors = Math.floor((h - 6) / FH);
+      const face = () => {
+        let s = `<g filter="url(#soft)">`;
+        for (let f = 0; f < floors; f++) for (let c = 0; c < 6; c++)
+          s += `<rect class="win" data-r="${Math.random().toFixed(3)}" data-f="${floors - 1 - f}" x="${(5 + c * 10.6).toFixed(2)}" y="${3 + f * FH}" width="7" height="5" rx=".6"/>`;
+        return s + `</g>` + slits(FH + 1.5, floors * FH, FH, 2, TS - 2, false);
+      };
+      svg += `<g class="tower" data-t="${t}">` + box(x, y, Z0, TS, TS, h);
+      svg += `<g transform="${FRONT(x, y + TS, top)}">${face()}</g><g transform="${SIDE(x + TS, y + TS, top)}">${face()}</g>`;
+      svg += box(x + 12, y + 12, top, 46, 46, 8);
+      if (t === 0) svg += `<g transform="${TOP(x + 12, y + 12, top + 8)}"><circle class="detail" cx="23" cy="23" r="15"/><text class="neon-t" x="23" y="28" font-size="14" text-anchor="middle">H</text></g>`;
+      else svg += cylinder(x + 35, y + 35, top + 8, 2, 14);
+      svg += dot(x + 35, y + 35, t === 0 ? top + 10 : top + 24, 2.2, 'led blink beacon') + `</g>`;
+    });
+
+    stage.innerHTML = svg;
+
+    const st = { hour: 20, play: false, out: [false, false, false, false] };
+    const q = s => stage.querySelector(s), qa = s => [...stage.querySelectorAll(s)];
+    const towers = qa('.tower').map(g => ({ g, wins: [...g.querySelectorAll('.win')] }));
+    const total = towers.reduce((n, t) => n + t.wins.length, 0);
+    const frac = h => { const i = Math.floor(h - 17), f = h - 17 - i; return CURVE[Math.min(i, 9)] * (1 - f) + CURVE[Math.min(i + 1, 9)] * f; };
+
+    function render() {
+      const p = frac(st.hour);
+      let lit = 0;
+      towers.forEach(({ g, wins }, t) => {
+        wins.forEach(w => { const on = !st.out[t] && +w.dataset.r < p; w.classList.toggle('hot', on); lit += on; });
+        g.querySelector('.beacon').classList.toggle('hot', !st.out[t]);
+      });
+      qa('.shop').forEach(el => el.classList.toggle('hot', st.hour < 23));
+      q('.pool').classList.toggle('hot', st.hour < 24);
+      api.power(lit > total * .25);
+      const hh = Math.floor(st.hour) % 24, mm = st.hour % 1 ? '30' : '00';
+      api.readout(`${String(hh).padStart(2, '0')}:${mm} · ${lit}/${total} căn sáng${st.play ? ' · ⏵' : ''}`);
+    }
+
+    function blackout(t) {
+      st.out[t] = !st.out[t];
+      towers[t].wins.forEach(w => { w.style.transitionDelay = st.out[t] ? '0ms' : `${+w.dataset.f * 45 + Math.random() * 120}ms`; });
+      render();
+    }
+    const step = d => { st.hour += d; if (st.hour > 26) st.hour = 17; if (st.hour < 17) st.hour = 26; towers.forEach(t => t.wins.forEach(w => { w.style.transitionDelay = '0ms'; })); render(); };
+
+    api.every(600, () => { if (st.play) step(.5); });
+    stage.addEventListener('click', e => { const t = e.target.closest('.tower'); if (t) blackout(+t.dataset.t); });
+    render();
+    return { key: e => {
+      if (e.key === 'ArrowRight') { step(.5); return true; }
+      if (e.key === 'ArrowLeft') { step(-.5); return true; }
+      if (e.key === ' ') { st.play = !st.play; render(); return true; }
+      if (/^[1-4]$/.test(e.key)) { blackout(+e.key - 1); return true; }
+      return false;
+    } };
+  },
+});
+
+/* Map — the four districts on one base with crossing roads, a river, a bridge and traffic. */
+FIGS.unshift({
+  id: 'map',
+  name: 'Bản đồ thành phố',
+  hint: 'Bấm vào một khu để điều khiển nó',
+  mount(stage, api) {
+    /*  base 740 x 760, 6 high · districts sit on it at z 6
+        apartments (20,20) · factory (400,20) · saigon (20,380) · pavilion (400,380)
+        roads x 350..390 and y 330..370 · river y 680..740 with a bridge on the road  */
+    const BZ = 6, W = 740, D = 760, RX0 = 350, RX1 = 390, RY0 = 330, RY1 = 370, VY0 = 680, VY1 = 740;
+    const PLAN = [['apartments', 20, 20], ['factory', 400, 20], ['saigon', 20, 380], ['pavilion', 400, 380]];
+    const K = api.place([[0, D, 0], [W, 0, BZ], [W, D, 0], [0, 0, BZ], [64, 64, 245], [464, 42, 205], [272, 438, 212], [632, 426, 222]], .04);
+    const { P, TOP, box } = K;
+
+    let svg = box(0, 0, 0, W, D, BZ);
+    svg += `<g transform="${TOP(0, 0, BZ)}">
+      <rect class="river" x="0" y="${VY0}" width="${W}" height="${VY1 - VY0}"/>
+      ${Array.from({ length: 14 }, (_, i) => `<path class="ripple" d="M${20 + i * 52} ${VY0 + 12 + (i % 3) * 16} q8 -4 16 0 t16 0"/>`).join('')}
+      <rect class="face recess" x="${RX0}" y="10" width="${RX1 - RX0}" height="${D - 20}" rx="2"/>
+      <rect class="face recess" x="10" y="${RY0}" width="${W - 20}" height="${RY1 - RY0}" rx="2"/>
+      <line class="detail" x1="${(RX0 + RX1) / 2}" y1="14" x2="${(RX0 + RX1) / 2}" y2="${D - 14}" stroke-dasharray="8 6"/>
+      <line class="detail" x1="14" y1="${(RY0 + RY1) / 2}" x2="${W - 14}" y2="${(RY0 + RY1) / 2}" stroke-dasharray="8 6"/>
+      <line class="detail" x1="${RX0 - 4}" y1="${VY0 - 6}" x2="${RX0 - 4}" y2="${VY1 + 6}"/>
+      <line class="detail" x1="${RX1 + 4}" y1="${VY0 - 6}" x2="${RX1 + 4}" y2="${VY1 + 6}"/>
+      ${[60, 160, 260, 480, 580, 680].map(x => `<ellipse class="halo hot" cx="${x}" cy="${RY1 - 8}" rx="18" ry="12" filter="url(#bloom)"/>`).join('')}
+      ${[60, 160, 260, 460, 560].map(y => `<ellipse class="halo hot" cx="${RX1 - 8}" cy="${y}" rx="12" ry="18" filter="url(#bloom)"/>`).join('')}
+    </g>`;
+    svg += `<g id="cars0" class="lane0"></g><g id="cars1" class="lane1"></g>`;
+    svg += PLAN.map((_, i) => `<g class="district" data-i="${i}"></g>`).join('');
+    stage.innerHTML = svg;
+
+    const texts = [], handles = [], figs = PLAN.map(([id]) => FIGS.find(f => f.id === id));
+    let active = 3;
+    const show = () => { api.readout(`${figs[active].name} · ${texts[active] || ''}`); api.hint(figs[active].hint); };
+    const mark = () => stage.querySelectorAll('.district').forEach(g => g.classList.toggle('active', +g.dataset.i === active));
+    PLAN.forEach(([, dx, dy], i) => {
+      const Kd = kernel(K.OX + (dx - dy) * C, K.OY + (dx + dy) * S - BZ);
+      const sub = { ...api, place: () => Kd, power: () => {}, hint: () => {}, readout: s => { texts[i] = s; if (i === active) show(); } };
+      handles[i] = figs[i].mount(stage.querySelector(`.district[data-i="${i}"]`), sub) || {};
+    });
+
+    const LANES = [
+      { g: '#cars0', pos: t => [t, RY0 + 10], len: [14, W - 14], n: 9 },
+      { g: '#cars1', pos: t => [t, RY1 - 10], len: [14, W - 14], n: 9, back: true },
+      { g: '#cars0', pos: t => [RX0 + 10, t], len: [14, D - 14], n: 9 },
+      { g: '#cars1', pos: t => [RX1 - 10, t], len: [14, D - 14], n: 9, back: true },
+    ];
+    const cars = [];
+    LANES.forEach(l => { for (let k = 0; k < l.n; k++) {
+      const g = document.createElementNS(NS, 'g');
+      g.innerHTML = `<path class="trail"/><circle class="head" r="2"/>`;
+      stage.querySelector(l.g).appendChild(g);
+      cars.push({ g, l, t: l.len[0] + Math.random() * (l.len[1] - l.len[0]), v: (40 + Math.random() * 30) * (l.back ? -1 : 1) });
+    } });
+    let last = 0;
+    api.loop(ts => {
+      const dt = last ? Math.min(.05, (ts - last) / 1000) : 0; last = ts;
+      cars.forEach(c => {
+        const [a, b] = c.l.len;
+        c.t += c.v * dt;
+        if (c.t > b) c.t = a; else if (c.t < a) c.t = b;
+        const [x, y] = c.l.pos(c.t), [x2, y2] = c.l.pos(c.t - Math.sign(c.v) * 16);
+        const [hx, hy] = P(x, y, BZ + 3), [tx, ty] = P(x2, y2, BZ + 3);
+        c.g.firstChild.setAttribute('d', `M${hx.toFixed(1)} ${hy.toFixed(1)}L${tx.toFixed(1)} ${ty.toFixed(1)}`);
+        c.g.lastChild.setAttribute('cx', hx.toFixed(1)); c.g.lastChild.setAttribute('cy', hy.toFixed(1));
+      });
+    });
+
+    stage.addEventListener('click', e => { const g = e.target.closest('.district'); if (g) { active = +g.dataset.i; mark(); show(); } }, true);
+    api.power(true);
+    mark(); show();
+    return { key: e => !!(handles[active].key && handles[active].key(e)) };
+  },
+});
+
+/* ---------- app shell ---------- */
+(function app() {
+  const $ = id => document.getElementById(id);
+  const holder = $('holder'), nav = $('nav');
+  let handle = {}, cleanups = [], idx = 0;
+
+  const api = {
+    readout: s => { $('readout').textContent = s; },
+    hint: s => { $('hint').textContent = s; },
+    power: on => holder.classList.toggle('glow', !!on),
+    after: (ms, fn) => { const t = setTimeout(fn, ms); cleanups.push(() => clearTimeout(t)); },
+    every: (ms, fn) => { const t = setInterval(fn, ms); cleanups.push(() => clearInterval(t)); },
+    loop: fn => { let alive = true; const f = ts => { if (!alive) return; fn(ts); requestAnimationFrame(f); }; requestAnimationFrame(f); cleanups.push(() => { alive = false; }); },
+    flash: (el, ms = 160) => {
+      el.classList.add('down', 'lit'); clearTimeout(el._f1); clearTimeout(el._f2);
+      el._f1 = setTimeout(() => el.classList.remove('down'), 110);
+      el._f2 = setTimeout(() => el.classList.remove('lit'), ms);
+    },
+    replay: (el, cls = 'go') => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); },
+  };
+
+  function mount(i) {
+    cleanups.forEach(f => f()); cleanups = [];
+    idx = (i + FIGS.length) % FIGS.length;
+    const fig = FIGS[idx];
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('id', 'stage'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', fig.name);
+    holder.replaceChildren(svg);
+    holder.classList.remove('glow');
+    $('fignum').textContent = `Fig ${idx + 1}`; $('figname').textContent = fig.name; $('hint').textContent = fig.hint;
+    document.title = `Fig ${idx + 1} · ${fig.name}`;
+    nav.querySelectorAll('button').forEach(b => b.setAttribute('aria-current', +b.dataset.i === idx));
+    if (location.hash.slice(1) !== fig.id) history.replaceState(null, '', '#' + fig.id);
+    const place = (pts, margin) => { const K = frame(pts, margin); svg.setAttribute('viewBox', K.viewBox); return K; };
+    handle = fig.mount(svg, { ...api, place }) || {};
+  }
+
+  nav.innerHTML = FIGS.map((f, i) => `<button data-i="${i}"><span class="n">${String(i + 1).padStart(2, '0')}</span>${f.name}</button>`).join('');
+  const go = i => { mount(i); document.activeElement.blur(); };
+  nav.addEventListener('click', e => { const b = e.target.closest('button'); if (b) go(+b.dataset.i); });
+  $('prev').addEventListener('click', () => go(idx - 1));
+  $('next').addEventListener('click', () => go(idx + 1));
+  addEventListener('hashchange', () => { const i = FIGS.findIndex(f => f.id === location.hash.slice(1)); if (i >= 0 && i !== idx) mount(i); });
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === 'PageDown') { mount(idx + 1); return; }
+    if (e.key === 'PageUp') { mount(idx - 1); return; }
+    if (handle.key && handle.key(e)) e.preventDefault();
+  });
+
+  const ACCENTS = [['ember', '#ff7a1a'], ['cyan', '#22d3ee'], ['lime', '#a3e635'], ['violet', '#a78bfa'], ['rose', '#fb7185'], ['ice', '#dfe9ef']];
+  const sw = $('swatches'), root = document.documentElement;
+  sw.innerHTML = ACCENTS.map(([k, c]) => `<button role="radio" data-accent="${k}" title="${k}" style="--sw:${c}"><i></i></button>`).join('');
+  const setAccent = k => { root.dataset.accent = k; sw.querySelectorAll('button').forEach(b => b.setAttribute('aria-checked', b.dataset.accent === k)); };
+  sw.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { setAccent(b.dataset.accent); b.blur(); } });
+  $('theme').addEventListener('click', e => { root.dataset.theme = root.dataset.theme === 'light' ? 'dark' : 'light'; e.currentTarget.blur(); });
+  setAccent('ember');
+
+  const start = FIGS.findIndex(f => f.id === location.hash.slice(1));
+  mount(start >= 0 ? start : 0);
+})();
+</script>
+</body>
+</html>
