@@ -116,67 +116,16 @@ Fast note for dev
 
 ## MCP Server (Claude Code)
 
-Notaion ships an [MCP](https://modelcontextprotocol.io) server in
-[`mcp-server/`](mcp-server/README.md) that lets **Claude Code** read, search,
-create, append to, update, and delete your **Daily Notes** straight from the
-terminal.
+The MCP server now lives in its own repo:
+**[mtai0524/notaion-mcp](https://github.com/mtai0524/notaion-mcp)**.
 
-**Tools exposed:** `list_daily_notes`, `search_daily_notes`,
-`create_daily_note`, `append_to_daily_note`, `update_daily_note`,
-`delete_daily_note`.
-
-### 1. Install
+It lets Claude read, search, create, append to, update and delete your
+**Daily Notes**. No clone needed — one command registers it for every project:
 
 ```bash
-cd mcp-server
-npm install
+claude mcp add-json notaion '{"command":"cmd","args":["/c","npx","-y","https://codeload.github.com/mtai0524/notaion-mcp/tar.gz/refs/heads/main"],"env":{"NOTAION_EMAIL":"you@example.com","NOTAION_PASSWORD":"yourpassword"}}' --scope user
 ```
 
-### 2. Add your Notaion credentials
-
-Copy the template and fill in your login. `.env.local` is git-ignored, so your
-password is never committed.
-
-```bash
-cp .env.local.example .env.local
-# then edit .env.local:
-#   NOTAION_EMAIL=your_email_or_username
-#   NOTAION_PASSWORD=your_password
-#   NOTAION_API_URL=https://notaion.runasp.net   # optional, this is the default
-```
-
-You can log in with either your email or your username — the same value goes in
-`NOTAION_EMAIL`.
-
-### 3. Register with Claude Code
-
-Use an **absolute** path to `mcp-server/src/index.js`. The `-s user` scope makes
-the server available in every project/directory:
-
-```bash
-claude mcp add -s user notaion -- node /ABSOLUTE/PATH/notaion/mcp-server/src/index.js
-```
-
-(Drop `-s user` to register it only for the current project.)
-
-### 4. Use it
-
-**Restart Claude Code** (MCP servers load at startup), then run `/mcp` to
-confirm `notaion` shows **✔ Connected**. Now just ask in plain language:
-
-- "list my daily notes for today"
-- "search my daily notes for báo cáo"
-- "add a note titled Standup with today's summary"
-
-### Verify without Claude Code
-
-Quickly check the connection and print today's notes:
-
-```bash
-cd mcp-server
-node smoke.js            # today
-node smoke.js 2026-07-24 # a specific date
-```
-
-More detail (troubleshooting, `.mcp.json` alternative) lives in
-[`mcp-server/README.md`](mcp-server/README.md).
+On macOS and Linux use `"command":"npx"` with `"args":["-y","<url>"]` instead.
+See that repo's README for Claude Desktop setup, configuration and
+troubleshooting.

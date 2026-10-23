@@ -18,6 +18,41 @@ const nid = () => `b${_idc++}`;
 
 const CHECK = /^\s*[-*]\s*\[( |x|X)\]\s?(.*)$/;
 
+// A GFM table delimiter: "|---|:--:|". Must carry a pipe, otherwise a plain
+// "---" divider would read as a one-column table.
+const TABLE_DELIM = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+
+const cells = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map((c) => c.trim());
+
+const alignOf = (spec) => {
+  if (spec.startsWith(':') && spec.endsWith(':')) return 'center';
+  if (spec.endsWith(':')) return 'right';
+  if (spec.startsWith(':')) return 'left';
+  return '';
+};
+
+// Reads a GFM table that starts at `lines[i]`. Returns null when those lines
+// are not a table, so callers fall through to their normal line handling.
+// `end` is the index of the table's last line.
+export const parseTable = (lines, i) => {
+  const head = lines[i];
+  const delim = lines[i + 1];
+  if (!head?.includes('|') || !delim?.includes('|') || !TABLE_DELIM.test(delim)) return null;
+
+  const header = cells(head);
+  const align = cells(delim).map(alignOf);
+  if (header.length !== align.length) return null;
+
+  const rows = [];
+  let end = i + 1;
+  while (lines[end + 1]?.includes('|')) {
+    end++;
+    const row = cells(lines[end]);
+    rows.push(Array.from({ length: header.length }, (_, c) => row[c] ?? ''));
+  }
+  return { header, align, rows, end };
+};
+
 // md string -> Block[]
 export const parseMarkdown = (md) => {
   const lines = String(md ?? '').split('\n');
