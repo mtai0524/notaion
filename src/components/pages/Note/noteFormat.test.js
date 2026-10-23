@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMarkdown, serializeBlocks } from './noteFormat';
+import { parseMarkdown, serializeBlocks, parseTable } from './noteFormat';
 
 describe('parseMarkdown', () => {
   it('parses a plain paragraph', () => {
@@ -68,5 +68,39 @@ describe('round-trip', () => {
   ];
   it.each(samples)('serialize(parse(md)) === md for: %s', (md) => {
     expect(serializeBlocks(parseMarkdown(md))).toBe(md);
+  });
+});
+
+describe('parseTable', () => {
+  const at = (md, i = 0) => parseTable(md.split('\n'), i);
+
+  it('reads header, alignment and rows', () => {
+    const t = at('| # | Word |\n|---:|:---:|\n| 1 | accurate |');
+    expect(t.header).toEqual(['#', 'Word']);
+    expect(t.align).toEqual(['right', 'center']);
+    expect(t.rows).toEqual([['1', 'accurate']]);
+    expect(t.end).toBe(2);
+  });
+
+  it('defaults alignment to empty when no colon', () => {
+    expect(at('| a |\n|---|').align).toEqual(['']);
+  });
+
+  it('pads a short row to the header width', () => {
+    expect(at('| a | b |\n|---|---|\n| x |').rows).toEqual([['x', '']]);
+  });
+
+  it('ignores a divider so --- stays a horizontal rule', () => {
+    expect(at('text\n---')).toBeNull();
+  });
+
+  it('rejects a delimiter whose column count differs', () => {
+    expect(at('| a | b |\n|---|')).toBeNull();
+  });
+
+  it('stops at the first line without a pipe', () => {
+    const t = at('| a |\n|---|\n| x |\nafter');
+    expect(t.rows).toEqual([['x']]);
+    expect(t.end).toBe(2);
   });
 });

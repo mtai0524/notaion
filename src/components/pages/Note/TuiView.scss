@@ -368,6 +368,27 @@
   .tui-pv-hr { border: none; border-top: 1px dashed var(--border-color, #111827); margin: 8px 0; }
   .tui-pv-empty { color: var(--text-muted, #9ca3af); }
 
+  /* ── Markdown table — horizontal rules only, same ink as `---` and quotes.
+     The wrapper scrolls so a wide table never stretches the panel. ── */
+  .tui-pv-table-wrap { overflow-x: auto; margin: 8px 0; }
+  .tui-pv-table {
+    border-collapse: collapse;
+    min-width: 100%;
+
+    th, td {
+      padding: 4px 14px 4px 0;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+
+      &.al-center { text-align: center; }
+      &.al-right { text-align: right; }
+    }
+    th { font-weight: 700; border-bottom: 2px solid var(--border-color, #111827); }
+    tbody td { border-bottom: 1px dashed color-mix(in srgb, var(--border-color, #111827) 35%, transparent); }
+    tbody tr:last-child td { border-bottom: none; }
+  }
+
   /* ── Notion-style callout — icon + tinted box, semantic accent per kind ── */
   .tui-pv-callout {
     display: flex;

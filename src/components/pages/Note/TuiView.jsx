@@ -6,7 +6,7 @@ import { mobileActionContext, swipePanelTarget } from './tuiMobile';
 import {
   DEFAULT_SIZES, FOCUS_SHARES, loadSizes, saveSizes, applyDelta, sizesFromDrag, focusSizes, STEP, BIG_STEP,
 } from './tuiResize';
-import { CALLOUT_KINDS } from './noteFormat';
+import { CALLOUT_KINDS, parseTable } from './noteFormat';
 import { vimTextareaKey, continueListOnEnter } from './vimTextarea';
 import Telescope from './Telescope';
 import OptionsPopup from './OptionsPopup';
@@ -961,12 +961,47 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return <div key={li} className="tui-pv-line">{ln ? renderInline(ln, li) : ' '}</div>;
   };
 
+  // One GFM table -> a scrollable <table>. Alignment comes from the delimiter
+  // row (:--- / :---: / ---:).
+  const renderTable = (t, key) => {
+    const cls = (c) => (t.align[c] ? `al-${t.align[c]}` : undefined);
+    return (
+      <div key={key} className="tui-pv-table-wrap">
+        <table className="tui-pv-table">
+          <thead>
+            <tr>
+              {t.header.map((c, ci) => (
+                <th key={ci} className={cls(ci)}>{renderInline(c, `${key}-h${ci}`)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {t.rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((c, ci) => (
+                  <td key={ci} className={cls(ci)}>{renderInline(c, `${key}-${ri}-${ci}`)}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   const renderMarkdown = (text, interactive) => {
     if (!text) return <span className="tui-pv-empty">— empty —  (press i or click to edit)</span>;
     const lines = text.split('\n');
     const out = [];
     for (let li = 0; li < lines.length; li++) {
       const ln = lines[li];
+
+      const table = parseTable(lines, li);
+      if (table) {
+        out.push(renderTable(table, li));
+        li = table.end;
+        continue;
+      }
 
       // Toggle block: "> [>] title" + following indented (4-space) child lines.
       const tog = ln.match(/^>\s?\[>\]\s?(.*)$/);
