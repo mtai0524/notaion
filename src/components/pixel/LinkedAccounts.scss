@@ -77,3 +77,74 @@
   color: var(--text-muted);
   padding: 6px 2px;
 }
+
+.linked-account-badge.password {
+  background: var(--border-color);
+}
+
+.linked-account-btn.password {
+  background: var(--border-color);
+  color: var(--container-bg);
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--global-border-radius, 6px);
+  background: var(--container-bg);
+  box-shadow: var(--box-shadow);
+}
+
+.password-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  label {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  input {
+    font: inherit;
+    font-size: 0.85rem;
+    padding: 7px 10px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--global-border-radius, 4px);
+    background: var(--container-bg);
+    color: var(--text-color);
+  }
+}
+
+.password-hint {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.password-error {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--danger-color, #ef4444);
+}
+
+.password-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.linked-account-btn.save {
+  background: #2e7d4f;
+  color: #fff;
+  border-color: var(--border-color);
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
