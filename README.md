@@ -123,8 +123,9 @@ It lets Claude read, search, create, append to, update and delete your
 **Daily Notes**. No clone needed — one command registers it for every project:
 
 ```bash
-claude mcp add notaion --scope user -e NOTAION_EMAIL=you@example.com -e NOTAION_PASSWORD=yourpassword -- npx -y https://codeload.github.com/mtai0524/notaion-mcp/tar.gz/refs/heads/main
+claude mcp add-json notaion '{"command":"cmd","args":["/c","npx","-y","https://codeload.github.com/mtai0524/notaion-mcp/tar.gz/refs/heads/main"],"env":{"NOTAION_EMAIL":"you@example.com","NOTAION_PASSWORD":"yourpassword"}}' --scope user
 ```
 
-On Windows, put `cmd /c` in front of `npx`. See that repo's README for Claude
-Desktop setup, configuration and troubleshooting.
+On macOS and Linux use `"command":"npx"` with `"args":["-y","<url>"]` instead.
+See that repo's README for Claude Desktop setup, configuration and
+troubleshooting.
