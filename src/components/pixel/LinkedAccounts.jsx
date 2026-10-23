@@ -12,10 +12,18 @@ const PROVIDERS = [
   { key: "GitHub", label: "GitHub", color: "#24292e" },
 ];
 
+const MIN_PASSWORD = 6;
+
 export default function LinkedAccounts() {
   const [loading, setLoading] = useState(true);
   const [hasPassword, setHasPassword] = useState(true);
   const [linked, setLinked] = useState([]); // linked provider names
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwCurrent, setPwCurrent] = useState("");
+  const [pwNext, setPwNext] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [pwError, setPwError] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
   const token = Cookies.get("token");
 
   const load = useCallback(async () => {
@@ -81,6 +89,44 @@ export default function LinkedAccounts() {
     }
   };
 
+  const closePasswordForm = () => {
+    setPwOpen(false);
+    setPwCurrent("");
+    setPwNext("");
+    setPwConfirm("");
+    setPwError("");
+  };
+
+  // An account created through Discord/GitHub has no password, so the backend
+  // takes an empty currentPassword for the first one.
+  const savePasswordAsync = async (e) => {
+    e.preventDefault();
+    if (pwNext.length < MIN_PASSWORD) {
+      setPwError(`Mật khẩu tối thiểu ${MIN_PASSWORD} ký tự.`);
+      return;
+    }
+    if (pwNext !== pwConfirm) {
+      setPwError("Hai mật khẩu không khớp.");
+      return;
+    }
+
+    setPwError("");
+    setPwSaving(true);
+    try {
+      await axiosInstance.post("/api/account/set-password", {
+        currentPassword: hasPassword ? pwCurrent : null,
+        newPassword: pwNext,
+      });
+      message.success(hasPassword ? "Đã đổi mật khẩu." : "Đã đặt mật khẩu.");
+      closePasswordForm();
+      load();
+    } catch (err) {
+      setPwError(err?.response?.data?.message || "Đặt mật khẩu thất bại.");
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
   if (!token) {
     return <div className="linked-accounts-empty">Đăng nhập để quản lý liên kết tài khoản.</div>;
   }
@@ -110,9 +156,57 @@ export default function LinkedAccounts() {
         );
       })}
 
-      {!hasPassword && linked.length <= 1 && (
+      <div className="linked-account-row">
+        <span className="linked-account-badge password">Mật khẩu</span>
+        <span className={`linked-account-status ${hasPassword ? "on" : "off"}`}>
+          {loading ? "..." : hasPassword ? "Đã đặt" : "Chưa đặt"}
+        </span>
+        <button
+          className={`linked-account-btn ${pwOpen ? "" : "password"}`}
+          onClick={() => (pwOpen ? closePasswordForm() : setPwOpen(true))}
+        >
+          {pwOpen ? "Đóng" : hasPassword ? "Đổi mật khẩu" : "Đặt mật khẩu"}
+        </button>
+      </div>
+
+      {pwOpen && (
+        <form className="password-form" onSubmit={savePasswordAsync}>
+          {hasPassword && (
+            <div className="password-field">
+              <label htmlFor="pw-current">Mật khẩu hiện tại</label>
+              <input id="pw-current" type="password" autoComplete="current-password"
+                     value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} />
+            </div>
+          )}
+          <div className="password-field">
+            <label htmlFor="pw-next">Mật khẩu mới</label>
+            <input id="pw-next" type="password" autoComplete="new-password"
+                   value={pwNext} onChange={(e) => setPwNext(e.target.value)} />
+          </div>
+          <div className="password-field">
+            <label htmlFor="pw-confirm">Nhập lại mật khẩu mới</label>
+            <input id="pw-confirm" type="password" autoComplete="new-password"
+                   value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} />
+          </div>
+          {pwError
+            ? <div className="password-error">{pwError}</div>
+            : <div className="password-hint">Tối thiểu {MIN_PASSWORD} ký tự.</div>}
+          <div className="password-actions">
+            <button type="button" className="linked-account-btn" onClick={closePasswordForm} disabled={pwSaving}>
+              Hủy
+            </button>
+            <button type="submit" className="linked-account-btn save" disabled={pwSaving}>
+              {pwSaving ? "Đang lưu..." : "Lưu"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {!hasPassword && (
         <div className="linked-account-warn">
-          Bạn chưa đặt mật khẩu — đây là phương thức đăng nhập duy nhất nên không thể gỡ.
+          {linked.length <= 1
+            ? "Chưa có mật khẩu nên đây là phương thức đăng nhập duy nhất, không thể gỡ. Đặt mật khẩu để đăng nhập trực tiếp và dùng được MCP server."
+            : "Đặt mật khẩu để đăng nhập trực tiếp và dùng được MCP server."}
         </div>
       )}
     </div>
