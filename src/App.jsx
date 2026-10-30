@@ -39,6 +39,7 @@ const MiniGame = lazy(() => import("./components/pages/MiniGame/MiniGame"));
 const PixelGame = lazy(() => import("./components/pages/PixelGame/PixelGame"));
 const IsoCity = lazy(() => import("./components/pages/IsoCity/IsoCity"));
 const DesktopApp = lazy(() => import("./components/pages/DesktopApp/DesktopApp"));
+const English = lazy(() => import("./components/pages/English/English"));
 
 
 const App = () => {
@@ -170,6 +171,7 @@ const MainApp = () => {
         <Route path="/setting/" element={<Setting />} />
         <Route path="/note" element={<Note />} />
         <Route path="/daily-note" element={<DailyNoteApp />} />
+        <Route path="/english" element={<English />} />
         <Route path="/files" element={<FilesPage />} />
         <Route path="/game" element={<MiniGame />} />
         <Route path="/pixel-game" element={<PixelGame />} />
