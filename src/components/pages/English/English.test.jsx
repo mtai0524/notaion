@@ -46,6 +46,13 @@ describe('English page', () => {
     expect(screen.getByText(/nothing due/)).toBeTruthy();
   });
 
+  it('shows the card picked with j in the review panel', async () => {
+    renderWithCards([DUE_CARD, { ...DUE_CARD, id: 'c2', front: 'prioritize', due: 1 }]);
+    await screen.findByText('resilient', { selector: '.eng-card-front' });
+    press('j');
+    expect(screen.getByText('prioritize', { selector: '.eng-card-front' })).toBeTruthy();
+  });
+
   it('saves a card from the n form to the server', async () => {
     renderWithCards([]);
     await screen.findByText(/no cards yet/);
