@@ -101,6 +101,9 @@ const WritingTab = ({ writings, add, update, remove }) => {
         <div className="eng-row eng-dim" onClick={startNew}>+ new (n)</div>
       </Panel>
       <Panel title={selected ? `WRITE · ${formatDate(selected.createdAt)}` : 'WRITE'} focused className="eng-main">
+        {selected?.prompt && (
+          <div className="eng-prompt"><b>TODAY&apos;S TASK</b>{selected.prompt}</div>
+        )}
         {selected ? (
           <textarea ref={editorRef} className="eng-editor" value={selected.body} onKeyDown={onEditorKeyDown}
                     placeholder="Write a few sentences in English, then press Ctrl+Enter"
@@ -134,6 +137,7 @@ WritingTab.propTypes = {
   writings: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     body: PropTypes.string.isRequired,
+    prompt: PropTypes.string,
     createdAt: PropTypes.number.isRequired,
     result: resultShape,
   })).isRequired,

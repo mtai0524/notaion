@@ -23,6 +23,7 @@ describe('English page', () => {
     localStorage.setItem(SYNCED_KEY, '1');
     vi.clearAllMocks();
     axiosInstance.put.mockResolvedValue({ data: {} });
+    axiosInstance.post.mockResolvedValue({ data: { created: false } });
   });
 
   it('switches to SENTENCES on key 2', async () => {
@@ -51,6 +52,15 @@ describe('English page', () => {
     await screen.findByText('resilient', { selector: '.eng-card-front' });
     press('j');
     expect(screen.getByText('prioritize', { selector: '.eng-card-front' })).toBeTruthy();
+  });
+
+  it("shows today's writing task above the editor", async () => {
+    axiosInstance.get.mockResolvedValue({
+      data: { writings: [{ id: 'w1', body: '', prompt: 'Describe your weekend.', createdAt: 0, result: null }] },
+    });
+    render(<English />);
+    press('4');
+    expect(await screen.findByText('Describe your weekend.')).toBeTruthy();
   });
 
   it('saves a card from the n form to the server', async () => {

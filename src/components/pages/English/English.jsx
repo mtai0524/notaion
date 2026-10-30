@@ -22,7 +22,7 @@ const loadTab = () => {
 };
 
 const English = () => {
-  const { data, syncing, syncError, add, update, remove } = useEnglishData();
+  const { data, syncing, preparing, syncError, add, update, remove } = useEnglishData();
   const [tab, setTab] = useState(loadTab);
   const dueCount = data.cards.filter((card) => isDue(card)).length;
   const lists = { add, update, remove };
@@ -59,6 +59,7 @@ const English = () => {
         <b>NORMAL</b>
         <span>1-4:tab {TABS.find((item) => item.key === tab).hint}</span>
         {syncing && <span className="eng-sync">syncing…</span>}
+        {preparing && <span className="eng-sync">preparing today&apos;s lesson…</span>}
         {syncError && <span className="eng-sync eng-error">{syncError}</span>}
       </div>
     </div>

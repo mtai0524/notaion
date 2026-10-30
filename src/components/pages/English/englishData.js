@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { deleteItemAsync, fetchItemsAsync, saveItemAsync, saveItemsAsync, syncErrorMessage } from './englishApi';
+import {
+  createDailyAsync, deleteItemAsync, fetchItemsAsync, saveItemAsync, saveItemsAsync, syncErrorMessage,
+} from './englishApi';
 
 // The server is the source of truth (so the notaion MCP server sees the same
 // data); localStorage is a cache for the first paint.
@@ -40,11 +42,37 @@ const loadFromServerAsync = async () => {
   return { ...EMPTY, ...(await fetchItemsAsync()) };
 };
 
+// The learner's local date, yyyy-MM-dd (lesson ids are built from it).
+export const todayKey = (now = new Date()) => {
+  const pad = (value) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
+
+const hasLesson = (data, date) => data.texts.some((text) => text.id === `daily-${date}-text`);
+
+// Asks the server for today's lesson when it is missing; returns the server
+// data, or null when nothing was created.
+const fetchDailyLessonAsync = async (data) => {
+  const date = todayKey();
+  if (hasLesson(data, date)) return null;
+  const result = await createDailyAsync(date);
+  if (!result.created) return null;
+  return fetchItemsAsync();
+};
+
+// Adds the server items the page doesn't have yet, keeping local edits.
+const mergeNewItems = (current, server) => Object.fromEntries(Object.keys(EMPTY).map((list) => {
+  const known = new Set(current[list].map((item) => item.id));
+  const added = (server[list] || []).filter((item) => !known.has(item.id));
+  return [list, [...added, ...current[list]]];
+}));
+
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export const useEnglishData = () => {
   const [data, setData] = useState(loadData);
   const [syncing, setSyncing] = useState(true);
+  const [preparing, setPreparing] = useState(false);
   const [syncError, setSyncError] = useState('');
   const dataRef = useRef(data);
   const timers = useRef(new Map());
@@ -76,10 +104,31 @@ export const useEnglishData = () => {
 
   useEffect(() => {
     let cancelled = false;
-    loadFromServerAsync()
-      .then((server) => { if (!cancelled) setData(server); })
-      .catch(report)
-      .finally(() => { if (!cancelled) setSyncing(false); });
+    const prepareLessonAsync = async (server) => {
+      setPreparing(true);
+      try {
+        const withLesson = await fetchDailyLessonAsync(server);
+        if (!cancelled && withLesson) setData((current) => mergeNewItems(current, withLesson));
+      } catch (err) {
+        console.error("[ENGLISH] Could not prepare today's lesson:", err);
+        if (!cancelled) setSyncError(err.response?.status === 401 ? syncErrorMessage(err) : "could not prepare today's lesson — reload to try again");
+      } finally {
+        if (!cancelled) setPreparing(false);
+      }
+    };
+    const loadAsync = async () => {
+      try {
+        const server = await loadFromServerAsync();
+        if (cancelled) return;
+        setData(server);
+        setSyncing(false);
+        await prepareLessonAsync(server);
+      } catch (err) {
+        report(err);
+        if (!cancelled) setSyncing(false);
+      }
+    };
+    loadAsync();
     return () => { cancelled = true; };
   }, [report]);
 
@@ -115,5 +164,5 @@ export const useEnglishData = () => {
     runAsync(() => deleteItemAsync(list, id));
   }, [runAsync]);
 
-  return { data, syncing, syncError, add, update, remove };
+  return { data, syncing, preparing, syncError, add, update, remove };
 };

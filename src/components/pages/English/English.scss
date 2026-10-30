@@ -199,6 +199,21 @@
   ins { color: #16a34a; font-weight: 700; text-decoration: none; }
 }
 
+.eng-prompt {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1.5px dashed var(--border-color, #111827);
+  border-radius: var(--radius-sm, 4px);
+  line-height: 1.6;
+
+  b {
+    display: block;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    color: var(--text-muted, #6b7280);
+  }
+}
+
 .eng-notes { margin: 10px 0; padding-left: 18px; list-style: disc; line-height: 1.6; }
 
 /* ----- status bar + modal ----- */

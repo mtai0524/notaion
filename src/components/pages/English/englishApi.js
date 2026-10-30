@@ -18,6 +18,9 @@ export const deleteItemAsync = async (list, id) => {
   }
 };
 
+// Creates today's lesson on the server unless it exists; { created, ... }.
+export const createDailyAsync = async (date) => (await axiosInstance.post('/api/English/daily', { date })).data;
+
 export const checkTextAsync = async (text) => (await axiosInstance.post('/api/English/check', { text })).data;
 
 export const syncErrorMessage = (err) => {
