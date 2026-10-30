@@ -1436,6 +1436,19 @@
     }
   }
 
+  .tui-theme-seg {
+    flex-wrap: wrap;
+
+    button { display: inline-flex; align-items: center; gap: 6px; }
+  }
+
+  .tui-theme-swatch {
+    display: inline-flex;
+    border: 1px solid rgba(127, 127, 127, 0.4);
+
+    b { display: block; width: 7px; height: 11px; }
+  }
+
   .tui-bg-thumb {
     flex-shrink: 0;
     width: 44px;

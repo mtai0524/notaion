@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import {
   ACCENT_COLORS, TEXT_COLORS, BORDER_STYLES, FONTS, FONT_WEIGHTS, LOOK_FIELDS, TEXT_FIELDS, TEXT_PANELS, MAX_BG_BYTES,
 } from './appearance';
+import { THEME_NAMES, themeSwatch } from './tuiThemes';
 import { ColorRow, LookRow, RangeRow, ResetRow, SegmentRow } from './OptionRows';
 import { appearanceShape, keepKeysLocal, rowSelection, textShape } from './optionsUtils';
 
@@ -55,10 +56,29 @@ const BackgroundRow = ({ value, selected, onSelect, onChange, onError }) => {
   );
 };
 
+const ThemeSwatch = ({ name }) => {
+  const colors = themeSwatch(name);
+  if (!colors) return null;
+  return <i className="tui-theme-swatch">{colors.map((color) => <b key={color} style={{ background: color }} />)}</i>;
+};
+
+const ThemeRow = ({ value, selected, onSelect, onChange }) => (
+  <LookRow label="theme" selected={selected} onSelect={onSelect}>
+    <div className="tui-look-seg tui-theme-seg">
+      {THEME_NAMES.map((name) => (
+        <button key={name} type="button" className={value === name ? 'on' : ''} onClick={() => onChange(name)}>
+          <ThemeSwatch name={name} />{name}
+        </button>
+      ))}
+    </div>
+  </LookRow>
+);
+
 export const LookTab = ({ appearance, sel, onSelChange, onChange, onReset, onError }) => {
   const row = rowSelection(LOOK_FIELDS, sel, onSelChange);
   return (
     <>
+      <ThemeRow value={appearance.theme} onChange={(theme) => onChange({ theme })} {...row('theme')} />
       <ColorRow label="highlight" value={appearance.accent} colors={ACCENT_COLORS} defaultClass="default"
                 onChange={(accent) => onChange({ accent })} {...row('accent')} />
       <RangeRow label="border width" value={appearance.borderWidth} min={0} max={4} step={1} format={px}
@@ -103,6 +123,15 @@ BackgroundRow.propTypes = {
   onSelect: PropTypes.func.isRequired,
   onChange: PropTypes.func.isRequired,
   onError: PropTypes.func.isRequired,
+};
+
+ThemeSwatch.propTypes = { name: PropTypes.string.isRequired };
+
+ThemeRow.propTypes = {
+  value: PropTypes.string.isRequired,
+  selected: PropTypes.bool.isRequired,
+  onSelect: PropTypes.func.isRequired,
+  onChange: PropTypes.func.isRequired,
 };
 
 const tabProps = {

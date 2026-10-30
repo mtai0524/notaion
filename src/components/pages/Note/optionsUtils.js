@@ -19,6 +19,7 @@ export const textShape = PropTypes.shape({
 });
 
 export const appearanceShape = PropTypes.shape({
+  theme: PropTypes.string.isRequired,
   accent: PropTypes.string,
   borderWidth: PropTypes.number.isRequired,
   borderStyle: PropTypes.string.isRequired,

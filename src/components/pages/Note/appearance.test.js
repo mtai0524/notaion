@@ -129,6 +129,16 @@ describe('appearance', () => {
   });
 
   it('builds look defaults without touching text', () => {
-    expect(defaultsFor(LOOK_FIELDS)).toEqual({ accent: null, borderWidth: 2, borderStyle: 'solid', radius: 6, opacity: 100, bgImage: '' });
+    expect(defaultsFor(LOOK_FIELDS)).toEqual({ theme: 'site', accent: null, borderWidth: 2, borderStyle: 'solid', radius: 6, opacity: 100, bgImage: '' });
+  });
+
+  it('cycles the theme from site to the first palette', () => {
+    expect(stepAppearance(DEFAULT_APPEARANCE, 'theme', 1)).toEqual({ theme: 'gruvbox' });
+  });
+
+  it('recolors the TUI for a theme and lets highlight override its accent', () => {
+    const style = appearanceStyle({ ...DEFAULT_APPEARANCE, theme: 'nord', accent: '#16a34a' });
+    expect(style['--bg-color']).toBe('#2e3440');
+    expect(style['--tui-accent']).toBe('#16a34a');
   });
 });

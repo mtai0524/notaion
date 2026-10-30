@@ -2,6 +2,8 @@
 // Stored as one JSON object; only values that differ from the defaults are
 // turned into CSS variables, so the default look keeps following the site theme.
 
+import { THEME_NAMES, themeStyle } from './tuiThemes';
+
 export const APPEARANCE_KEY = 'daily-note-appearance';
 const LEGACY_ACCENT_KEY = 'daily-note-accent';
 
@@ -34,6 +36,7 @@ const TEXT_KEYS = Object.keys(DEFAULT_TEXT);
 const textForAllPanels = (style) => Object.fromEntries(TEXT_PANELS.map((panel) => [panel, { ...style }]));
 
 export const DEFAULT_APPEARANCE = {
+  theme: 'site',
   accent: null,
   borderWidth: 2,
   borderStyle: 'solid',
@@ -52,7 +55,7 @@ export const OPTION_TABS = [
 
 // Rows of the APPEARANCE and TEXT tabs, in keyboard (j/k) order. The last
 // row of each is its reset button; TEXT starts with the panel picker.
-export const LOOK_FIELDS = ['accent', 'borderWidth', 'borderStyle', 'radius', 'opacity', 'bgImage', 'reset'];
+export const LOOK_FIELDS = ['theme', 'accent', 'borderWidth', 'borderStyle', 'radius', 'opacity', 'bgImage', 'reset'];
 export const TEXT_FIELDS = ['panel', 'font', 'fontWeight', 'fontSize', 'lineHeight', 'textColor', 'reset'];
 
 const LIMITS = {
@@ -115,6 +118,7 @@ export const defaultsFor = (fields) => Object.fromEntries(
 
 const cycle = (list, current, dir) => list[(list.indexOf(current) + dir + list.length) % list.length];
 const CYCLES = {
+  theme: THEME_NAMES,
   accent: [null, ...ACCENT_COLORS],
   textColor: [null, ...TEXT_COLORS],
   borderStyle: BORDER_STYLES,
@@ -136,7 +140,7 @@ export const nextTextPanel = (panel, dir) => cycle(TEXT_PANELS, panel, dir);
 
 // CSS variables for the TUI root; only non-default values are emitted.
 export const appearanceStyle = (appearance) => {
-  const style = {};
+  const style = themeStyle(appearance.theme);
   const isDefault = (field) => appearance[field] === DEFAULT_APPEARANCE[field];
   if (appearance.accent) style['--tui-accent'] = appearance.accent;
   if (!isDefault('borderWidth')) {
