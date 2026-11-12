@@ -82,7 +82,7 @@ const lsSet = (key, value) => {
    onExportAll(format, { onProgress }) → summary string, onDownload(filename, text).
    newNoteSignal: bump it to open a new note (desktop quick capture). */
 const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, onChangeDate, dateLabel, categories,
-  allNotes, markedDates, onRestore, onGoToDate, loading, syncStatus,
+  allNotes, markedDates, onRestore, onGoToDate, loading, syncStatus, dayTrash, allTrash,
   fullscreenOn, onToggleFullscreen, onUploadFiles, onExportAll, onDownload, newNoteSignal }) => {
   const [focus, setFocus] = useState('notes');
   const [folderIndex, setFolderIndex] = useState(0);
@@ -241,6 +241,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       setDragging(false);
     }
   }, [resizeOn, mode]);
+  const [trashScope, setTrashScope] = useState('day'); // TRASH folder: 'day' | 'all'
   const [tagFilter, setTagFilter] = useState(null); // '#tag' filter (lowercase, no #)
   const [cmd, setCmd] = useState(''); // ":" command line buffer
   const [count, setCount] = useState(''); // vim count prefix
@@ -282,6 +283,17 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 24);
   }, [notes]);
 
+  // Deleted notes, newest first: this day's own or every day's, per the scope toggle.
+  const trash = useMemo(() => {
+    // The viewed day is live state; the other days come from the load-time
+    // snapshot, so a note deleted just now still shows up under "all".
+    const own = dayTrash || [];
+    const ids = new Set(own.map((n) => n.id));
+    const l = trashScope === 'all' ? [...own, ...(allTrash || []).filter((n) => !ids.has(n.id))] : own;
+    return [...l].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))
+      || String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
+  }, [trashScope, dayTrash, allTrash]);
+
   // FOLDERS = "ALL" + each category.
   const folders = useMemo(() => {
     const counts = {};
@@ -289,10 +301,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     return [
       { key: 'ALL', label: 'ALL', count: notes.length },
       ...catList.map((c) => ({ key: c, label: c, count: counts[c] || 0 })),
+      { key: 'TRASH', label: 'TRASH', count: trash.length },
     ];
-  }, [notes, catList]);
+  }, [notes, catList, trash]);
 
   const activeFolder = folders[Math.min(folderIndex, folders.length - 1)] || folders[0];
+  const inTrash = activeFolder?.key === 'TRASH';
 
   const hasTag = (n, tag) => {
     const probe = `${n.title || ''}\n${n.content || ''}`.toLowerCase();
@@ -300,20 +314,21 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   };
 
   const list = useMemo(() => {
-    let l = notes;
-    if (activeFolder && activeFolder.key !== 'ALL') l = l.filter((n) => catOf(n) === activeFolder.key);
+    let l = inTrash ? trash : notes;
+    if (!inTrash && activeFolder && activeFolder.key !== 'ALL') l = l.filter((n) => catOf(n) === activeFolder.key);
     if (tagFilter) l = l.filter((n) => hasTag(n, tagFilter));
     if (query.trim()) {
       const q = query.toLowerCase();
       l = l.filter((n) => (n.title || '').toLowerCase().includes(q) || (n.content || '').toLowerCase().includes(q));
     }
+    if (inTrash) return l;
     const cmp = {
       title: (a, b) => (a.title || '').localeCompare(b.title || ''),
       updated: (a, b) => String(b.updatedAt || '').localeCompare(String(a.updatedAt || '')),
       created: (a, b) => String(a.timestamp || '').localeCompare(String(b.timestamp || '')),
     }[sortBy] || (() => 0);
     return [...l].sort(cmp);
-  }, [notes, activeFolder, query, sortBy, tagFilter]);
+  }, [notes, activeFolder, query, sortBy, tagFilter, inTrash, trash]);
 
   useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
 
@@ -325,6 +340,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     setTagFilter(null);
     setQuery('');
     setNoteIndex(0);
+    setTrashScope('day');
   }, [dateLabel]);
   useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
@@ -380,8 +396,20 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
     setFocus(PANELS[(i + dir + PANELS.length) % PANELS.length]);
   };
 
-  const editTitle = () => { if (current) { setDraft(current.title || ''); setMode('title'); } };
-  const editBody = () => { if (current) { setFocus('preview'); setDraft(current.content || ''); setMode('body'); } };
+  const readOnly = () => {
+    if (!current?.isDeleted) return false;
+    flashMsg('note is in the trash — press r to restore it first');
+    return true;
+  };
+
+  const editTitle = () => { if (current && !readOnly()) { setDraft(current.title || ''); setMode('title'); } };
+  const editBody = () => { if (current && !readOnly()) { setFocus('preview'); setDraft(current.content || ''); setMode('body'); } };
+
+  const restoreNote = (n) => {
+    if (!n || !onRestore) return;
+    onRestore(n);
+    flashMsg(`restored "${n.title || 'untitled'}"`);
+  };
 
   const goToday = () => {
     const [y, m, d] = dateLabel.split('-').map(Number);
@@ -445,7 +473,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   const createNote = (template) => {
     setFocus('notes');
     setQuery('');
-    const cat = activeFolder && activeFolder.key !== 'ALL' ? activeFolder.key : null;
+    if (inTrash) setFolderIndex(0);
+    const cat = !inTrash && activeFolder && activeFolder.key !== 'ALL' ? activeFolder.key : null;
     return Promise.resolve(onAdd(template, cat ? { category: cat, customCategory: cat } : {})).then((created) => {
       if (created?.id) {
         pushUndo({ type: 'add', note: { ...created } });
@@ -1298,12 +1327,14 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
       case 'F': setFolderIndex((i) => (i - 1 + folders.length) % folders.length); e.preventDefault(); return;
       case 'n': createNote('blank'); e.preventDefault(); return;
       case 'N': createNote('todo'); e.preventDefault(); return;
-      case 'm': if (current) setMode('category'); e.preventDefault(); return;
-      case 'M': if (current) setMode('move'); e.preventDefault(); return;
+      case 'm': if (current && !readOnly()) setMode('category'); e.preventDefault(); return;
+      case 'M': if (current && !readOnly()) setMode('move'); e.preventDefault(); return;
       case 'S': cycleSort(); e.preventDefault(); return;
-      case 'y': if (current) onDuplicate?.({ ...current }); e.preventDefault(); return;
+      case 'y': if (current && !readOnly()) onDuplicate?.({ ...current }); e.preventDefault(); return;
       case 'T': openOptions(); e.preventDefault(); return;
       case 'c': setCalCursor(new Date(`${dateLabel}T00:00:00`)); setShowCal(true); e.preventDefault(); return;
+      case 'r': if (current?.isDeleted) { restoreNote(current); e.preventDefault(); return; } break;
+      case 'a': if (inTrash) { setTrashScope((v) => (v === 'day' ? 'all' : 'day')); e.preventDefault(); return; } break;
       case 'u': if (!e.ctrlKey) { undo(); e.preventDefault(); return; } break;
       case 'U': redo(); e.preventDefault(); return;
       case 'Escape':
@@ -1311,6 +1342,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         else if (zoomOn) setZoomed(false);
         else if (tagFilter) setTagFilter(null);
         else if (query) setQuery('');
+        else if (inTrash) setFolderIndex(0);
         else setFocus('notes');
         e.preventDefault();
         return;
@@ -1339,8 +1371,8 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         case 'l': case 'L': case 'ArrowRight': setFocus('preview'); break;
         case 'Enter': case 'e': editTitle(); break;
         case 'i': editBody(); break;
-        case 'C': cycleCategory(1); break;
-        case 'd': if (current) setMode('delete'); break;
+        case 'C': if (!readOnly()) cycleCategory(1); break;
+        case 'd': if (current && !readOnly()) setMode('delete'); break;
         default: return;
       }
       e.preventDefault();
@@ -1356,10 +1388,10 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         case 'k': case 'ArrowUp': scrollPreview(-48); break;
         case 'g': previewRef.current?.scrollTo({ top: 0 }); break;
         case 'G': previewRef.current?.scrollTo({ top: previewRef.current.scrollHeight }); break;
-        case 'C': cycleCategory(1); break;
+        case 'C': if (!readOnly()) cycleCategory(1); break;
         case 'd':
           if (e.ctrlKey) scrollPreview((previewRef.current?.clientHeight || 400) / 2);
-          else if (current) setMode('delete');
+          else if (current && !readOnly()) setMode('delete');
           break;
         case 'u':
           if (e.ctrlKey) scrollPreview(-(previewRef.current?.clientHeight || 400) / 2);
@@ -1518,6 +1550,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         ['i', 'edit body · Ctrl+Enter saves'],
         ['y · d→y', 'duplicate · delete'],
         ['u / U', 'undo / redo'],
+      ],
+    },
+    {
+      title: 'TRASH',
+      rows: [
+        ['f → TRASH', 'open the trash folder'],
+        ['a', 'this day / all days'],
+        ['r', 'restore the selected note'],
+        ['Esc', 'back to ALL'],
       ],
     },
     {
@@ -1713,7 +1754,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           <span className="tui-panel-title"><kbd>1</kbd>FOLDERS{zoomButton('folders')}</span>
           <div className="tui-scroll">
             {folders.map((f, i) => (
-              <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''} ${f.key === 'ALL' ? 'all' : ''}`}
+              <div key={f.key} className={`tui-folder ${i === folderIndex ? 'sel' : ''} ${f.key === 'ALL' ? 'all' : ''} ${f.key === 'TRASH' ? 'trash' : ''}`}
                    onClick={() => { setFolderIndex(i); setFocus('notes'); }}>
                 <span className="tui-folder-name">{f.label}</span>
                 <span className={`tui-folder-count ${f.count === 0 ? 'zero' : ''}`}>{f.count}</span>
@@ -1748,7 +1789,15 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
         {/* NOTES */}
         <div className={`tui-panel tui-notes ${panelClass('notes')}`} style={panelStyle(1)}>
           <span className="tui-panel-title">
-            <kbd>2</kbd>NOTES{zoomButton('notes')}
+            <kbd>2</kbd>{inTrash ? 'TRASH' : 'NOTES'}{zoomButton('notes')}
+            {inTrash && (
+              <span className="tui-scope" title="Trash scope (a)">
+                {['day', 'all'].map((v) => (
+                  <button key={v} type="button" className={trashScope === v ? 'on' : ''}
+                          onMouseDown={(e) => { e.preventDefault(); setTrashScope(v); }}>{v}</button>
+                ))}
+              </span>
+            )}
             {loading && <Spinner label="loading" className="tui-title-spinner" />}
             {tagFilter && (
               <button type="button" className="tui-tagfilter-chip" title="Clear tag filter (Esc)"
@@ -1759,7 +1808,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </span>
           <div className="tui-scroll">
             {list.length === 0 ? (
-              <div className="tui-empty">{query ? 'no matches' : 'no entries — press n / tap + New'}</div>
+              <div className="tui-empty">
+                {query ? 'no matches' : inTrash ? 'trash is empty' : 'no entries — press n / tap + New'}
+              </div>
             ) : (
               list.map((n, i) => {
                 const sel = i === noteIndex;
@@ -1767,7 +1818,7 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                 return (
                   <div key={n.id}
                        ref={sel ? (el) => el?.scrollIntoView?.({ block: 'nearest' }) : null}
-                       className={`tui-row ${sel ? 'sel' : ''} ${pendingDelete ? 'pending-delete' : ''}`}
+                       className={`tui-row ${sel ? 'sel' : ''} ${pendingDelete ? 'pending-delete' : ''} ${n.isDeleted ? 'deleted' : ''}`}
                        onTouchStart={(e) => lpStart(i, e)}
                        onTouchMove={lpMove}
                        onTouchEnd={lpEnd}
@@ -1796,10 +1847,18 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                         ? <span className={`tui-sub-chip ${doneCt === total ? 'full' : ''}`} title={`${doneCt}/${total} subtasks`}>▣ {doneCt}/{total}</span>
                         : null;
                     })()}
-                    <button type="button" className="tui-row-del" title="Delete note (d)"
-                            onClick={(e) => { e.stopPropagation(); setNoteIndex(i); setMode('delete'); }}>
-                      ×
-                    </button>
+                    {inTrash && trashScope === 'all' && <span className="tui-row-date">{n.date}</span>}
+                    {n.isDeleted ? (
+                      <button type="button" className="tui-row-restore" title="Restore note (r)"
+                              onClick={(e) => { e.stopPropagation(); setNoteIndex(i); restoreNote(n); }}>
+                        ↺
+                      </button>
+                    ) : (
+                      <button type="button" className="tui-row-del" title="Delete note (d)"
+                              onClick={(e) => { e.stopPropagation(); setNoteIndex(i); setMode('delete'); }}>
+                        ×
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -1827,13 +1886,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
                        onChange={(e) => setDraft(e.target.value)} onKeyDown={onInputKeyDown} onBlur={onInputBlur}
                        placeholder="title…" />
               ) : (
-                <div className="tui-pv-title" title="Click to edit title"
+                <div className={`tui-pv-title ${current.isDeleted ? 'deleted' : ''}`}
+                     title={current.isDeleted ? 'In the trash — restore it to edit' : 'Click to edit title'}
                      onClick={() => { setFocus('preview'); editTitle(); }}>
                   {current.title || '(untitled)'}
                 </div>
               )}
               <div className="tui-pv-meta">
+                {current.isDeleted && <span className="tag danger">DELETED</span>}
                 <span className="tag">{catOf(current)}</span>
+                {current.isDeleted && current.date !== dateLabel && <span> · {current.date}</span>}
                 {current.timestamp && <span> · {current.timestamp}</span>}
                 {current.content && (() => {
                   const s = wordStats(current.content);
@@ -2032,8 +2094,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               ) : (
                 <div className="tui-pv-body"
                      onClick={() => { if (!window.getSelection?.().toString().trim()) editBody(); }}
-                     title="Click to edit · select text to copy (Ctrl+C)">
+                     title={current.isDeleted ? 'In the trash — restore it to edit' : 'Click to edit · select text to copy (Ctrl+C)'}>
                   {renderMarkdown(current.content, true)}
+                </div>
+              )}
+              {current.isDeleted && (
+                <div className="tui-pv-trashbar">
+                  <button type="button" className="tui-restore-btn" onClick={() => restoreNote(current)}>
+                    ↺ RESTORE <kbd>r</kbd>
+                  </button>
+                  <span>read-only until restored</span>
                 </div>
               )}
             </div>
@@ -2130,7 +2200,9 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
           </span>
         ) : (
           <>
-            <span className={`tui-badge mode-${mode}`}>{mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}</span>
+            <span className={`tui-badge mode-${mode} ${inTrash ? 'in-trash' : ''}`}>
+              {inTrash ? 'TRASH' : mode === 'normal' ? 'NORMAL' : mode.toUpperCase()}
+            </span>
             {zoomOn && (
               <button type="button" className="tui-zoom-tag" title="Restore (z / Esc)"
                       onClick={(e) => { e.stopPropagation(); setZoomed(false); }}>
@@ -2138,8 +2210,12 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
               </button>
             )}
             {count && <span className="tui-count-tag" title="Count prefix">{count}</span>}
-            {flash ? <span className="tui-flash">{flash}</span> : <span className="tui-hints">{hints[mode]}</span>}
-            <span className="tui-stat">{filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`}</span>
+            {flash ? <span className="tui-flash">{flash}</span>
+              : <span className="tui-hints">{inTrash ? 'r:restore · a:day/all · j/k:move · Esc:leave trash' : hints[mode]}</span>}
+            <span className="tui-stat">
+              {inTrash ? `${list.length} deleted · ${trashScope === 'all' ? 'all days' : dateLabel}`
+                : filtered ? `${list.length}/${notes.length} shown` : `${notes.length} notes`}
+            </span>
             {syncStatus === 'saving' && <Spinner label="saving" className="tui-sync-spinner" />}
             <button type="button" className="tui-help-btn" title="Options (T)" aria-label="Options"
                     onClick={(e) => { e.stopPropagation(); openOptions(); }}>⚙</button>
@@ -2281,6 +2357,8 @@ TuiView.propTypes = {
   dateLabel: PropTypes.string.isRequired,
   categories: PropTypes.array,
   allNotes: PropTypes.array,
+  dayTrash: PropTypes.array,
+  allTrash: PropTypes.array,
   markedDates: PropTypes.object,
   loading: PropTypes.bool,
   syncStatus: PropTypes.string,

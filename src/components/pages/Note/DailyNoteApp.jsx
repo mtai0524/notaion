@@ -30,6 +30,7 @@ const DailyNoteApp = () => {
   const [currentDate, setCurrentDate] = useState(() => parseDate(urlDate) || new Date());
   const [notesByDate, setNotesByDate] = useState({});
   const [allNotes, setAllNotes] = useState([]);
+  const [allTrash, setAllTrash] = useState([]);
   const [cachedDayCounts, setCachedDayCounts] = useState(loadDayCounts);
   const [loading, setLoading] = useState(false);
   const [syncStatus, setSyncStatus] = useState('saved');
@@ -39,6 +40,7 @@ const DailyNoteApp = () => {
 
   const dateKey = format(currentDate, 'yyyy-MM-dd');
   const currentNotes = (notesByDate[dateKey] || []).filter((n) => !n.isDeleted);
+  const dayTrash = (notesByDate[dateKey] || []).filter((n) => n.isDeleted);
 
   useEffect(() => {
     const parsed = parseDate(urlDate);
@@ -72,8 +74,8 @@ const DailyNoteApp = () => {
     const fetchNotesAsync = async () => {
       setLoading(true);
       try {
-        const response = await axiosInstance.get(`/api/DailyNote/${dateKey}`);
-        setNotesByDate((prev) => ({ ...prev, [dateKey]: response.data.filter((n) => !n.isDeleted) }));
+        const response = await axiosInstance.get(`/api/DailyNote/${dateKey}?includeDeleted=true`);
+        setNotesByDate((prev) => ({ ...prev, [dateKey]: response.data }));
       } catch (error) {
         console.error(`[DAILY-NOTE] Failed to fetch notes for ${dateKey}:`, error);
       } finally {
@@ -87,11 +89,12 @@ const DailyNoteApp = () => {
   // [[links]]. Deferred until the browser is idle so it never delays first paint.
   const fetchAllNotesAsync = useCallback(async () => {
     try {
-      const response = await axiosInstance.get('/api/DailyNote/all');
+      const response = await axiosInstance.get('/api/DailyNote/all?includeDeleted=true');
       const notes = Array.isArray(response.data) ? response.data : [];
       const counts = {};
       notes.forEach((n) => { if (!n.isDeleted && n.date) counts[n.date] = (counts[n.date] || 0) + 1; });
-      setAllNotes(notes);
+      setAllNotes(notes.filter((n) => !n.isDeleted));
+      setAllTrash(notes.filter((n) => n.isDeleted));
       setCachedDayCounts(counts);
       saveDayCounts(counts);
     } catch (error) {
@@ -172,7 +175,7 @@ const DailyNoteApp = () => {
   };
 
   const deleteNoteAsync = async (id) => {
-    setDayNotes(dateKey, (list) => list.filter((n) => n.id !== id));
+    setDayNotes(dateKey, (list) => list.map((n) => (n.id === id ? { ...n, isDeleted: true } : n)));
     // Drop any locally stored deadline so the reminder engine forgets the note.
     setLocalDeadline(id, { deadline: null });
     clearFiredForNote(id);
@@ -189,6 +192,7 @@ const DailyNoteApp = () => {
   const restoreNoteAsync = async (note) => {
     const restored = { ...note, isDeleted: false, updatedAt: new Date().toISOString() };
     setDayNotes(restored.date || dateKey, (list) => [...list.filter((n) => n.id !== note.id), restored]);
+    setAllTrash((prev) => prev.filter((n) => n.id !== note.id));
     setSyncStatus('saving');
     try {
       await axiosInstance.post(`/api/DailyNote/${note.id}/restore`);
@@ -275,6 +279,7 @@ const DailyNoteApp = () => {
           dateLabel={dateKey}
           categories={CATEGORIES}
           allNotes={allNotes}
+          dayTrash={dayTrash} allTrash={allTrash}
           markedDates={markedDates}
           onRestore={restoreNoteAsync}
           onGoToDate={setCurrentDate}

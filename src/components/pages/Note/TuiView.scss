@@ -172,6 +172,32 @@
       }
     }
 
+    /* TRASH closes the list, separated from the categories like ALL opens it */
+    &.trash {
+      position: relative;
+      margin-top: 11px;
+
+      &::before {
+        content: '';
+        position: absolute;
+        left: -2px;
+        right: 2px;
+        top: -7px;
+        border-top: 1.5px dashed var(--border-color, #d1d5db);
+        opacity: 0.4;
+      }
+
+      .tui-folder-name { color: var(--danger-color, #ef4444); }
+
+      &.sel {
+        background: rgba(239, 68, 68, 0.1);
+        border-left-color: var(--danger-color, #ef4444);
+
+        .tui-folder-name { color: var(--danger-color, #ef4444); }
+        .tui-folder-count { background: var(--danger-color, #ef4444); }
+      }
+    }
+
     &:hover { background: rgba(127, 127, 127, 0.08); }
 
     &.sel {
@@ -245,6 +271,49 @@
       .tui-row-del { opacity: 1; }
     }
 
+    /* a deleted note reads as struck through, with its day when the trash
+       spans every day */
+    &.deleted .tui-title {
+      color: var(--text-muted, #6b7280);
+      text-decoration: line-through;
+      text-decoration-color: rgba(239, 68, 68, 0.5);
+    }
+
+    .tui-row-date {
+      flex-shrink: 0;
+      font-size: calc(0.7rem * var(--tui-text-scale, 1));
+      color: var(--text-muted, #9ca3af);
+      letter-spacing: 0.5px;
+    }
+
+    .tui-row-restore {
+      flex-shrink: 0;
+      width: 20px;
+      height: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: 1.5px solid transparent;
+      border-radius: var(--radius-sm, 4px);
+      color: var(--text-muted, #9ca3af);
+      font-size: 0.9rem;
+      line-height: 1;
+      cursor: pointer;
+
+      &:hover {
+        border-color: var(--success-color, #16a34a);
+        color: var(--success-color, #16a34a);
+        background: rgba(22, 163, 74, 0.1);
+      }
+    }
+
+    &.sel .tui-row-restore {
+      border-color: var(--success-color, #16a34a);
+      color: var(--success-color, #16a34a);
+      background: rgba(22, 163, 74, 0.1);
+    }
+
     /* row awaiting delete confirmation — red frame so it's unmistakable */
     &.pending-delete {
       background: rgba(239, 68, 68, 0.12);
@@ -257,6 +326,13 @@
   .tui-empty { padding: 18px 10px; color: var(--text-muted, #9ca3af); }
 
   /* preview pane */
+  .tui-pv-title.deleted {
+    color: var(--text-muted, #6b7280);
+    text-decoration: line-through;
+    text-decoration-color: rgba(239, 68, 68, 0.5);
+    cursor: default;
+  }
+
   .tui-pv-title {
     color: var(--text-color, #111827);
     font-size: calc(1.05rem * var(--tui-text-scale, 1));
@@ -277,6 +353,44 @@
       padding: 0 6px;
       border-radius: var(--radius-sm, 4px);
       font-weight: 700;
+
+      &.danger { background: var(--danger-color, #ef4444); margin-right: 6px; }
+    }
+  }
+
+  /* restore bar under a deleted note's body */
+  .tui-pv-trashbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 4px;
+    font-size: calc(0.72rem * var(--tui-text-scale, 1));
+    color: var(--text-muted, #6b7280);
+  }
+
+  .tui-restore-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    background: var(--container-bg, #fff);
+    border: 1.5px solid var(--success-color, #16a34a);
+    border-radius: var(--radius-sm, 4px);
+    color: var(--success-color, #16a34a);
+    font: inherit;
+    font-size: calc(0.72rem * var(--tui-text-scale, 1));
+    font-weight: 800;
+    letter-spacing: 1px;
+    cursor: pointer;
+
+    &:hover { background: rgba(22, 163, 74, 0.1); }
+
+    kbd {
+      font: inherit;
+      padding: 0 4px;
+      border: 1.5px solid currentColor;
+      border-radius: 3px;
+      opacity: 0.7;
     }
   }
 
@@ -1105,6 +1219,31 @@
   border-radius: 999px;
   cursor: pointer;
 }
+/* day / all switch on the TRASH panel title */
+.tui .tui-scope {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 6px;
+
+  button {
+    padding: 0 6px;
+    font: inherit;
+    font-size: 0.58rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted, #6b7280);
+    background: transparent;
+    border: 1.5px solid var(--border-color, #111827);
+    border-radius: 3px;
+    cursor: pointer;
+
+    &.on { background: var(--text-color, #111827); color: var(--container-bg, #fff); }
+  }
+}
+
+.tui .tui-badge.in-trash { background: var(--danger-color, #ef4444); color: #fff; }
+
 .tui .tui-sub-chip {
   flex-shrink: 0;
   margin-left: 6px;

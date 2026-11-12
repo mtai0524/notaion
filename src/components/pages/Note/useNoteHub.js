@@ -26,6 +26,13 @@ const upsertNote = (notesByDate, note) => {
   return { ...notesByDate, [note.date]: next };
 };
 
+// A deleted note stays in state, flagged: the TRASH folder reads it from there.
+const markDeleted = (notesByDate, noteId) => Object.fromEntries(
+  Object.entries(notesByDate).map(([date, list]) =>
+    [date, list.map((n) => (n.id === noteId ? { ...n, isDeleted: true } : n))]),
+);
+
+// Purge is the only change that drops a note for good.
 const removeNote = (notesByDate, noteId) => Object.fromEntries(
   Object.entries(notesByDate).map(([date, list]) => [date, list.filter((n) => n.id !== noteId)]),
 );
@@ -46,10 +53,11 @@ export const useNoteHub = (setNotesByDate) => {
     connection.on('NoteCreated', upsert);
     connection.on('NoteRestored', upsert);
     connection.on('NoteUpdated', (note) => {
-      if (note.isDeleted) setNotesByDate((prev) => removeNote(prev, note.id));
+      if (note.isDeleted) setNotesByDate((prev) => markDeleted(prev, note.id));
       else upsert(note);
     });
-    connection.on('NoteDeleted', (noteId) => setNotesByDate((prev) => removeNote(prev, noteId)));
+    connection.on('NoteDeleted', (noteId) => setNotesByDate((prev) => markDeleted(prev, noteId)));
+    connection.on('NotePurged', (noteId) => setNotesByDate((prev) => removeNote(prev, noteId)));
     connection.on('NotesBulkUpdated', (notes) => notes.forEach(upsert));
 
     connection.start()
