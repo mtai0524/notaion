@@ -316,6 +316,16 @@ const TuiView = ({ notes, onAdd, onUpdate, onDelete, onDuplicate, onMoveToDate, 
   }, [notes, activeFolder, query, sortBy, tagFilter]);
 
   useEffect(() => { setNoteIndex((i) => Math.max(0, Math.min(i, list.length - 1))); }, [list.length]);
+
+  // A new day starts a fresh browse. Folder, tag and search carried over from
+  // the old day can hide every note of the new one, which left the preview
+  // stuck on "no note selected" while the day clearly had notes.
+  useEffect(() => {
+    setFolderIndex(0);
+    setTagFilter(null);
+    setQuery('');
+    setNoteIndex(0);
+  }, [dateLabel]);
   useEffect(() => { rootRef.current?.focus({ preventScroll: true }); }, []);
 
   useEffect(() => {
